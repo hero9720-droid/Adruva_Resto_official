@@ -1,0 +1,24 @@
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+exports.resetPasswordSchema = exports.forgotPasswordSchema = exports.setPasswordSchema = exports.inviteSchema = exports.loginSchema = void 0;
+const zod_1 = require("zod");
+exports.loginSchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+    password: zod_1.z.string().min(8),
+});
+exports.inviteSchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+    name: zod_1.z.string().min(2),
+    role: zod_1.z.enum(['outlet_manager', 'cashier', 'waiter', 'kitchen', 'inventory_manager', 'delivery']),
+});
+exports.setPasswordSchema = zod_1.z.object({
+    token: zod_1.z.string(),
+    password: zod_1.z.string().min(8),
+});
+exports.forgotPasswordSchema = zod_1.z.object({
+    email: zod_1.z.string().email(),
+});
+exports.resetPasswordSchema = zod_1.z.object({
+    token: zod_1.z.string(),
+    newPassword: zod_1.z.string().min(8),
+});

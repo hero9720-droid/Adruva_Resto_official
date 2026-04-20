@@ -1,0 +1,41 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: #0b1326; /* Deep navy cellar background */
+  --foreground: #dae2fd; /* Light text for readability */
+  --card: #171f33; /* Main surface container */
+  --card-foreground: #dae2fd;
+  --popover: #2d3449; /* Highest surface container for modals */
+  --popover-foreground: #dae2fd;
+  --primary: #4f46e5; /* Vibrant Indigo primary CTA */
+  --primary-foreground: #dad7ff;
+  --secondary: #131b2e; /* Low surface container for sidebars */
+  --secondary-foreground: #c3c0ff;
+  --muted: #222a3d; /* High surface container */
+  --muted-foreground: #918fa1; /* Outline text for metadata */
+  --accent: #2d3449; /* Surface variant for hover states */
+  --accent-foreground: #dae2fd;
+  --destructive: #ffb4ab;
+  --destructive-foreground: #690005;
+  --border: #464555; /* Outline variant for ghost borders */
+  --input: #060e20; /* Lowest surface container for sunken inputs */
+  --ring: #4f46e5;
+  --radius: 1.5rem; /* Large pill-like curves (ROUND_EIGHT) */
+}
+
+@layer base {
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+/* Hide scrollbar for clean UI */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}

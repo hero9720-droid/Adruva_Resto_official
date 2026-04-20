@@ -1,0 +1,13 @@
+[build]
+builder = "nixpacks"
+watchPatterns = ["src/**", "package.json", "tsconfig.json"]
+
+[build.nixpacks]
+plan = { phases = { setup = { pkgs = ["nodejs_22"] } } }
+
+[deploy]
+startCommand = "npm start"
+healthcheckPath = "/api/health"
+healthcheckTimeout = 100
+restartPolicyType = "on_failure"
+restartPolicyMaxRetries = 3

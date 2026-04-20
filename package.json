@@ -1,0 +1,12 @@
+{
+  "name": "adruva-resto-monorepo",
+  "version": "1.0.0",
+  "scripts": {
+    "dev:api": "cd api && npm run dev",
+    "dev:outlet": "cd outlet-app && npm run dev -- -p 3000",
+    "dev:chain": "cd chain-app && npm run dev -- -p 3001",
+    "dev:superadmin": "cd superadmin-app && npm run dev -- -p 3002",
+    "dev:customer": "cd customer-app && npm run dev -- -p 3003",
+    "dev": "npx concurrently \"npm run dev:api\" \"npm run dev:outlet\" \"npm run dev:chain\" \"npm run dev:superadmin\" \"npm run dev:customer\""
+  }
+}

@@ -1,0 +1,12 @@
+-- ============================================================
+-- FILE: migrations/005_sequences.sql
+-- PURPOSE: Validation comments for counter system
+-- The actual trigger is in 001_initial_schema.sql
+-- The TypeScript functions are in api/src/lib/counters.ts
+-- ============================================================
+
+-- This file is used to verify the counter system triggers.
+-- To manually test the outlet counter trigger:
+-- 1. INSERT INTO outlets (chain_id, name) VALUES ('<valid_chain_id>', 'Test Outlet');
+-- 2. SELECT * FROM outlet_counters WHERE outlet_id = '<new_outlet_id>';
+-- It should return one row with order_count = 0 and bill_count = 0.

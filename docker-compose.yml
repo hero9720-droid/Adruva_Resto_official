@@ -1,0 +1,89 @@
+services:
+  # Redis for Session Caching & Socket.io Adapter
+  redis:
+    image: redis:7-alpine
+    container_name: adruva_redis
+    ports:
+      - "6379:6379"
+    restart: always
+
+  # PostgreSQL container with automated seed
+  db:
+    image: postgres:15-alpine
+    container_name: adruva_db
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: hero1749t
+      POSTGRES_DB: adruva_resto
+    ports:
+      - "5433:5432" # Changed to 5433 to avoid conflict with local Postgres
+    volumes:
+      - ./api/migrations:/docker-entrypoint-initdb.d
+    restart: always
+
+  api:
+    build:
+      context: ./api
+    container_name: adruva_api
+    environment:
+      - PORT=4000
+      - DATABASE_URL=postgres://postgres:hero1749t@db:5432/adruva_resto
+      - REDIS_URL=redis://redis:6379
+      - JWT_SECRET=local_jwt_secret
+      - REFRESH_TOKEN_SECRET=local_refresh_token_secret
+    ports:
+      - "4000:4000"
+    depends_on:
+      - db
+      - redis
+    restart: always
+
+  outlet-app:
+    build:
+      context: ./outlet-app
+    container_name: adruva_outlet
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_WS_URL=http://localhost:4000
+    ports:
+      - "3000:3000"
+    depends_on:
+      - api
+    restart: always
+
+  chain-app:
+    build:
+      context: ./chain-app
+    container_name: adruva_chain
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    ports:
+      - "3001:3001"
+    depends_on:
+      - api
+    restart: always
+
+  superadmin-app:
+    build:
+      context: ./superadmin-app
+    container_name: adruva_superadmin
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+      - NEXT_PUBLIC_WS_URL=http://localhost:4000
+    ports:
+      - "3002:3002"
+    depends_on:
+      - api
+    restart: always
+
+  customer-app:
+    build:
+      context: ./customer-app
+    container_name: adruva_customer
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:4000
+    ports:
+      - "3003:3003"
+    depends_on:
+      - api
+    restart: always
