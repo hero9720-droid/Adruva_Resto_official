@@ -12,6 +12,9 @@ router.use(requireActiveSubscription);
 // Staff list
 router.get('/list', StaffController.getStaff);
 
+// Create Staff
+router.post('/create', requireRole(['outlet_manager']), StaffController.createStaff);
+
 // Attendance
 router.get('/attendance',  StaffController.getAttendance);
 router.post('/clock-in',   StaffController.clockIn);

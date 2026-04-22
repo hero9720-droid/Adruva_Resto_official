@@ -8,11 +8,7 @@ import bcrypt from 'bcrypt';
 import { Pool } from 'pg';
 
 const db = new Pool({
-  user: 'postgres',
-  password: 'hero1749t',
-  host: 'localhost',
-  port: 5432,
-  database: 'adruva_resto',
+  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:hero1749t@localhost:5432/adruva_resto',
 });
 
 async function seed() {

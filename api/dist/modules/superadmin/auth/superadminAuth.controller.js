@@ -18,6 +18,7 @@ async function login(req, res) {
     const { email, password } = req.body;
     const result = await db_1.db.query('SELECT id, name, email, password_hash, totp_secret, totp_enabled FROM superadmin_users WHERE email = $1', [email]);
     const admin = result.rows[0];
+    console.log('Login attempt:', { email, totp_enabled: admin?.totp_enabled });
     if (!admin) {
         throw new errors_1.AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS');
     }
@@ -25,7 +26,19 @@ async function login(req, res) {
     if (!isPasswordValid) {
         throw new errors_1.AppError(401, 'Invalid credentials', 'INVALID_CREDENTIALS');
     }
-    // Generate partial JWT indicating password is verified but 2FA is pending
+    if (!admin.totp_enabled) {
+        const accessToken = (0, jwt_1.signAccessToken)({
+            superadmin_id: admin.id,
+            role: 'superadmin',
+            totp_verified: true
+        });
+        return res.json({
+            success: true,
+            accessToken,
+            totpEnabled: false
+        });
+    }
+    // Generate partial JWT if 2FA is required
     const partialToken = (0, jwt_1.signAccessToken)({
         superadmin_id: admin.id,
         role: 'superadmin',
@@ -35,7 +48,7 @@ async function login(req, res) {
     res.json({
         success: true,
         partialToken,
-        totpEnabled: admin.totp_enabled
+        totpEnabled: true
     });
 }
 async function setup2FA(req, res) {

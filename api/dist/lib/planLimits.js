@@ -13,6 +13,10 @@ async function checkPlanLimit(outlet_id, resource) {
         WHEN '${resource}' = 'max_tables' THEN (SELECT COUNT(*) FROM tables WHERE outlet_id = $1 AND is_active = true)
         WHEN '${resource}' = 'max_staff' THEN (SELECT COUNT(*) FROM staff WHERE outlet_id = $1 AND is_active = true)
         WHEN '${resource}' = 'max_menu_items' THEN (SELECT COUNT(*) FROM menu_items WHERE outlet_id = $1)
+        WHEN '${resource}' = 'max_orders_per_month' THEN (
+          SELECT COUNT(*) FROM orders 
+          WHERE outlet_id = $1 AND date_trunc('month', created_at) = date_trunc('month', CURRENT_DATE)
+        )
       END as current_count
      FROM outlets o
      JOIN plans p ON p.id = o.plan_id

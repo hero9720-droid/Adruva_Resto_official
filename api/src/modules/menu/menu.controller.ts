@@ -152,15 +152,37 @@ export async function getMenuItems(req: Request, res: Response) {
   const { category_id } = req.query;
 
   const result = await withOutletContext(outlet_id, async (client) => {
-    let query = 'SELECT * FROM menu_items WHERE 1=1';
+    let query = `
+      SELECT 
+        m.*,
+        COALESCE(
+          (SELECT json_agg(v.*) FROM menu_item_variants v WHERE v.menu_item_id = m.id), 
+          '[]'::json
+        ) as variants,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', mg.id,
+              'name', mg.name,
+              'is_required', mg.is_required,
+              'min_select', mg.min_select,
+              'max_select', mg.max_select,
+              'modifiers', COALESCE((SELECT json_agg(mod.*) FROM modifiers mod WHERE mod.group_id = mg.id), '[]'::json)
+            )
+          ) FROM modifier_groups mg WHERE mg.menu_item_id = m.id),
+          '[]'::json
+        ) as modifier_groups
+      FROM menu_items m
+      WHERE 1=1
+    `;
     const params: any[] = [];
     
     if (category_id) {
-      query += ' AND category_id = $1';
+      query += ' AND m.category_id = $1';
       params.push(category_id);
     }
     
-    query += ' ORDER BY sort_order ASC';
+    query += ' ORDER BY m.sort_order ASC';
     const res = await client.query(query, params);
     return res.rows;
   });

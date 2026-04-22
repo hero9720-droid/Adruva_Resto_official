@@ -112,13 +112,35 @@ async function getMenuItems(req, res) {
     const outlet_id = req.user.outlet_id;
     const { category_id } = req.query;
     const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
-        let query = 'SELECT * FROM menu_items WHERE 1=1';
+        let query = `
+      SELECT 
+        m.*,
+        COALESCE(
+          (SELECT json_agg(v.*) FROM menu_item_variants v WHERE v.menu_item_id = m.id), 
+          '[]'::json
+        ) as variants,
+        COALESCE(
+          (SELECT json_agg(
+            json_build_object(
+              'id', mg.id,
+              'name', mg.name,
+              'is_required', mg.is_required,
+              'min_select', mg.min_select,
+              'max_select', mg.max_select,
+              'modifiers', COALESCE((SELECT json_agg(mod.*) FROM modifiers mod WHERE mod.group_id = mg.id), '[]'::json)
+            )
+          ) FROM modifier_groups mg WHERE mg.menu_item_id = m.id),
+          '[]'::json
+        ) as modifier_groups
+      FROM menu_items m
+      WHERE 1=1
+    `;
         const params = [];
         if (category_id) {
-            query += ' AND category_id = $1';
+            query += ' AND m.category_id = $1';
             params.push(category_id);
         }
-        query += ' ORDER BY sort_order ASC';
+        query += ' ORDER BY m.sort_order ASC';
         const res = await client.query(query, params);
         return res.rows;
     });
@@ -157,7 +179,7 @@ async function deleteMenuItem(req, res) {
 async function getPublicMenu(req, res) {
     const { outletSlug } = req.params;
     // Find outlet by subdomain
-    const outletRes = await db_1.db.query(`SELECT id, name, city, logo_url, phone, address, gstin
+    const outletRes = await db_1.db.query(`SELECT id, name, city, logo_url, phone, address
      FROM outlets 
      WHERE subdomain = $1 AND is_active = true`, [outletSlug]);
     if (outletRes.rows.length === 0) {

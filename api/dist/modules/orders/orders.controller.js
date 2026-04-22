@@ -10,10 +10,13 @@ const counters_1 = require("../../lib/counters");
 const inventory_1 = require("../../lib/inventory");
 const websocket_1 = require("../../websocket");
 const errors_1 = require("../../lib/errors");
+const planLimits_1 = require("../../lib/planLimits");
 async function createOrder(req, res) {
     const outlet_id = req.user.outlet_id;
     const staff_id = req.user.staff_id;
     const { order_type, session_id, table_id, room_id, customer_id, waiter_id, notes, items } = req.body;
+    // Enforce SaaS plan limits
+    await (0, planLimits_1.checkPlanLimit)(outlet_id, 'max_orders_per_month');
     const result = await processOrderCreation(outlet_id, {
         order_type, session_id, table_id, room_id,
         customer_id, waiter_id: waiter_id || staff_id, notes, items,
@@ -27,6 +30,8 @@ async function createPublicOrder(req, res) {
     const { outlet_id, table_id, items, notes } = req.body;
     if (!outlet_id)
         throw new errors_1.AppError(400, 'Outlet ID is required', 'BAD_REQUEST');
+    // Enforce SaaS plan limits
+    await (0, planLimits_1.checkPlanLimit)(outlet_id, 'max_orders_per_month');
     const result = await processOrderCreation(outlet_id, {
         order_type: 'dine_in',
         table_id,

@@ -43,6 +43,8 @@ router.use(auth_1.verifyToken);
 router.use(subscription_1.requireActiveSubscription);
 // Staff list
 router.get('/list', StaffController.getStaff);
+// Create Staff
+router.post('/create', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.createStaff);
 // Attendance
 router.get('/attendance', StaffController.getAttendance);
 router.post('/clock-in', StaffController.clockIn);

@@ -27,7 +27,15 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { useOutletProfile, useUpdateProfile, useTables, useUpdateTable } from '@/hooks/useSettings';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useOutletProfile, useUpdateProfile, useTables, useUpdateTable, useCreateTable } from '@/hooks/useSettings';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -40,7 +48,17 @@ export default function SettingsPage() {
 
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    toast({ title: "Settings Saved", description: "Outlet configuration has been updated.", className: "bg-[#1b1b24] text-white border-none" });
+    try {
+      await updateProfile.mutateAsync({
+        name: (document.querySelector('input[placeholder="Restaurant Name"]') as HTMLInputElement)?.value,
+        gstin: (document.querySelector('input[placeholder="27AAAAA0000A1Z5"]') as HTMLInputElement)?.value,
+        phone: (document.querySelector('input[placeholder="Primary Phone"]') as HTMLInputElement)?.value,
+        address: (document.querySelector('input[placeholder="Official Address"]') as HTMLInputElement)?.value,
+      });
+      toast({ title: "Settings Saved", description: "Outlet configuration has been updated.", className: "bg-[#1b1b24] text-white border-none" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to save settings" });
+    }
   };
 
   const handleDragEnd = async (tableId: string, event: any, info: any) => {
@@ -93,7 +111,7 @@ export default function SettingsPage() {
           
           <TabsContent value="floor" className="mt-0 h-full">
              <div className="bg-[#ffffff] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.05)] rounded-[2.5rem] p-8 h-full flex flex-col">
-               <div className="flex justify-between items-center mb-8">
+                <div className="flex justify-between items-center mb-8">
                   <div className="flex items-center gap-4">
                      <div className="h-14 w-14 bg-[#e2dfff] rounded-xl flex items-center justify-center text-[#3525cd] shadow-inner">
                         <Layout className="h-6 w-6" />
@@ -103,9 +121,15 @@ export default function SettingsPage() {
                         <p className="text-[#a09eb1] font-black text-[10px] uppercase tracking-widest mt-0.5">Drag to position tables</p>
                      </div>
                   </div>
-                  <Button variant="outline" className="h-12 px-6 rounded-2xl border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black uppercase tracking-widest text-[#777587] bg-[#fcf8ff] hover:bg-[#f5f2ff] hover:text-[#1b1b24]">
-                     <Plus className="h-4 w-4 mr-2" /> Add Table
-                  </Button>
+                  
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" className="h-12 px-6 rounded-2xl border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black uppercase tracking-widest text-[#777587] bg-[#fcf8ff] hover:bg-[#f5f2ff] hover:text-[#1b1b24]">
+                         <Plus className="h-4 w-4 mr-2" /> Add Table
+                      </Button>
+                    </DialogTrigger>
+                    <AddTableDialog />
+                  </Dialog>
                </div>
                
                <div className="flex-1 relative bg-[#fcf8ff] rounded-[2rem] border-2 border-dashed border-[#e4e1ee] overflow-hidden" 
@@ -267,3 +291,65 @@ export default function SettingsPage() {
     </div>
   );
 }
+
+function AddTableDialog() {
+  const createTable = useCreateTable();
+  const { toast } = useToast();
+  const [name, setName] = useState('');
+  const [capacity, setCapacity] = useState(4);
+
+  const handleCreate = async () => {
+    if (!name) return;
+    try {
+      await createTable.mutateAsync({
+        name,
+        capacity,
+        pos_x: 50,
+        pos_y: 50,
+        status: 'available'
+      });
+      toast({ title: "Table Created", description: `Table ${name} added to floor plan.` });
+      setName('');
+    } catch (e) {
+      toast({ variant: "destructive", title: "Failed to create table" });
+    }
+  };
+
+  return (
+    <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-[#ffffff] shadow-[0_20px_40px_-15px_rgba(0,0,0,0.1)] font-sans">
+      <DialogHeader>
+        <DialogTitle className="text-3xl font-black text-[#1b1b24] tracking-tighter uppercase">New Table</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-8 py-8">
+        <div className="space-y-3">
+          <Label className="font-black text-xs uppercase tracking-widest text-[#777587] ml-2">Table Name / Number</Label>
+          <Input 
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="e.g. T1 or Table 5" 
+            className="px-6 h-16 rounded-[2rem] border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black text-xl bg-[#fcf8ff] text-[#1b1b24]" 
+          />
+        </div>
+        <div className="space-y-3">
+          <Label className="font-black text-xs uppercase tracking-widest text-[#777587] ml-2">Seating Capacity (PAX)</Label>
+          <Input 
+            type="number"
+            value={capacity}
+            onChange={(e) => setCapacity(parseInt(e.target.value))}
+            className="px-6 h-16 rounded-[2rem] border-none shadow-[0_8px_30px_rgb(0,0,0,0.04)] font-black text-2xl bg-[#fcf8ff] text-[#1b1b24]" 
+          />
+        </div>
+      </div>
+      <DialogFooter>
+        <Button 
+          onClick={handleCreate}
+          disabled={!name || createTable.isPending}
+          className="w-full h-16 rounded-[2rem] bg-[#1b1b24] hover:bg-black text-[#ffffff] font-black shadow-lg shadow-black/10 tracking-widest uppercase transition-all active:scale-[0.98] border-none"
+        >
+          {createTable.isPending ? 'CREATING...' : 'ADD TO FLOOR PLAN'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
+  );
+}
+

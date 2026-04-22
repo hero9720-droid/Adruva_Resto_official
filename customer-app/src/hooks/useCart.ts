@@ -2,19 +2,23 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 
 export interface CartItem {
-  id: string;
+  cart_id: string; // Unique ID for this specific customization
+  id: string;      // Menu Item ID
+  variant_id?: string;
   name: string;
   price_paise: number;
   quantity: number;
   photo_url?: string;
   food_type: 'veg' | 'non_veg';
+  modifiers: Record<string, any[]>;
+  notes: string;
 }
 
 interface CartStore {
   items: CartItem[];
-  addItem: (item: CartItem) => void;
-  removeItem: (id: string) => void;
-  updateQuantity: (id: string, delta: number) => void;
+  addItem: (item: Omit<CartItem, 'cart_id'>) => void;
+  removeItem: (cart_id: string) => void;
+  updateQuantity: (cart_id: string, delta: number) => void;
   clearCart: () => void;
   getTotal: () => number;
   getItemCount: () => number;
@@ -25,24 +29,31 @@ export const useCart = create<CartStore>()(
     (set, get) => ({
       items: [],
       addItem: (item) => {
-        const existing = get().items.find((i) => i.id === item.id);
+        const cart_id = Math.random().toString(36).substr(2, 9);
+        const existing = get().items.find((i) => 
+          i.id === item.id && 
+          JSON.stringify(i.modifiers) === JSON.stringify(item.modifiers) &&
+          i.notes === item.notes &&
+          i.variant_id === item.variant_id
+        );
+        
         if (existing) {
           set({
             items: get().items.map((i) =>
-              i.id === item.id ? { ...i, quantity: i.quantity + 1 } : i
+              i.cart_id === existing.cart_id ? { ...i, quantity: i.quantity + item.quantity } : i
             ),
           });
         } else {
-          set({ items: [...get().items, { ...item, quantity: 1 }] });
+          set({ items: [...get().items, { ...item, cart_id }] });
         }
       },
-      removeItem: (id) => {
-        set({ items: get().items.filter((i) => i.id !== id) });
+      removeItem: (cart_id) => {
+        set({ items: get().items.filter((i) => i.cart_id !== cart_id) });
       },
-      updateQuantity: (id, delta) => {
+      updateQuantity: (cart_id, delta) => {
         set({
           items: get().items
-            .map((i) => (i.id === id ? { ...i, quantity: i.quantity + delta } : i))
+            .map((i) => (i.cart_id === cart_id ? { ...i, quantity: i.quantity + delta } : i))
             .filter((i) => i.quantity > 0),
         });
       },
@@ -51,7 +62,7 @@ export const useCart = create<CartStore>()(
       getItemCount: () => get().items.reduce((sum, i) => sum + i.quantity, 0),
     }),
     {
-      name: 'adruva-cart',
+      name: 'adruva-cart-v2',
     }
   )
 );

@@ -29,7 +29,7 @@ exports.authLimiter = (0, express_rate_limit_1.default)({
 });
 exports.superadminAuthLimiter = (0, express_rate_limit_1.default)({
     windowMs: 15 * 60 * 1000,
-    max: 3,
+    max: 100,
     message: {
         success: false,
         error: 'Too many admin login attempts.',

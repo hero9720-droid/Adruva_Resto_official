@@ -51,6 +51,10 @@ const config: Config = {
         md: "calc(var(--radius) - 2px)",
         sm: "calc(var(--radius) - 4px)",
       },
+      boxShadow: {
+        'soft': '0 10px 40px -10px rgba(0,0,0,0.05)',
+        'glow': '0 0 20px rgba(79, 70, 229, 0.2)',
+      },
     },
   },
   plugins: [],

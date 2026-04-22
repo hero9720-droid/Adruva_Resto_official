@@ -14,7 +14,7 @@ export function useSocket(room: string) {
 
   useEffect(() => {
     const token = typeof window !== 'undefined'
-      ? (window as any).__rms_access_token
+      ? localStorage.getItem('rms_access_token')
       : undefined;
 
     const connectFn = socketIOClient.io ?? socketIOClient.connect ?? socketIOClient.default ?? socketIOClient;

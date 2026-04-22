@@ -1,6 +1,7 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
 exports.getStaff = getStaff;
+exports.createStaff = createStaff;
 exports.clockIn = clockIn;
 exports.clockOut = clockOut;
 exports.getAttendance = getAttendance;
@@ -21,6 +22,19 @@ async function getStaff(req, res) {
         return r.rows;
     });
     res.json({ success: true, data: result });
+}
+// --- CREATE STAFF ---
+async function createStaff(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const { name, role, pin, base_pay_paise } = req.body;
+    if (!name || !role)
+        throw new errors_1.AppError(400, 'Name and role are required', 'VALIDATION_ERROR');
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        const r = await client.query(`INSERT INTO staff (outlet_id, name, role, pin, base_pay_paise, is_active)
+       VALUES ($1, $2, $3, $4, $5, true) RETURNING id, name, role, is_active, created_at`, [outlet_id, name, role, pin || null, base_pay_paise || 0]);
+        return r.rows[0];
+    });
+    res.status(201).json({ success: true, data: result });
 }
 // --- ATTENDANCE (clock_in/clock_out per day) ---
 async function clockIn(req, res) {

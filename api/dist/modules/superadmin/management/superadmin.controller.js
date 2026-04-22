@@ -98,8 +98,11 @@ async function onboardChain(req, res) {
         const outletRes = await client.query(`INSERT INTO outlets (chain_id, name, plan_id, subscription_status) 
        VALUES ($1, $2, $3, 'active') RETURNING id`, [chainId, outlet_name, plan_id]);
         const outletId = outletRes.rows[0].id;
-        // 3. Create Outlet Admin (Staff)
+        // 3. Create Chain Owner Login (chain_users)
         const hashedPassword = await bcrypt_1.default.hash(admin_password, 12);
+        await client.query(`INSERT INTO chain_users (chain_id, name, email, password_hash, role, is_active) 
+       VALUES ($1, $2, $3, $4, 'chain_owner', true)`, [chainId, admin_name, admin_email, hashedPassword]);
+        // 4. Create Outlet Admin (Staff) so they can also log into outlet-app
         await client.query(`INSERT INTO staff (outlet_id, name, email, role, password_hash, is_active) 
        VALUES ($1, $2, $3, 'outlet_manager', $4, true)`, [outletId, admin_name, admin_email, hashedPassword]);
         // 4. Initialize Subscription record

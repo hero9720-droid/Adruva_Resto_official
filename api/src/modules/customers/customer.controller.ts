@@ -111,6 +111,16 @@ export async function getCustomerHistory(req: Request, res: Response) {
   );
   if ((customer.rowCount ?? 0) === 0) throw new AppError(404, 'Customer not found', 'NOT_FOUND');
 
+  const bills = await db.query(
+    `SELECT b.*,
+       (SELECT json_agg(oi.*) FROM order_items oi WHERE oi.order_id = b.order_id) as items
+     FROM bills b
+     WHERE b.customer_id = $1
+     ORDER BY b.created_at DESC
+     LIMIT 20`,
+    [id]
+  );
+
   const transactions = await db.query(
     `SELECT lt.*, o.name as outlet_name
      FROM loyalty_transactions lt
@@ -126,6 +136,7 @@ export async function getCustomerHistory(req: Request, res: Response) {
     data: {
       customer: customer.rows[0],
       transactions: transactions.rows,
+      bills: bills.rows,
     }
   });
 }

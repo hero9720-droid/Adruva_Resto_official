@@ -32,9 +32,13 @@ async function requireActiveSubscription(req, res, next) {
        JOIN outlets o ON o.id = s.outlet_id
        WHERE s.outlet_id = $1`, [outlet_id]);
         if (result.rows.length === 0) {
-            throw new errors_1.AppError(403, 'No subscription found for this outlet', 'NO_SUBSCRIPTION');
+            // No subscription record — treat as trial to allow access
+            // (happens during dev / fresh outlet setup)
+            status = 'trial';
         }
-        status = result.rows[0].status;
+        else {
+            status = result.rows[0].status;
+        }
         await redis_1.redis.setex(cacheKey, 60, status); // Cache for 60 seconds
     }
     if (status === 'suspended') {

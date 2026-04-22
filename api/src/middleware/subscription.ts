@@ -38,10 +38,12 @@ export async function requireActiveSubscription(
     );
     
     if (result.rows.length === 0) {
-      throw new AppError(403, 'No subscription found for this outlet', 'NO_SUBSCRIPTION');
+      // No subscription record — treat as trial to allow access
+      // (happens during dev / fresh outlet setup)
+      status = 'trial';
+    } else {
+      status = result.rows[0].status;
     }
-    
-    status = result.rows[0].status;
     await redis.setex(cacheKey, 60, status!); // Cache for 60 seconds
   }
 

@@ -64,6 +64,6 @@ router.delete('/items/:id', (0, rbac_1.requireRole)(['outlet_manager']), MenuCon
 // Variants & Modifiers
 router.post('/items/variants', (0, rbac_1.requireRole)(['outlet_manager']), (0, validate_1.validateBody)(zod_1.z.object({ menu_item_id: zod_1.z.string().uuid(), variants: zod_1.z.array(menu_schema_1.variantSchema) })), ModifiersController.addVariants);
 router.post('/items/modifier-groups', (0, rbac_1.requireRole)(['outlet_manager']), (0, validate_1.validateBody)(menu_schema_1.modifierGroupSchema.extend({ menu_item_id: zod_1.z.string().uuid() })), ModifiersController.addModifierGroup);
-// Uploads
-router.get('/upload-url', (0, rbac_1.requireRole)(['outlet_manager', 'cashier']), UploadController.getUploadUrl);
+// Uploads — proxy through backend to avoid R2 CORS issues
+router.post('/upload', (0, rbac_1.requireRole)(['outlet_manager', 'cashier']), UploadController.uploadMiddleware, UploadController.uploadMenuPhoto);
 exports.default = router;

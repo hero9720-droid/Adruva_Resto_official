@@ -8,9 +8,9 @@ import {
   StopCircle, 
   UserPlus, 
   History,
-  ArrowRight,
   TrendingUp,
-  Wallet
+  Wallet,
+  Loader2
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -34,31 +34,74 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { useStaffList, useAttendance, useShift } from '@/hooks/useStaff';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useStaffList, useAttendance, useShift, useCreateStaff, useCurrentStatus } from '@/hooks/useStaff';
 import { useToast } from '@/hooks/use-toast';
 
 export default function StaffPage() {
   const [activeTab, setActiveTab] = useState('directory');
-  const [isClockedIn, setIsClockedIn] = useState(false);
-  const [isShiftActive, setIsShiftActive] = useState(false);
+  
+  // Add Staff dialog state
+  const [addStaffOpen, setAddStaffOpen] = useState(false);
+  const [newStaff, setNewStaff] = useState({ name: '', role: 'waiter', pin: '', base_pay: '' });
+
   const { data: staff, isLoading: staffLoading } = useStaffList(activeTab === 'payroll' ? 'payroll' : undefined);
   const { clockIn, clockOut } = useAttendance();
   const { startShift, endShift } = useShift();
+  const { data: currentStatus } = useCurrentStatus();
+  const createStaff = useCreateStaff();
   const { toast } = useToast();
+
+  const isClockedIn = currentStatus?.isClockedIn || false;
+  const isShiftActive = currentStatus?.isShiftActive || false;
+
+  const handleAddStaff = async () => {
+    if (!newStaff.name.trim() || !newStaff.role) return;
+    try {
+      await createStaff.mutateAsync({
+        name: newStaff.name,
+        role: newStaff.role,
+        pin: newStaff.pin || undefined,
+        base_pay_paise: Math.round(Number(newStaff.base_pay || 0) * 100),
+      });
+      toast({ title: 'Staff Added', description: `${newStaff.name} has been added to the team.` });
+      setNewStaff({ name: '', role: 'waiter', pin: '', base_pay: '' });
+      setAddStaffOpen(false);
+    } catch {
+      toast({ variant: 'destructive', title: 'Failed to add staff' });
+    }
+  };
 
   const handleClockToggle = async () => {
     try {
       if (isClockedIn) {
         await clockOut.mutateAsync();
-        setIsClockedIn(false);
         toast({ title: "Clocked Out", description: "Your attendance has been recorded.", className: "bg-[#1b1b24] text-white border-none" });
       } else {
         await clockIn.mutateAsync();
-        setIsClockedIn(true);
         toast({ title: "Clocked In", description: "Welcome back! Duty started.", className: "bg-[#4f46e5] text-white border-none" });
       }
     } catch (error) {
       toast({ variant: "destructive", title: "Action failed" });
+    }
+  };
+
+  const [shiftAmount, setShiftAmount] = useState('');
+  const [shiftNotes, setShiftNotes] = useState('');
+
+  const handleShiftToggle = async () => {
+    try {
+      if (isShiftActive) {
+        await endShift.mutateAsync({ closing_cash_paise: Math.round(Number(shiftAmount) * 100), notes: shiftNotes });
+        toast({ title: "Shift Ended", description: "Register reconciled successfully." });
+      } else {
+        await startShift.mutateAsync({ opening_cash_paise: Math.round(Number(shiftAmount) * 100), notes: shiftNotes });
+        toast({ title: "Shift Started", description: "Register is now live." });
+      }
+      setShiftAmount('');
+      setShiftNotes('');
+    } catch {
+      toast({ variant: 'destructive', title: 'Shift update failed' });
     }
   };
 
@@ -83,10 +126,83 @@ export default function StaffPage() {
             <Clock className="h-5 w-5 mr-3" />
             {isClockedIn ? "Clock Out" : "Clock In"}
           </Button>
-          <Button className="h-14 px-8 bg-[#4f46e5] hover:bg-[#3525cd] text-white rounded-2xl font-black shadow-lg shadow-[#4f46e5]/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
+          <Button
+            className="h-14 px-8 bg-[#4f46e5] hover:bg-[#3525cd] text-white rounded-2xl font-black shadow-lg shadow-[#4f46e5]/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none"
+            onClick={() => setAddStaffOpen(true)}
+          >
             <UserPlus className="h-5 w-5 mr-3" />
             Add Staff
           </Button>
+
+          {/* Add Staff Dialog */}
+          <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
+            <DialogContent className="bg-white rounded-[2rem] border-none shadow-2xl p-8 max-w-md">
+              <DialogHeader>
+                <DialogTitle className="text-3xl font-black text-[#1b1b24] tracking-tighter">Add Staff Member</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-5 py-4">
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">Full Name *</Label>
+                  <Input
+                    value={newStaff.name}
+                    onChange={e => setNewStaff(p => ({ ...p, name: e.target.value }))}
+                    placeholder="e.g. Ravi Sharma"
+                    className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5] font-bold text-[#1b1b24]"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">Role *</Label>
+                  <Select value={newStaff.role} onValueChange={v => setNewStaff(p => ({ ...p, role: v }))}>
+                    <SelectTrigger className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] font-bold text-[#1b1b24]">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl border-none shadow-xl">
+                      <SelectItem value="outlet_manager">Outlet Manager</SelectItem>
+                      <SelectItem value="captain">Captain</SelectItem>
+                      <SelectItem value="waiter">Waiter</SelectItem>
+                      <SelectItem value="cashier">Cashier</SelectItem>
+                      <SelectItem value="chef">Chef</SelectItem>
+                      <SelectItem value="kitchen_staff">Kitchen Staff</SelectItem>
+                      <SelectItem value="cleaner">Cleaner</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">POS PIN</Label>
+                    <Input
+                      type="password"
+                      maxLength={6}
+                      value={newStaff.pin}
+                      onChange={e => setNewStaff(p => ({ ...p, pin: e.target.value }))}
+                      placeholder="4-6 digits"
+                      className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5] font-bold text-[#1b1b24]"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">Base Pay (₹/mo)</Label>
+                    <Input
+                      type="number"
+                      value={newStaff.base_pay}
+                      onChange={e => setNewStaff(p => ({ ...p, base_pay: e.target.value }))}
+                      placeholder="15000"
+                      className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5] font-bold text-[#1b1b24]"
+                    />
+                  </div>
+                </div>
+              </div>
+              <DialogFooter className="gap-3 sm:gap-0 mt-2">
+                <Button variant="ghost" onClick={() => setAddStaffOpen(false)} className="h-14 rounded-2xl font-black text-[#777587] hover:bg-[#f5f2ff] hover:text-[#1b1b24]">CANCEL</Button>
+                <Button
+                  onClick={handleAddStaff}
+                  disabled={createStaff.isPending || !newStaff.name.trim()}
+                  className="h-14 px-8 bg-[#4f46e5] hover:bg-[#3525cd] text-white rounded-2xl font-black shadow-lg shadow-[#4f46e5]/30 border-none"
+                >
+                  {createStaff.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'ADD STAFF'}
+                </Button>
+              </DialogFooter>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
@@ -158,25 +274,37 @@ export default function StaffPage() {
                       {isShiftActive ? "End Shift & Reconcile" : "Start New Shift"}
                     </DialogTitle>
                   </DialogHeader>
-                  <div className="space-y-6 py-6">
-                     <div className="space-y-3">
-                        <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">{isShiftActive ? "Closing Cash (in Register)" : "Opening Cash (Float)"}</Label>
-                        <Input type="number" placeholder="Enter amount in ₹" className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5] font-black text-lg" />
-                     </div>
-                     <div className="space-y-3">
-                        <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">Notes</Label>
-                        <Input placeholder="Any remarks..." className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5]" />
-                     </div>
-                  </div>
-                  <DialogFooter className="gap-3 sm:gap-0 mt-4">
-                    <Button variant="ghost" className="h-14 rounded-2xl font-black text-[#777587] hover:bg-[#f5f2ff] hover:text-[#1b1b24]">CANCEL</Button>
-                    <Button 
-                      className="h-14 px-8 bg-[#4f46e5] hover:bg-[#3525cd] text-white rounded-2xl font-black shadow-lg shadow-[#4f46e5]/30" 
-                      onClick={() => setIsShiftActive(!isShiftActive)}
-                    >
-                      {isShiftActive ? "CLOSE SHIFT" : "OPEN SHIFT"}
-                    </Button>
-                  </DialogFooter>
+                      <div className="space-y-6 py-6">
+                         <div className="space-y-3">
+                            <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">{isShiftActive ? "Closing Cash (in Register)" : "Opening Cash (Float)"}</Label>
+                            <Input 
+                              type="number" 
+                              placeholder="Enter amount in ₹" 
+                              value={shiftAmount}
+                              onChange={e => setShiftAmount(e.target.value)}
+                              className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5] font-black text-lg" 
+                            />
+                         </div>
+                         <div className="space-y-3">
+                            <Label className="text-xs font-black uppercase tracking-widest text-[#777587]">Notes</Label>
+                            <Input 
+                              placeholder="Any remarks..." 
+                              value={shiftNotes}
+                              onChange={e => setShiftNotes(e.target.value)}
+                              className="h-14 rounded-2xl bg-[#fcf8ff] border-[#e4e1ee] focus:border-[#4f46e5]" 
+                            />
+                         </div>
+                      </div>
+                      <DialogFooter className="gap-3 sm:gap-0 mt-4">
+                        <Button variant="ghost" className="h-14 rounded-2xl font-black text-[#777587] hover:bg-[#f5f2ff] hover:text-[#1b1b24]">CANCEL</Button>
+                        <Button 
+                          className="h-14 px-8 bg-[#4f46e5] hover:bg-[#3525cd] text-white rounded-2xl font-black shadow-lg shadow-[#4f46e5]/30" 
+                          onClick={handleShiftToggle}
+                          disabled={startShift.isPending || endShift.isPending}
+                        >
+                          {isShiftActive ? "CLOSE SHIFT" : "OPEN SHIFT"}
+                        </Button>
+                      </DialogFooter>
                 </DialogContent>
               </Dialog>
            </div>

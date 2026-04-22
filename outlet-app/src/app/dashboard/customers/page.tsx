@@ -123,7 +123,7 @@ export default function CustomersPage() {
                         </TableRow>
                      </TableHeader>
                      <TableBody>
-                        {history?.map((bill: any) => (
+                        {history?.bills?.map((bill: any) => (
                            <TableRow key={bill.id}>
                               <TableCell className="text-xs">{new Date(bill.created_at).toLocaleDateString()}</TableCell>
                               <TableCell className="font-bold">{bill.bill_number}</TableCell>

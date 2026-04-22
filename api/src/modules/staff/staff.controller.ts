@@ -21,6 +21,26 @@ export async function getStaff(req: Request, res: Response) {
   res.json({ success: true, data: result });
 }
 
+// --- CREATE STAFF ---
+
+export async function createStaff(req: Request, res: Response) {
+  const outlet_id = req.user.outlet_id;
+  const { name, role, pin, base_pay_paise } = req.body;
+
+  if (!name || !role) throw new AppError(400, 'Name and role are required', 'VALIDATION_ERROR');
+
+  const result = await withOutletContext(outlet_id, async (client) => {
+    const r = await client.query(
+      `INSERT INTO staff (outlet_id, name, role, pin, base_pay_paise, is_active)
+       VALUES ($1, $2, $3, $4, $5, true) RETURNING id, name, role, is_active, created_at`,
+      [outlet_id, name, role, pin || null, base_pay_paise || 0]
+    );
+    return r.rows[0];
+  });
+
+  res.status(201).json({ success: true, data: result });
+}
+
 // --- ATTENDANCE (clock_in/clock_out per day) ---
 
 export async function clockIn(req: Request, res: Response) {

@@ -40,7 +40,7 @@ const auth_1 = require("../../../middleware/auth");
 const rbac_1 = require("../../../middleware/rbac");
 const router = (0, express_1.Router)();
 router.use(auth_1.verifyToken);
-router.use((0, rbac_1.requireRole)(['chain_admin', 'superadmin']));
+router.use((0, rbac_1.requireRole)(['chain_owner', 'chain_admin', 'superadmin']));
 router.get('/metrics', ChainController.getChainMetrics);
 router.get('/outlets', ChainController.listOutlets);
 router.post('/outlets', ChainController.createOutlet);

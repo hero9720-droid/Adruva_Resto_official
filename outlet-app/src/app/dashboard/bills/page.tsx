@@ -37,7 +37,7 @@ import ThermalReceipt from '@/components/dashboard/ThermalReceipt';
 
 export default function BillsPage() {
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-  const { data: bills, isLoading: billsLoading } = useBills();
+  const { data: bills, isLoading: billsLoading, isError: billsError, refetch } = useBills();
   const { data: bill, isLoading: billLoading } = useBillDetails(selectedBillId || '');
   const recordPayment = useRecordPayment();
   const { toast } = useToast();
@@ -82,7 +82,12 @@ export default function BillsPage() {
           <CardContent className="p-0">
              <div className="divide-y divide-slate-100">
                {billsLoading ? (
-                 <div className="p-8 text-center text-slate-400">Loading bills...</div>
+                 <div className="p-8 text-center text-slate-400 animate-pulse">Loading bills...</div>
+               ) : billsError ? (
+                 <div className="p-8 text-center space-y-3">
+                   <p className="text-red-500 font-medium">Failed to load bills.</p>
+                   <button onClick={() => refetch()} className="text-sm text-indigo-600 underline">Retry</button>
+                 </div>
                ) : bills?.length === 0 ? (
                  <div className="p-8 text-center text-slate-400">No bills found.</div>
                ) : (

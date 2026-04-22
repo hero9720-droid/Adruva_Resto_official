@@ -153,25 +153,49 @@ export function useDeleteMenuItem() {
   });
 }
 
+// ─── Modifiers & Variants ──────────────────────────────────────────────────────
+
+export function useAddVariants() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: { menu_item_id: string; variants: any[] }) => {
+      const res = await api.post('/menu/items/variants', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+    },
+  });
+}
+
+export function useAddModifierGroup() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (data: any) => {
+      const res = await api.post('/menu/items/modifier-groups', data);
+      return res.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['menuItems'] });
+    },
+  });
+}
+
 // ─── Photo Upload ─────────────────────────────────────────────────────────────
 
 export function useUploadMenuPhoto() {
   return useMutation({
     mutationFn: async (file: File): Promise<string> => {
-      // 1. Get pre-signed R2 upload URL
-      const { data } = await api.get('/menu/upload-url', {
-        params: { filename: file.name, contentType: file.type },
-      });
-      const { upload_url, public_url } = data.data;
+      // Upload via backend proxy — avoids R2 CORS issues entirely
+      const formData = new FormData();
+      formData.append('file', file);
 
-      // 2. PUT directly to R2 (no auth header — pre-signed URL)
-      await fetch(upload_url, {
-        method: 'PUT',
-        body: file,
-        headers: { 'Content-Type': file.type },
+      const { data } = await api.post('/menu/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
       });
 
-      return public_url; // This is the CDN URL to store in photo_url
+      return data.data.url;
     },
   });
 }
+

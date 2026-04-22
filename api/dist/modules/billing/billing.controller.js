@@ -3,6 +3,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 exports.getBillsList = getBillsList;
 exports.generateBill = generateBill;
 exports.recordPayment = recordPayment;
+exports.splitBill = splitBill;
 exports.getBillDetails = getBillDetails;
 const db_1 = require("../../lib/db");
 const counters_1 = require("../../lib/counters");
@@ -122,6 +123,34 @@ async function recordPayment(req, res) {
         res.status(error.statusCode || 500).json({ success: false, message: error.message });
     }
 }
+async function splitBill(req, res) {
+    const { id } = req.params;
+    const { splits } = req.body; // Array of { split_type, amount_paise }
+    const outlet_id = req.user.outlet_id;
+    if (!Array.isArray(splits) || splits.length === 0) {
+        throw new errors_1.AppError(400, 'Invalid splits array', 'INVALID_INPUT');
+    }
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        const billRes = await client.query('SELECT * FROM bills WHERE id = $1', [id]);
+        if (billRes.rowCount === 0)
+            throw new errors_1.AppError(404, 'Bill not found', 'NOT_FOUND');
+        const bill = billRes.rows[0];
+        const totalSplit = splits.reduce((acc, curr) => acc + curr.amount_paise, 0);
+        if (totalSplit !== bill.total_paise) {
+            throw new errors_1.AppError(400, `Splits total (${totalSplit}) must equal bill total (${bill.total_paise})`, 'VALIDATION_ERROR');
+        }
+        await client.query('DELETE FROM bill_splits WHERE parent_bill_id = $1', [id]);
+        const createdSplits = [];
+        for (let i = 0; i < splits.length; i++) {
+            const split = splits[i];
+            const splitRes = await client.query(`INSERT INTO bill_splits (outlet_id, parent_bill_id, split_index, label, subtotal_paise, status)
+         VALUES ($1, $2, $3, $4, $5, 'unpaid') RETURNING *`, [outlet_id, id, i + 1, split.split_type || 'equal', split.amount_paise]);
+            createdSplits.push(splitRes.rows[0]);
+        }
+        return createdSplits;
+    });
+    res.json({ success: true, data: result });
+}
 async function getBillDetails(req, res) {
     const { id } = req.params;
     const outlet_id = req.user.outlet_id;
@@ -135,10 +164,12 @@ async function getBillDetails(req, res) {
          (SELECT json_agg(oi.*) FROM order_items oi WHERE oi.order_id = o.id) AS items
        FROM orders o WHERE o.id = $1`, [bill.order_id]);
         const paymentsRes = await client.query('SELECT * FROM payment_transactions WHERE bill_id = $1 ORDER BY created_at ASC', [id]);
+        const splitsRes = await client.query('SELECT * FROM bill_splits WHERE parent_bill_id = $1 ORDER BY created_at ASC', [id]);
         return {
             ...bill,
             orders: ordersRes.rows,
             payments: paymentsRes.rows,
+            splits: splitsRes.rows,
         };
     });
     res.json({ success: true, data: result });

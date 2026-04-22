@@ -66,7 +66,12 @@ router.post('/items/modifier-groups',
   ModifiersController.addModifierGroup
 );
 
-// Uploads
-router.get('/upload-url', requireRole(['outlet_manager', 'cashier']), UploadController.getUploadUrl);
+// Uploads — proxy through backend to avoid R2 CORS issues
+router.post(
+  '/upload',
+  requireRole(['outlet_manager', 'cashier']),
+  UploadController.uploadMiddleware,
+  UploadController.uploadMenuPhoto
+);
 
 export default router;

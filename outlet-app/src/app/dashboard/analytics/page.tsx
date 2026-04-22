@@ -36,12 +36,13 @@ import {
 
 export default function AnalyticsPage() {
   const [period, setPeriod] = useState('7days');
-  const { data: analytics, isLoading } = useQuery({
+  const { data: analytics, isLoading, isError } = useQuery({
     queryKey: ['analytics', period],
     queryFn: async () => {
-      const { data } = await api.get('/analytics/overview', { params: { period } });
+      const { data } = await api.get('/analytics/sales-overview', { params: { period } });
       return data.data;
-    }
+    },
+    retry: 1,
   });
 
   const { data: topItems } = useQuery({
@@ -49,10 +50,29 @@ export default function AnalyticsPage() {
     queryFn: async () => {
       const { data } = await api.get('/analytics/top-items');
       return data.data;
-    }
+    },
+    retry: 1,
   });
 
-  if (isLoading) return <div className="p-8 font-black animate-pulse text-[#c7c4d8]">CALCULATING METRICS...</div>;
+  if (isLoading) return (
+    <div className="p-8 space-y-4 animate-pulse">
+      <div className="h-8 w-48 bg-slate-200 rounded-xl" />
+      <div className="grid grid-cols-4 gap-4">
+        {[...Array(4)].map((_, i) => <div key={i} className="h-36 bg-slate-100 rounded-3xl" />)}
+      </div>
+      <div className="h-64 bg-slate-100 rounded-3xl" />
+    </div>
+  );
+
+  if (isError) return (
+    <div className="p-8 flex flex-col items-center justify-center gap-4 text-center min-h-[60vh]">
+      <div className="h-16 w-16 bg-red-100 rounded-full flex items-center justify-center">
+        <TrendingDown className="h-8 w-8 text-red-500" />
+      </div>
+      <h2 className="text-xl font-bold text-slate-800">Analytics unavailable</h2>
+      <p className="text-slate-500">Could not load analytics data. Please try again.</p>
+    </div>
+  );
 
   return (
     <div className="space-y-8 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar -m-8 p-8 bg-[#fcf8ff] font-sans">

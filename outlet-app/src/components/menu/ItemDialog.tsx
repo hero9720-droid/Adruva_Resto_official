@@ -4,7 +4,8 @@ import { useEffect, useRef, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
-import { Loader2, Upload, X } from 'lucide-react';
+import { Loader2, Upload, X, ImageIcon } from 'lucide-react';
+import imageCompression from 'browser-image-compression';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { MenuItem, Category, useCreateMenuItem, useUpdateMenuItem, useUploadMenuPhoto } from '@/hooks/useMenu';
+import { useToast } from '@/hooks/use-toast';
 
 const toNum = (v: unknown) => (v === '' || v === null || v === undefined ? 0 : Number(v));
 
@@ -42,6 +44,7 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
   const create = useCreateMenuItem();
   const update = useUpdateMenuItem();
   const upload = useUploadMenuPhoto();
+  const { toast } = useToast();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -87,10 +90,28 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
     if (!file) return;
     setUploading(true);
     try {
-      const url = await upload.mutateAsync(file);
+      // Compress image before uploading — saves R2 storage significantly
+      const compressed = await imageCompression(file, {
+        maxSizeMB: 0.3,           // Max 300KB per image
+        maxWidthOrHeight: 800,    // Resize to max 800px
+        useWebWorker: true,
+        fileType: 'image/webp',   // Convert to WebP — best compression
+      });
+
+      const originalKB = Math.round(file.size / 1024);
+      const compressedKB = Math.round(compressed.size / 1024);
+      console.log(`Image compressed: ${originalKB}KB → ${compressedKB}KB`);
+
+      const url = await upload.mutateAsync(compressed as File);
       setPhotoUrl(url);
+      toast({ title: '✅ Photo uploaded!', description: `${originalKB}KB → ${compressedKB}KB (saved ${Math.round((1 - compressedKB/originalKB)*100)}%)` });
+    } catch (err: any) {
+      console.error('Upload error:', err);
+      const msg = err?.response?.data?.error || err?.message || 'Upload failed';
+      toast({ variant: 'destructive', title: 'Upload Failed', description: msg });
     } finally {
       setUploading(false);
+      if (fileRef.current) fileRef.current.value = '';
     }
   }
 
