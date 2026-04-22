@@ -91,54 +91,54 @@ export default function WaiterAppPage() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-slate-50 -m-8 relative overflow-hidden font-sans">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-background -m-8 relative overflow-hidden font-sans">
       {/* Dynamic Header */}
-      <div className="bg-white border-b border-slate-100 p-6 shrink-0 shadow-sm z-10">
+      <div className="bg-card border-b border-border p-6 shrink-0 shadow-soft z-10">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             {step !== 'table' && (
-              <button onClick={() => setStep(step === 'menu' ? 'table' : 'menu')} className="p-2 -ml-2 text-slate-400 hover:text-indigo-600">
+              <button onClick={() => setStep(step === 'menu' ? 'table' : 'menu')} className="p-2 -ml-2 text-slate-400 hover:text-primary transition-colors">
                 <ArrowLeft className="h-6 w-6" />
               </button>
             )}
-            <h1 className="text-2xl font-black text-slate-900 tracking-tighter uppercase">
+            <h1 className="text-2xl font-black text-foreground tracking-tighter uppercase">
               {step === 'table' ? 'Select Table' : step === 'menu' ? 'Take Order' : 'Cart'}
             </h1>
           </div>
           <div className="flex items-center gap-3">
-             <Badge className="bg-indigo-600 text-white border-none font-black px-3 py-1 text-[10px] tracking-widest">WAITER APP</Badge>
+             <Badge className="bg-primary text-primary-foreground border-none font-black px-3 py-1 text-[10px] tracking-widest uppercase shadow-glow-sm">Waiter App</Badge>
           </div>
         </div>
       </div>
 
       <div className="flex-1 overflow-y-auto p-6 no-scrollbar">
-        {step === 'table' && (
-          <div className="grid grid-cols-2 gap-4">
+         {step === 'table' && (
+          <div className="grid grid-cols-2 gap-6">
             {tables?.map((table: any) => (
               <button
                 key={table.id}
                 onClick={() => { setSelectedTableId(table.id); setStep('menu'); }}
                 className={cn(
-                  "h-32 rounded-3xl border-2 transition-all flex flex-col items-center justify-center gap-2",
-                  table.status === 'occupied' ? "bg-indigo-50 border-indigo-200 text-indigo-700" : "bg-white border-slate-100 text-slate-400"
+                  "h-40 rounded-[2.5rem] border-2 transition-all flex flex-col items-center justify-center gap-2 shadow-soft",
+                  table.status === 'occupied' ? "bg-primary/10 border-primary/20 text-primary" : "bg-card border-border text-slate-400 hover:border-primary/40 hover:bg-secondary/50"
                 )}
               >
-                <TableIcon className={cn("h-8 w-8", table.status === 'occupied' ? "text-indigo-600" : "text-slate-300")} />
-                <span className="font-black text-xl tracking-tighter uppercase">{table.name}</span>
+                <TableIcon className={cn("h-10 w-10", table.status === 'occupied' ? "text-primary" : "text-slate-300")} />
+                <span className="font-black text-2xl tracking-tighter uppercase">{table.name}</span>
                 {table.status === 'occupied' && (
-                   <span className="text-[10px] font-black uppercase opacity-60">Occupied</span>
+                   <span className="text-[10px] font-black uppercase tracking-widest opacity-60">Occupied</span>
                 )}
               </button>
             ))}
           </div>
         )}
 
-        {step === 'menu' && (
+         {step === 'menu' && (
           <div className="space-y-6">
             <div className="flex gap-2 overflow-x-auto no-scrollbar py-1">
                <Badge 
                  onClick={() => setSelectedCategory('all')}
-                 className={cn("px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-pointer border-none", selectedCategory === 'all' ? "bg-indigo-600 text-white shadow-glow" : "bg-white text-slate-500 shadow-sm")}
+                 className={cn("px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest cursor-pointer border-none shadow-sm transition-all", selectedCategory === 'all' ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-card text-slate-500 hover:bg-secondary")}
                >
                  All
                </Badge>
@@ -146,41 +146,41 @@ export default function WaiterAppPage() {
                  <Badge 
                    key={cat.id}
                    onClick={() => setSelectedCategory(cat.id)}
-                   className={cn("px-5 py-2 rounded-xl font-black text-[10px] uppercase tracking-widest cursor-pointer whitespace-nowrap border-none", selectedCategory === cat.id ? "bg-indigo-600 text-white shadow-glow" : "bg-white text-slate-500 shadow-sm")}
+                   className={cn("px-6 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-widest cursor-pointer whitespace-nowrap border-none shadow-sm transition-all", selectedCategory === cat.id ? "bg-primary text-primary-foreground shadow-glow-sm" : "bg-card text-slate-500 hover:bg-secondary")}
                  >
                    {cat.name}
                  </Badge>
                ))}
             </div>
 
-            <div className="relative">
+             <div className="relative">
               <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
               <Input 
                 placeholder="Search items..." 
-                className="pl-12 h-14 rounded-2xl border-none shadow-sm bg-white font-bold"
+                className="pl-12 h-14 rounded-2xl border-none shadow-soft bg-card font-black text-foreground uppercase tracking-tighter"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
               />
             </div>
 
-            <div className="grid grid-cols-1 gap-4">
+             <div className="grid grid-cols-1 gap-4 pb-24">
               {filteredItems?.map((item: any) => (
                 <div 
                   key={item.id} 
                   onClick={() => addToCart(item)}
-                  className="bg-white p-4 rounded-[1.5rem] shadow-sm border border-slate-100 flex items-center justify-between active:scale-[0.98] transition-transform"
+                  className="bg-card p-5 rounded-[2rem] shadow-soft border border-border flex items-center justify-between active:scale-[0.98] transition-all hover:border-primary/20"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="h-14 w-14 rounded-xl overflow-hidden bg-slate-100 shrink-0">
+                    <div className="h-16 w-16 rounded-2xl overflow-hidden bg-secondary shrink-0 border border-border">
                        <img src={item.photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} className="w-full h-full object-cover" alt="" />
                     </div>
                     <div className="flex flex-col">
-                      <span className="font-black text-slate-900 leading-tight">{item.name}</span>
-                      <span className="text-sm font-bold text-slate-400">₹{item.base_price_paise / 100}</span>
+                      <span className="font-black text-foreground text-lg leading-tight tracking-tighter uppercase">{item.name}</span>
+                      <span className="text-sm font-black text-primary mt-1 uppercase tracking-widest">₹{item.base_price_paise / 100}</span>
                     </div>
                   </div>
-                  <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center text-indigo-600">
-                    <Plus className="h-5 w-5" />
+                  <div className="h-12 w-12 rounded-2xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
+                    <Plus className="h-6 w-6" />
                   </div>
                 </div>
               ))}
@@ -189,31 +189,31 @@ export default function WaiterAppPage() {
         )}
 
         {step === 'cart' && (
-          <div className="space-y-6">
+          <div className="space-y-6 pb-24">
             {cart.length === 0 ? (
                <div className="py-20 text-center">
-                  <div className="h-20 w-20 bg-slate-100 rounded-full flex items-center justify-center mx-auto mb-6">
-                     <Utensils className="h-10 w-10 text-slate-300" />
+                  <div className="h-24 w-24 bg-secondary rounded-[2.5rem] flex items-center justify-center mx-auto mb-6 border border-border">
+                     <Utensils className="h-10 w-10 text-primary/40" />
                   </div>
-                  <p className="font-black text-slate-400 uppercase tracking-widest text-sm">Cart is empty</p>
+                  <p className="font-black text-slate-400 uppercase tracking-[0.2em] text-xs">Cart is empty</p>
                </div>
             ) : (
-              <div className="space-y-4">
+               <div className="space-y-4">
                 {cart.map((item) => (
-                  <div key={item.id} className="bg-white p-5 rounded-[2rem] shadow-sm border border-slate-100 flex justify-between items-center">
+                  <div key={item.id} className="bg-card p-6 rounded-[2.5rem] shadow-soft border border-border flex justify-between items-center transition-all">
                     <div className="flex-1">
-                       <h4 className="font-black text-slate-900 text-lg leading-tight mb-3">{item.name}</h4>
-                       <div className="flex items-center gap-4">
-                          <div className="flex items-center bg-slate-50 rounded-xl overflow-hidden border border-slate-100">
-                             <button onClick={() => updateQty(item.id, -1)} className="p-2.5 hover:bg-slate-100"><Minus className="h-4 w-4" /></button>
-                             <span className="w-8 text-center font-black text-slate-900">{item.quantity}</span>
-                             <button onClick={() => updateQty(item.id, 1)} className="p-2.5 hover:bg-slate-100"><Plus className="h-4 w-4" /></button>
+                       <h4 className="font-black text-foreground text-xl tracking-tighter uppercase leading-tight mb-4">{item.name}</h4>
+                       <div className="flex items-center gap-6">
+                          <div className="flex items-center bg-secondary rounded-2xl overflow-hidden border border-border shadow-inner">
+                             <button onClick={() => updateQty(item.id, -1)} className="p-3.5 hover:bg-primary/10 text-primary transition-colors"><Minus className="h-4 w-4" /></button>
+                             <span className="w-10 text-center font-black text-foreground text-lg">{item.quantity}</span>
+                             <button onClick={() => updateQty(item.id, 1)} className="p-3.5 hover:bg-primary/10 text-primary transition-colors"><Plus className="h-4 w-4" /></button>
                           </div>
-                          <span className="font-bold text-slate-400">@ ₹{item.base_price_paise / 100}</span>
+                          <span className="font-black text-primary uppercase tracking-widest text-sm">@ ₹{item.base_price_paise / 100}</span>
                        </div>
                     </div>
-                    <button onClick={() => removeFromCart(item.id)} className="h-12 w-12 rounded-2xl bg-red-50 text-red-500 flex items-center justify-center">
-                       <Trash2 className="h-5 w-5" />
+                    <button onClick={() => removeFromCart(item.id)} className="h-14 w-14 rounded-2xl bg-red-500/10 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-glow-sm">
+                       <Trash2 className="h-6 w-6" />
                     </button>
                   </div>
                 ))}
@@ -224,18 +224,18 @@ export default function WaiterAppPage() {
       </div>
 
       {/* Floating Action Bar */}
-      <div className="p-6 bg-white border-t border-slate-100 shrink-0">
+      <div className="p-6 bg-card border-t border-border shrink-0 shadow-soft z-20">
         {step === 'menu' && (
           <div className="flex gap-4">
              <Button 
                variant="outline"
-               className="flex-1 h-14 rounded-2xl border-slate-200 font-black text-slate-600"
+               className="flex-1 h-14 rounded-2xl border-border font-black text-slate-500 uppercase tracking-widest text-[10px] hover:bg-secondary"
                onClick={() => setStep('cart')}
              >
                VIEW CART ({cart.length})
              </Button>
              <Button 
-               className="flex-[2] h-14 rounded-2xl bg-indigo-600 text-white font-black shadow-glow border-none uppercase tracking-widest"
+               className="flex-[2] h-14 rounded-2xl bg-primary text-primary-foreground font-black shadow-lg shadow-primary/30 border-none uppercase tracking-widest text-xs"
                disabled={cart.length === 0}
                onClick={() => setStep('cart')}
              >

@@ -13,7 +13,11 @@ import {
   Trash2,
   ChevronRight,
   Utensils,
-  Check
+  Check,
+  Leaf,
+  Flame,
+  Info,
+  Clock as ClockIcon
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -202,11 +206,11 @@ export default function POSPage() {
   const [tableViewMode, setTableViewMode] = useState<'list' | 'map'>('list');
 
   const renderCartPanel = () => (
-    <div className="flex flex-col h-full bg-white relative">
-      <div className="p-8 pb-6 bg-white border-b border-slate-100 shrink-0">
+    <div className="flex flex-col h-full bg-card relative">
+      <div className="p-8 pb-6 bg-card border-b border-border shrink-0">
         <div className="flex items-center justify-between">
-          <h2 className="text-2xl font-black text-slate-900 flex items-center gap-3">
-            <div className="p-2.5 bg-indigo-50 rounded-xl text-indigo-600">
+          <h2 className="text-2xl font-black text-foreground flex items-center gap-3">
+            <div className="p-2.5 bg-secondary rounded-xl text-primary">
                <ShoppingCart className="h-6 w-6" />
             </div>
             Current Order
@@ -226,31 +230,31 @@ export default function POSPage() {
             >
                <PrinterIcon className="h-5 w-5" />
             </Button>
-            <Badge className="bg-slate-100 text-slate-600 hover:bg-slate-200 text-[11px] font-black px-3 py-1 rounded-lg">
+            <Badge className="bg-secondary text-foreground hover:bg-secondary/80 text-[11px] font-black px-3 py-1 rounded-lg border-none">
               {activeOrder ? activeOrder.items.length : cart.length} ITEMS
             </Badge>
           </div>
         </div>
       </div>
       
-      <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar bg-slate-50/30">
+      <div className="flex-1 overflow-y-auto px-6 py-6 no-scrollbar bg-background/30">
         {activeOrder ? (
           <div className="space-y-6">
-            <div className="p-6 bg-indigo-50/50 rounded-3xl border border-indigo-100 flex justify-between items-center shadow-sm">
+            <div className="p-6 bg-secondary/50 rounded-3xl border border-border flex justify-between items-center shadow-sm">
               <div>
-                 <p className="text-[10px] font-black text-indigo-600 uppercase tracking-[0.2em] mb-1">Active Ticket</p>
-                 <p className="text-3xl font-black text-slate-900">#{activeOrder.order_number}</p>
+                 <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Active Ticket</p>
+                 <p className="text-3xl font-black text-foreground">#{activeOrder.order_number}</p>
               </div>
-              <Badge className="bg-indigo-600 text-white border-none text-xs px-3 py-1.5 shadow-glow">{activeOrder.status.toUpperCase()}</Badge>
+              <Badge className="bg-primary text-primary-foreground border-none text-xs px-3 py-1.5 shadow-glow">{activeOrder.status.toUpperCase()}</Badge>
             </div>
             <div className="flex flex-col gap-6">
               {activeOrder.items.map((item: any) => (
                 <div key={item.id} className="flex justify-between items-start">
                   <div className="flex flex-col gap-1">
-                    <span className="font-bold text-slate-900 text-lg">{item.menu_item_name}</span>
+                    <span className="font-bold text-foreground text-lg">{item.menu_item_name}</span>
                     <span className="text-sm text-slate-500 font-medium">Qty: {item.quantity}</span>
                   </div>
-                  <span className="font-black text-slate-900 text-xl">₹{(item.total_paise / 100).toLocaleString()}</span>
+                  <span className="font-black text-foreground text-xl">₹{(item.total_paise / 100).toLocaleString()}</span>
                 </div>
               ))}
             </div>
@@ -263,7 +267,7 @@ export default function POSPage() {
                   <Utensils className="h-10 w-10 text-slate-300" />
                </div>
             </div>
-            <p className="text-xl font-black tracking-tight text-slate-900 mb-1">Cart is empty</p>
+            <p className="text-xl font-black tracking-tight text-foreground mb-1">Cart is empty</p>
             <p className="text-sm font-medium text-slate-500">Select a table to begin.</p>
           </div>
         ) : (
@@ -278,18 +282,18 @@ export default function POSPage() {
                   className="flex justify-between items-start group"
                 >
                   <div className="flex-1 min-w-0 pr-4">
-                    <h4 className="font-bold text-slate-900 text-base leading-tight mb-2">{item.name}</h4>
+                    <h4 className="font-bold text-foreground text-base leading-tight mb-2">{item.name}</h4>
                     <div className="flex items-center gap-4">
-                       <div className="flex items-center bg-white border border-slate-200 rounded-xl overflow-hidden shadow-sm">
-                          <button onClick={() => updateQuantity(item.cart_id, -1)} className="p-2 hover:bg-slate-50 transition-colors text-slate-500"><Minus className="h-3.5 w-3.5" /></button>
-                          <span className="w-8 text-center font-bold text-[13px] text-slate-900">{item.quantity}</span>
-                          <button onClick={() => updateQuantity(item.cart_id, 1)} className="p-2 hover:bg-slate-50 transition-colors text-indigo-600"><Plus className="h-3.5 w-3.5" /></button>
+                       <div className="flex items-center bg-card border border-border rounded-xl overflow-hidden shadow-sm">
+                          <button onClick={() => updateQuantity(item.cart_id, -1)} className="p-2 hover:bg-secondary transition-colors text-slate-500"><Minus className="h-3.5 w-3.5" /></button>
+                          <span className="w-8 text-center font-bold text-[13px] text-foreground">{item.quantity}</span>
+                          <button onClick={() => updateQuantity(item.cart_id, 1)} className="p-2 hover:bg-secondary transition-colors text-primary"><Plus className="h-3.5 w-3.5" /></button>
                        </div>
                        <span className="text-[13px] font-bold text-slate-400">@ ₹{item.price/100}</span>
                     </div>
                   </div>
                   <div className="flex flex-col items-end gap-3 pt-0.5">
-                     <span className="font-black text-slate-900 text-lg">₹{(item.price * item.quantity) / 100}</span>
+                     <span className="font-black text-foreground text-lg">₹{(item.price * item.quantity) / 100}</span>
                      <button onClick={() => removeFromCart(item.cart_id)} className="h-8 w-8 rounded-xl bg-red-50 text-red-500 flex items-center justify-center hover:bg-red-500 hover:text-white transition-colors border border-red-100 hover:border-red-500">
                         <Trash2 className="h-4 w-4" />
                      </button>
@@ -301,17 +305,17 @@ export default function POSPage() {
         )}
       </div>
 
-      <div className="p-8 bg-white border-t border-slate-100 shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
+      <div className="p-8 bg-card border-t border-border shrink-0 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.05)]">
         <div className="space-y-4 mb-8">
            <div className="flex justify-between items-center">
               <span className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Subtotal</span>
-              <span className="text-lg font-black text-slate-900">
+              <span className="text-lg font-black text-foreground">
                 ₹{((activeOrder ? activeOrder.items.reduce((s:any,i:any)=>s+i.total_paise,0) : cartTotal) / 100).toLocaleString()}
               </span>
            </div>
-           <div className="pt-5 mt-3 border-t border-dashed border-slate-200 flex justify-between items-end">
-              <span className="text-lg font-black text-slate-900">Grand Total</span>
-              <span className="text-4xl font-black text-indigo-600 tracking-tighter">
+           <div className="pt-5 mt-3 border-t border-dashed border-border flex justify-between items-end">
+              <span className="text-lg font-black text-foreground">Grand Total</span>
+              <span className="text-4xl font-black text-primary tracking-tighter">
                 ₹{((activeOrder ? activeOrder.items.reduce((s:any,i:any)=>s+i.total_paise,0) : cartTotal) / 100).toLocaleString()}
               </span>
            </div>
@@ -327,7 +331,7 @@ export default function POSPage() {
           </Button>
         ) : (
           <Button 
-            className="w-full h-16 bg-indigo-600 hover:bg-indigo-700 text-white rounded-2xl font-black text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale border-none shadow-[0_8px_32px_rgba(79,70,229,0.3)]"
+            className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-black text-xl transition-all active:scale-[0.98] disabled:opacity-50 disabled:grayscale border-none shadow-[0_8px_32px_rgba(79,70,229,0.3)]"
             disabled={cart.length === 0 || !selectedTableId}
             onClick={placeOrder}
           >
@@ -339,34 +343,34 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] gap-6 -m-4 font-sans bg-[#fcf8ff]">
+    <div className="flex flex-col h-[calc(100vh-100px)] gap-6 -m-4 font-sans bg-background">
       <div className="flex flex-col lg:flex-row gap-8 flex-1 overflow-hidden p-6">
         
         {/* Left: Table & Menu Browser */}
         <div className="flex-1 flex flex-col gap-8 overflow-hidden">
           
           {/* Top Bar: Tables */}
-          <div className="flex flex-col gap-4 p-6 bg-white rounded-3xl shadow-soft shrink-0 relative border border-slate-100">
+          <div className="flex flex-col gap-4 p-6 bg-card rounded-3xl shadow-soft shrink-0 relative border border-border">
              <div className="flex justify-between items-center px-2">
                <div className="flex items-center gap-4">
-                  <div className="h-12 w-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600 shadow-inner">
+                  <div className="h-12 w-12 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-inner">
                      <TableIcon className="h-6 w-6" />
                   </div>
                   <div>
-                     <h3 className="text-xl font-black text-slate-900 tracking-tighter uppercase">Select Table</h3>
+                     <h3 className="text-xl font-black text-foreground tracking-tighter uppercase">Select Table</h3>
                      <p className="text-slate-500 font-bold text-[10px] uppercase tracking-widest mt-0.5">{tables?.length || 0} Available</p>
                   </div>
                </div>
-               <div className="flex bg-slate-50 p-1.5 rounded-2xl border border-slate-200/60 shadow-inner">
+               <div className="flex bg-secondary p-1.5 rounded-2xl border border-border shadow-inner">
                  <button 
                    onClick={() => setTableViewMode('list')}
-                   className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all", tableViewMode === 'list' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-900')}
+                   className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all", tableViewMode === 'list' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-slate-500 hover:text-foreground')}
                  >
                    List
                  </button>
                  <button 
                    onClick={() => setTableViewMode('map')}
-                   className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all", tableViewMode === 'map' ? 'bg-white text-slate-900 shadow-sm border border-slate-200/50' : 'text-slate-500 hover:text-slate-900')}
+                   className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all", tableViewMode === 'map' ? 'bg-card text-foreground shadow-sm border border-border' : 'text-slate-500 hover:text-foreground')}
                  >
                    Map
                  </button>
@@ -375,7 +379,7 @@ export default function POSPage() {
              
               <div className={cn(
                 "flex gap-4 overflow-x-auto no-scrollbar py-2 px-2 transition-all",
-                tableViewMode === 'map' ? 'h-[500px] relative bg-slate-50/50 rounded-[2rem] border-2 border-dashed border-slate-100' : ''
+                tableViewMode === 'map' ? 'h-[500px] relative bg-secondary/50 rounded-[2rem] border-2 border-dashed border-border' : ''
               )}>
                 {tableViewMode === 'list' ? (
                   tables?.map((table: any) => (
@@ -385,10 +389,10 @@ export default function POSPage() {
                       className={cn(
                         "min-w-[100px] h-16 rounded-[1.25rem] flex flex-col items-center justify-center transition-all duration-300 relative border-2",
                         selectedTableId === table.id 
-                          ? "bg-indigo-50 border-indigo-600 text-indigo-700 shadow-soft scale-[1.02]" 
+                          ? "bg-secondary border-primary text-primary shadow-soft scale-[1.02]" 
                           : table.status === 'occupied' 
-                            ? "bg-white border-red-200 text-red-600 hover:bg-red-50 shadow-sm"
-                            : "bg-white border-slate-100 text-slate-500 hover:border-slate-300 shadow-sm"
+                            ? "bg-card border-red-200 text-red-600 hover:bg-red-50 shadow-sm"
+                            : "bg-card border-border text-slate-500 hover:border-slate-300 shadow-sm"
                       )}
                     >
                       <span className="text-sm font-black uppercase tracking-widest">{table.name}</span>
@@ -408,10 +412,10 @@ export default function POSPage() {
                         className={cn(
                           "absolute w-24 h-24 rounded-3xl flex flex-col items-center justify-center shadow-lg border-2 transition-all",
                           selectedTableId === table.id 
-                            ? "bg-indigo-600 border-indigo-600 text-white scale-110 z-10 shadow-glow" 
+                            ? "bg-primary border-primary text-primary-foreground scale-110 z-10 shadow-glow" 
                             : table.status === 'occupied'
                               ? "bg-red-50 border-red-200 text-red-600"
-                              : "bg-white border-slate-100 text-slate-600 hover:border-slate-300"
+                              : "bg-card border-border text-slate-600 hover:border-slate-300"
                         )}
                       >
                          <span className="font-black text-xl tracking-tighter">{table.name}</span>
@@ -433,7 +437,7 @@ export default function POSPage() {
                   <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                   <Input 
                     placeholder="Search menu..." 
-                    className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-white"
+                    className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-card text-foreground"
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
                   />
@@ -441,7 +445,7 @@ export default function POSPage() {
                <div className="flex gap-2 overflow-x-auto no-scrollbar py-1 shrink-0">
                   <Badge 
                     onClick={() => setSelectedCategory('all')}
-                    className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest cursor-pointer transition-all border-none", selectedCategory === 'all' ? "bg-indigo-600 text-white shadow-glow" : "bg-white text-slate-500 hover:text-slate-900 shadow-soft")}
+                    className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest cursor-pointer transition-all border-none", selectedCategory === 'all' ? "bg-primary text-primary-foreground shadow-glow" : "bg-card text-slate-500 hover:text-foreground shadow-soft")}
                   >
                     All
                   </Badge>
@@ -449,7 +453,7 @@ export default function POSPage() {
                     <Badge 
                       key={cat.id}
                       onClick={() => setSelectedCategory(cat.id)}
-                      className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest cursor-pointer whitespace-nowrap transition-all border-none", selectedCategory === cat.id ? "bg-indigo-600 text-white shadow-glow" : "bg-white text-slate-500 hover:text-slate-900 shadow-soft")}
+                      className={cn("px-6 py-2.5 rounded-xl font-black text-[11px] uppercase tracking-widest cursor-pointer whitespace-nowrap transition-all border-none", selectedCategory === cat.id ? "bg-primary text-primary-foreground shadow-glow" : "bg-card text-slate-500 hover:text-foreground shadow-soft")}
                     >
                       {cat.name}
                     </Badge>
@@ -464,24 +468,61 @@ export default function POSPage() {
                   whileHover={{ y: -4 }}
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className="bg-white rounded-[2rem] shadow-soft border border-slate-100 overflow-hidden group cursor-pointer hover:shadow-xl transition-all duration-300 flex flex-col"
+                  className="bg-card rounded-[2rem] shadow-soft border border-border overflow-hidden group cursor-pointer hover:shadow-xl transition-all duration-300 flex flex-col"
                 >
-                  <div className="h-32 bg-slate-100 relative overflow-hidden">
+                  <div className="h-40 bg-slate-100 relative overflow-hidden">
                     <img src={item.photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
+                    
+                    {/* Advanced Item Badges */}
+                    <div className="absolute top-3 left-3 flex flex-col gap-2">
+                       <Badge className={cn(
+                         "h-6 w-6 rounded-lg p-0 flex items-center justify-center border-none shadow-lg",
+                         item.food_type === 'veg' ? "bg-emerald-500" : "bg-red-500"
+                       )}>
+                          {item.food_type === 'veg' ? <Leaf className="h-3.5 w-3.5 text-white" /> : <Flame className="h-3.5 w-3.5 text-white" />}
+                       </Badge>
+                       {item.is_featured && (
+                         <Badge className="bg-amber-500 text-white border-none h-6 px-2 text-[8px] font-black uppercase tracking-tighter shadow-lg">HOT</Badge>
+                       )}
+                    </div>
+
                     {!item.is_available && (
                       <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-[2px] flex items-center justify-center">
                          <Badge className="bg-white text-slate-900 font-black px-4 py-1.5 rounded-lg border-none shadow-xl">OUT</Badge>
                       </div>
                     )}
-                  </div>
-                  <div className="p-4 flex flex-col flex-1 justify-between bg-white">
-                    <div>
-                      <h3 className="font-black text-slate-900 text-base leading-tight mb-1">{item.name}</h3>
+
+                    {/* Stock & ETA Info */}
+                    <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-slate-900/80 to-transparent flex justify-between items-end">
+                       <div className="flex items-center gap-1.5 text-white/80">
+                          <ClockIcon className="h-3 w-3" />
+                          <span className="text-[9px] font-black uppercase tracking-widest">{item.preparation_time_minutes || 15} MINS</span>
+                       </div>
+                       {item.current_stock !== undefined && (
+                         <span className={cn(
+                           "text-[9px] font-black px-2 py-0.5 rounded-md",
+                           item.current_stock < 5 ? "bg-red-500 text-white animate-pulse" : "bg-white/20 text-white"
+                         )}>
+                            {item.current_stock} LEFT
+                         </span>
+                       )}
                     </div>
-                    <div className="flex justify-between items-end mt-4">
-                      <span className="text-lg font-black text-slate-900">₹{item.base_price_paise / 100}</span>
-                      <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center text-indigo-600 group-hover:bg-indigo-600 group-hover:text-white transition-all">
-                        <Plus className="h-4 w-4" />
+                  </div>
+                  <div className="p-5 flex flex-col flex-1 justify-between bg-card relative">
+                    {/* Glow effect on hover */}
+                    <div className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300" />
+                    
+                    <div>
+                      <h3 className="font-black text-foreground text-[17px] leading-tight mb-1 group-hover:text-primary transition-colors">{item.name}</h3>
+                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{item.description || 'Premium selection'}</p>
+                    </div>
+                    <div className="flex justify-between items-end mt-6">
+                      <div>
+                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Price</p>
+                         <p className="text-xl font-black text-foreground tracking-tighter">₹{item.base_price_paise / 100}</p>
+                      </div>
+                      <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
+                        <Plus className="h-5 w-5" />
                       </div>
                     </div>
                   </div>
@@ -495,7 +536,7 @@ export default function POSPage() {
         <div className="lg:hidden fixed bottom-6 right-6 z-40">
           <Sheet>
             <SheetTrigger asChild>
-              <Button className="h-16 w-16 rounded-full bg-indigo-600 text-white shadow-glow border-none flex items-center justify-center relative">
+              <Button className="h-16 w-16 rounded-full bg-primary text-primary-foreground shadow-glow border-none flex items-center justify-center relative">
                  <ShoppingCart className="h-6 w-6" />
                  {(activeOrder ? activeOrder.items.length : cart.length) > 0 && (
                    <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[10px] font-bold h-6 w-6 rounded-full flex items-center justify-center border-2 border-white">
@@ -504,14 +545,14 @@ export default function POSPage() {
                  )}
               </Button>
             </SheetTrigger>
-            <SheetContent side="right" className="w-full sm:max-w-md p-0 border-none bg-white">
+            <SheetContent side="right" className="w-full sm:max-w-md p-0 border-none bg-card">
                {renderCartPanel()}
             </SheetContent>
           </Sheet>
         </div>
 
         {/* Right: The Order Panel (Desktop) */}
-        <div className="hidden lg:flex w-[400px] flex-col h-full shrink-0 bg-white rounded-[2.5rem] shadow-soft border border-slate-100 overflow-hidden">
+        <div className="hidden lg:flex w-[400px] flex-col h-full shrink-0 bg-card rounded-[2.5rem] shadow-soft border border-border overflow-hidden">
           {renderCartPanel()}
         </div>
       </div>
@@ -534,9 +575,9 @@ export default function POSPage() {
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              className="bg-white border border-slate-100 rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl overflow-hidden"
+              className="bg-card border border-border rounded-[2.5rem] p-8 max-w-lg w-full shadow-2xl overflow-hidden"
             >
-              <h2 className="text-3xl font-black text-slate-900 mb-2">{selectedItemForMod.name}</h2>
+              <h2 className="text-3xl font-black text-foreground mb-2">{selectedItemForMod.name}</h2>
               <p className="text-slate-500 font-medium mb-8">Customize your selection</p>
               
               <div className="space-y-6 max-h-[50vh] overflow-y-auto no-scrollbar pb-4">
@@ -550,7 +591,7 @@ export default function POSPage() {
                           onClick={() => setSelectedVariant(v)}
                           className={cn(
                             "h-14 rounded-2xl font-black text-sm transition-all border flex items-center justify-between px-4",
-                            selectedVariant?.id === v.id ? "bg-indigo-50 border-indigo-600 text-indigo-700" : "bg-white border-slate-100 text-slate-500"
+                            selectedVariant?.id === v.id ? "bg-secondary border-primary text-primary" : "bg-card border-border text-slate-500"
                           )}
                         >
                           <span>{v.name}</span>
@@ -564,7 +605,7 @@ export default function POSPage() {
                   <div key={mg.id} className="space-y-3">
                     <div className="flex justify-between items-center">
                        <h4 className="font-black text-slate-400 uppercase tracking-widest text-[10px]">{mg.name}</h4>
-                       <span className="text-[10px] font-bold text-indigo-400 bg-indigo-50 px-2 py-0.5 rounded-full">Max: {mg.max_select}</span>
+                       <span className="text-[10px] font-bold text-primary bg-secondary px-2 py-0.5 rounded-full">Max: {mg.max_select}</span>
                     </div>
                     <div className="grid grid-cols-2 gap-3">
                       {mg.modifiers.map((mod: any) => {
@@ -588,7 +629,7 @@ export default function POSPage() {
                             }}
                             className={cn(
                               "h-14 rounded-2xl font-black text-sm transition-all border flex items-center justify-between px-4",
-                              isSelected ? "bg-indigo-50 border-indigo-600 text-indigo-700" : "bg-white border-slate-100 text-slate-500"
+                              isSelected ? "bg-secondary border-primary text-primary" : "bg-card border-border text-slate-500"
                             )}
                           >
                             <div className="flex flex-col items-start">
@@ -606,7 +647,7 @@ export default function POSPage() {
 
               <div className="mt-8 flex gap-4">
                 <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase tracking-widest text-slate-400" onClick={() => setSelectedItemForMod(null)}>Cancel</Button>
-                <Button className="flex-[2] h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-glow border-none uppercase tracking-widest" onClick={confirmAddToCart}>Add to Order</Button>
+                <Button className="flex-[2] h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-glow border-none uppercase tracking-widest" onClick={confirmAddToCart}>Add to Order</Button>
               </div>
             </motion.div>
           </div>

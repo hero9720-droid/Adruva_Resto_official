@@ -17,6 +17,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 
 export default function KDSPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [selectedStation, setSelectedStation] = useState<string>('all');
   const { socket, isConnected } = useSocket('kitchen');
   const { toast } = useToast();
 
@@ -87,7 +88,7 @@ export default function KDSPage() {
       {/* Header - Minimal & Editorial */}
       <div className="flex items-center justify-between mb-8 shrink-0">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-slate-900 flex items-center gap-4">
+          <h1 className="text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
             KITCHEN
             <div className={cn(
               "h-4 w-4 rounded-full shadow-lg transition-all duration-500",
@@ -97,10 +98,26 @@ export default function KDSPage() {
           <p className="text-slate-500 font-medium text-lg mt-1">Culinary Command Center</p>
         </div>
         
-        <div className="flex items-center gap-8 bg-white p-4 px-6 rounded-3xl border border-slate-100 shadow-soft">
-           <div className="flex flex-col items-end">
+        <div className="flex items-center gap-4">
+           <div className="flex bg-card p-1.5 rounded-2xl border border-border shadow-soft">
+              {['all', 'kitchen', 'bar', 'grill', 'dessert'].map((station) => (
+                <button
+                  key={station}
+                  onClick={() => setSelectedStation(station)}
+                  className={cn(
+                    "px-6 py-2 rounded-xl font-black text-[11px] uppercase tracking-widest transition-all",
+                    selectedStation === station 
+                      ? "bg-primary text-primary-foreground shadow-glow-sm" 
+                      : "text-slate-500 hover:text-primary hover:bg-secondary"
+                  )}
+                >
+                  {station}
+                </button>
+              ))}
+           </div>
+           <div className="flex flex-col items-end bg-card p-4 px-6 rounded-3xl border border-border shadow-soft">
               <span className="text-[11px] font-black text-slate-400 uppercase tracking-widest">Active Tickets</span>
-              <span className="text-3xl font-black text-indigo-600 leading-none mt-1">{orders.length}</span>
+              <span className="text-3xl font-black text-primary leading-none mt-1">{orders.length}</span>
            </div>
         </div>
       </div>
@@ -115,20 +132,26 @@ export default function KDSPage() {
                 className="w-full h-full flex flex-col items-center justify-center text-slate-400"
               >
                 <div className="w-32 h-32 mb-8 relative">
-                   <div className="absolute inset-0 bg-slate-100 rounded-full rotate-6" />
-                   <div className="absolute inset-0 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-sm">
+                   <div className="absolute inset-0 bg-secondary rounded-full rotate-6" />
+                   <div className="absolute inset-0 bg-card border border-border rounded-full flex items-center justify-center shadow-sm">
                       <ChefHat className="h-14 w-14 text-slate-300" />
                    </div>
                 </div>
-                <p className="text-3xl font-black tracking-tighter text-slate-900">ALL CLEAR</p>
+                <p className="text-3xl font-black tracking-tighter text-foreground uppercase">All Clear</p>
                 <p className="text-slate-500 font-medium mt-2 text-lg">No active orders awaiting prep.</p>
               </motion.div>
             ) : (
-              orders.map((order) => {
-                const diffMins = getTimeDiff(order.created_at);
-                const isDelayed = diffMins > 15;
-                const isDineIn = order.order_type === 'dine_in';
-                const allItemsReady = order.items.every((i: any) => i.status === 'ready' || i.status === 'served');
+              orders
+                .filter(order => {
+                  if (selectedStation === 'all') return true;
+                  return order.items.some((i: any) => i.station === selectedStation);
+                })
+                .map((order) => {
+                  const diffMins = getTimeDiff(order.created_at);
+                  const isDelayed = diffMins > 15;
+                  const isUrgent = diffMins > 10;
+                  const isDineIn = order.order_type === 'dine_in';
+                  const allItemsReady = order.items.every((i: any) => i.status === 'ready' || i.status === 'served');
 
                 return (
                   <motion.div 
@@ -142,56 +165,55 @@ export default function KDSPage() {
                   >
                     <div className={cn(
                       "flex-1 flex flex-col rounded-3xl overflow-hidden transition-all duration-300 relative",
-                      "bg-white border border-slate-100 shadow-soft",
+                      "bg-card border border-border shadow-soft",
                       isDelayed ? 'ring-2 ring-red-500/40 shadow-[0_0_40px_rgba(239,68,68,0.15)]' : '',
                       allItemsReady ? 'opacity-60 grayscale' : ''
                     )}>
                       {/* Ticket Header */}
                       <div className={cn(
-                        "p-6 border-b border-slate-100/50",
-                        isDelayed ? "bg-red-50" :
-                        isDineIn ? "bg-indigo-50/50" : 
-                        "bg-amber-50/50"
+                        "p-6 border-b border-border",
+                        isDelayed ? "bg-red-500/10" :
+                        isDineIn ? "bg-primary/10" : 
+                        "bg-amber-500/10"
                       )}>
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex flex-col">
                              <span className={cn(
                                "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
-                               isDelayed ? "text-red-600" : "text-indigo-600"
+                               isDelayed ? "text-red-500" : "text-primary"
                              )}>
-                               Order Number
+                                Order Number
                              </span>
-                             <span className="font-black text-4xl tracking-tighter text-slate-900 leading-none">
-                               #{order.order_number}
+                             <span className="font-black text-4xl tracking-tighter text-foreground leading-none">
+                                #{order.order_number}
                              </span>
                           </div>
                           <div className={cn(
                             "px-4 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest",
-                            isDineIn ? "bg-indigo-100 text-indigo-700" : "bg-amber-100 text-amber-700"
+                            isDineIn ? "bg-primary text-primary-foreground" : "bg-amber-500 text-white"
                           )}>
                              {order.order_type.replace('_', ' ')}
                           </div>
                         </div>
-                        
                         <div className="flex items-center justify-between">
                           <div className={cn(
-                            "flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border border-slate-200/50",
-                            isDelayed ? "bg-red-500 text-white border-red-500 animate-pulse shadow-glow" : "bg-white text-slate-700 shadow-sm"
+                            "flex items-center gap-2 text-sm font-bold px-4 py-2 rounded-xl border border-border",
+                            isDelayed ? "bg-red-500 text-white border-red-500 animate-pulse shadow-glow" : "bg-card text-foreground shadow-sm"
                           )}>
                             <Timer className="h-4 w-4" />
                             <span>{diffMins} mins</span>
                           </div>
                           {order.table_id && (
-                            <div className="flex items-center gap-2 bg-white border border-slate-200/50 px-4 py-2 rounded-xl shadow-sm">
+                            <div className="flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-xl shadow-sm">
                                <span className="text-[10px] font-black text-slate-400">TABLE</span>
-                               <span className="font-black text-slate-900 text-lg leading-none">{order.table_id}</span>
+                               <span className="font-black text-foreground text-lg leading-none">{order.table_id}</span>
                             </div>
                           )}
                         </div>
                       </div>
                       
                       {/* Ticket Items */}
-                      <div className="flex-1 p-3 overflow-y-auto no-scrollbar bg-slate-50/30">
+                      <div className="flex-1 p-3 overflow-y-auto no-scrollbar bg-secondary/20">
                         <div className="flex flex-col gap-3">
                           {order.items.map((item: any) => {
                             const modifiers = item.modifiers_json ? (typeof item.modifiers_json === 'string' ? JSON.parse(item.modifiers_json) : item.modifiers_json) : {};
@@ -201,21 +223,21 @@ export default function KDSPage() {
                               key={item.id} 
                               className={cn(
                                 "p-4 rounded-2xl flex flex-col gap-4 transition-all duration-300",
-                                item.status === 'ready' ? "bg-slate-50 opacity-50 border-transparent" : "bg-white border border-slate-200 shadow-sm"
+                                item.status === 'ready' ? "bg-secondary opacity-50 border-transparent" : "bg-card border border-border shadow-sm"
                               )}
                             >
                               <div className="flex justify-between items-start">
                                 <div className="flex gap-4">
                                    <div className={cn(
                                      "h-10 w-10 rounded-xl flex items-center justify-center font-black text-lg shrink-0",
-                                     item.status === 'ready' ? "bg-slate-200 text-slate-500" : "bg-indigo-100 text-indigo-700"
+                                     item.status === 'ready' ? "bg-secondary text-slate-500" : "bg-primary/10 text-primary"
                                    )}>
                                       {item.quantity}
                                    </div>
                                    <div className="flex flex-col pt-0.5">
                                      <span className={cn(
                                        "font-black text-[17px] leading-tight",
-                                       item.status === 'ready' ? "text-slate-400 line-through decoration-2" : "text-slate-900"
+                                       item.status === 'ready' ? "text-slate-400 line-through decoration-2" : "text-foreground"
                                      )}>
                                        {item.menu_item_name}
                                      </span>
@@ -240,13 +262,12 @@ export default function KDSPage() {
                                    </div>
                                 </div>
                               </div>
-                              
-                              <div className="pt-2 flex items-center justify-between border-t border-slate-100 mt-1">
+                              <div className="pt-2 flex items-center justify-between border-t border-border mt-1">
                                 <span className={cn(
                                   "text-[10px] font-black uppercase tracking-widest px-3 py-1.5 rounded-lg border",
-                                  item.status === 'pending' ? 'bg-slate-100 text-slate-500 border-slate-200' :
-                                  item.status === 'preparing' ? 'bg-indigo-50 text-indigo-600 border-indigo-100' :
-                                  'bg-emerald-50 text-emerald-600 border-emerald-100'
+                                  item.status === 'pending' ? 'bg-secondary text-slate-500 border-border' :
+                                  item.status === 'preparing' ? 'bg-primary/10 text-primary border-primary/20' :
+                                  'bg-emerald-500/10 text-emerald-500 border-emerald-500/20'
                                 )}>
                                   {item.status}
                                 </span>
@@ -254,7 +275,7 @@ export default function KDSPage() {
                                   size="sm" 
                                   className={cn(
                                     "h-10 px-5 rounded-xl text-xs font-black transition-all border-none",
-                                    item.status === 'pending' ? 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-glow' :
+                                    item.status === 'pending' ? 'bg-primary hover:bg-primary/90 text-primary-foreground shadow-glow-sm' :
                                     item.status === 'preparing' ? 'bg-emerald-500 hover:bg-emerald-600 text-white shadow-[0_8px_32px_rgba(16,185,129,0.3)]' :
                                     'hidden'
                                   )}
@@ -272,7 +293,7 @@ export default function KDSPage() {
                       
                       {/* Ticket Footer (Order Notes) */}
                       {order.notes && (
-                        <div className="p-4 bg-red-50 text-red-600 border-t border-red-100 flex items-start gap-3">
+                        <div className="p-4 bg-red-500/10 text-red-500 border-t border-red-500/20 flex items-start gap-3">
                           <Info className="h-5 w-5 shrink-0" />
                           <span className="text-sm font-bold leading-relaxed">{order.notes}</span>
                         </div>

@@ -40,13 +40,13 @@ export default function CustomersPage() {
   const { data: history } = useCustomerHistory(customer?.id || '');
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar bg-background -m-8 p-8 font-sans">
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Customer CRM</h1>
-          <p className="text-slate-500">Track guest loyalty and visit history.</p>
+          <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">Customer CRM</h1>
+          <p className="text-slate-500 font-medium text-lg mt-1">Track guest loyalty and visit history.</p>
         </div>
-        <Button className="bg-indigo-600 hover:bg-indigo-700">
+        <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
           <Plus className="h-4 w-4 mr-2" />
           Add New Guest
         </Button>
@@ -54,39 +54,39 @@ export default function CustomersPage() {
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-slate-200">
+          <Card className="border-border bg-card rounded-[2rem] overflow-hidden shadow-soft">
              <CardHeader className="pb-4">
-                <CardTitle className="text-lg">Find Customer</CardTitle>
+                <CardTitle className="text-lg font-black tracking-tighter uppercase text-foreground">Find Customer</CardTitle>
                 <div className="relative mt-2">
-                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                   <Phone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                    <Input 
                      placeholder="Enter phone number (e.g. 9876543210)" 
-                     className="pl-10 h-12 text-lg font-medium" 
+                     className="pl-12 h-14 rounded-2xl border-none bg-background shadow-inner text-lg font-black text-foreground" 
                      value={searchPhone}
                      onChange={(e) => setSearchPhone(e.target.value)}
                    />
                 </div>
              </CardHeader>
              {customer ? (
-               <CardContent className="border-t pt-6">
+                <CardContent className="border-t border-border pt-6">
                   <div className="flex items-start justify-between">
                      <div className="flex items-center gap-4">
-                        <div className="h-16 w-16 bg-indigo-100 rounded-2xl flex items-center justify-center text-indigo-600 font-bold text-2xl">
+                        <div className="h-16 w-16 bg-secondary rounded-2xl flex items-center justify-center text-primary font-black text-2xl shadow-inner">
                            {customer.name[0]}
                         </div>
                         <div>
-                           <h2 className="text-2xl font-bold text-slate-900">{customer.name}</h2>
-                           <div className="flex gap-4 mt-1 text-sm text-slate-500">
-                              <span className="flex items-center gap-1"><Phone className="h-3 w-3" /> {customer.phone}</span>
-                              <span className="flex items-center gap-1"><Mail className="h-3 w-3" /> {customer.email || 'No email'}</span>
+                           <h2 className="text-2xl font-black text-foreground tracking-tighter">{customer.name}</h2>
+                           <div className="flex gap-4 mt-1 text-sm text-slate-500 font-medium">
+                              <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5 text-primary/60" /> {customer.phone}</span>
+                              <span className="flex items-center gap-1.5"><Mail className="h-3.5 w-3.5 text-primary/60" /> {customer.email || 'No email'}</span>
                            </div>
                         </div>
                      </div>
                      <div className="text-right">
-                        <Badge className="bg-yellow-500 text-white border-none px-3 py-1 text-xs">
+                        <Badge className="bg-amber-500 text-white border-none px-3 py-1 text-[10px] font-black tracking-widest uppercase rounded-lg">
                            <Star className="h-3 w-3 mr-1 fill-current" /> GOLD MEMBER
                         </Badge>
-                        <p className="text-xs text-slate-400 mt-2">Member since {new Date(customer.created_at).toLocaleDateString()}</p>
+                        <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest mt-2">Member since {new Date(customer.created_at).toLocaleDateString()}</p>
                      </div>
                   </div>
                </CardContent>
@@ -103,35 +103,35 @@ export default function CustomersPage() {
              )}
           </Card>
 
-          {customer && (
-            <Card className="border-slate-200">
-               <CardHeader className="border-b pb-4">
-                  <CardTitle className="text-lg flex items-center gap-2">
-                     <History className="h-5 w-5 text-indigo-600" />
+           {customer && (
+            <Card className="border-border bg-card rounded-[2rem] overflow-hidden shadow-soft">
+               <CardHeader className="border-b border-border pb-4 bg-secondary/30">
+                  <CardTitle className="text-lg font-black tracking-tighter uppercase text-foreground flex items-center gap-2">
+                     <History className="h-5 w-5 text-primary" />
                      Visit History
                   </CardTitle>
                </CardHeader>
-               <CardContent className="p-0">
+                <CardContent className="p-0">
                   <Table>
                      <TableHeader>
-                        <TableRow className="bg-slate-50">
-                           <TableHead>Date</TableHead>
-                           <TableHead>Bill No.</TableHead>
-                           <TableHead>Order Type</TableHead>
-                           <TableHead>Items</TableHead>
-                           <TableHead className="text-right">Amount</TableHead>
+                        <TableRow className="bg-secondary/50 hover:bg-secondary/50 border-border">
+                           <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Date</TableHead>
+                           <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Bill No.</TableHead>
+                           <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Order Type</TableHead>
+                           <TableHead className="font-black text-[10px] uppercase tracking-widest text-slate-500">Items</TableHead>
+                           <TableHead className="text-right font-black text-[10px] uppercase tracking-widest text-slate-500">Amount</TableHead>
                         </TableRow>
                      </TableHeader>
-                     <TableBody>
+                      <TableBody>
                         {history?.bills?.map((bill: any) => (
-                           <TableRow key={bill.id}>
-                              <TableCell className="text-xs">{new Date(bill.created_at).toLocaleDateString()}</TableCell>
-                              <TableCell className="font-bold">{bill.bill_number}</TableCell>
-                              <TableCell className="uppercase text-[10px] font-black">{bill.order_type || 'DINE-IN'}</TableCell>
-                              <TableCell className="text-xs text-slate-500">
+                           <TableRow key={bill.id} className="border-border hover:bg-secondary/20">
+                              <TableCell className="text-xs font-bold text-slate-500">{new Date(bill.created_at).toLocaleDateString()}</TableCell>
+                              <TableCell className="font-black text-foreground">{bill.bill_number}</TableCell>
+                              <TableCell className="uppercase text-[10px] font-black text-primary">{bill.order_type || 'DINE-IN'}</TableCell>
+                              <TableCell className="text-xs font-bold text-slate-400">
                                  {bill.items?.length || 0} items
                               </TableCell>
-                              <TableCell className="text-right font-bold">₹{(bill.total_paise / 100).toLocaleString()}</TableCell>
+                              <TableCell className="text-right font-black text-foreground">₹{(bill.total_paise / 100).toLocaleString()}</TableCell>
                            </TableRow>
                         ))}
                      </TableBody>
@@ -142,51 +142,51 @@ export default function CustomersPage() {
         </div>
 
         <div className="space-y-6">
-           <Card className="border-slate-200 bg-indigo-600 text-white shadow-xl overflow-hidden relative">
-              <div className="absolute inset-0 bg-[url('/grid-light.svg')] opacity-10" />
-              <CardHeader className="relative z-10 pb-2">
-                 <CardTitle className="text-sm uppercase tracking-widest text-indigo-200">Loyalty Balance</CardTitle>
-              </CardHeader>
-              <CardContent className="relative z-10">
-                 <div className="flex items-end gap-2 mb-4">
-                    <span className="text-5xl font-black">{customer?.loyalty_points || 0}</span>
-                    <span className="text-indigo-200 font-bold mb-1">PTS</span>
-                 </div>
-                 <div className="p-3 bg-white/10 rounded-xl border border-white/10 text-xs leading-relaxed">
-                    <p className="flex items-center gap-2">
-                       <Gift className="h-4 w-4 text-yellow-400" />
-                       Redeemable for ₹{((customer?.loyalty_points || 0) * 10).toLocaleString()} discount.
-                    </p>
-                 </div>
-                 <Button className="w-full mt-4 bg-white text-indigo-600 hover:bg-indigo-50 font-bold">
-                    Redeem Points <ArrowRight className="h-4 w-4 ml-2" />
-                 </Button>
-              </CardContent>
-           </Card>
+            <Card className="border-primary/20 bg-primary text-primary-foreground shadow-glow-sm overflow-hidden relative rounded-[2.5rem]">
+               <div className="absolute inset-0 bg-[url('/grid-light.svg')] opacity-10" />
+               <CardHeader className="relative z-10 pb-2">
+                  <CardTitle className="text-[10px] font-black uppercase tracking-[0.2em] text-primary-foreground/70">Loyalty Balance</CardTitle>
+               </CardHeader>
+               <CardContent className="relative z-10">
+                  <div className="flex items-end gap-2 mb-6">
+                     <span className="text-6xl font-black tracking-tighter">{customer?.loyalty_points || 0}</span>
+                     <span className="text-primary-foreground/70 font-black mb-2 uppercase tracking-widest text-xs">PTS</span>
+                  </div>
+                  <div className="p-4 bg-primary-foreground/10 rounded-2xl border border-primary-foreground/10 text-xs leading-relaxed">
+                     <p className="flex items-center gap-3 font-bold">
+                        <Gift className="h-4 w-4 text-amber-300" />
+                        Redeemable for ₹{((customer?.loyalty_points || 0) * 10).toLocaleString()} discount.
+                     </p>
+                  </div>
+                  <Button className="w-full mt-6 h-14 rounded-2xl bg-primary-foreground text-primary hover:bg-primary-foreground/90 font-black uppercase tracking-widest border-none shadow-lg">
+                     Redeem Points <ArrowRight className="h-4 w-4 ml-2" />
+                  </Button>
+               </CardContent>
+            </Card>
 
-           <Card className="border-slate-200">
-              <CardHeader>
-                 <CardTitle className="text-lg flex items-center gap-2">
-                    <Trophy className="h-5 w-5 text-yellow-500" />
-                    Top Guests
-                 </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                 {[1,2,3].map((i) => (
-                    <div key={i} className="flex items-center justify-between group cursor-pointer p-2 hover:bg-slate-50 rounded-lg transition-colors">
-                       <div className="flex items-center gap-3">
-                          <div className="h-8 w-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs">#{i}</div>
-                          <div>
-                             <p className="text-sm font-bold text-slate-900">Guest Name {i}</p>
-                             <p className="text-[10px] text-slate-400">12 Visits • 450 Pts</p>
-                          </div>
-                       </div>
-                       <Badge variant="outline" className="text-indigo-600 text-[10px]">GOLD</Badge>
-                    </div>
-                 ))}
-                 <Button variant="ghost" className="w-full text-xs text-slate-400 hover:text-indigo-600">View All Customers</Button>
-              </CardContent>
-           </Card>
+            <Card className="border-border bg-card rounded-[2.5rem] overflow-hidden shadow-soft">
+               <CardHeader className="border-b border-border bg-secondary/30">
+                  <CardTitle className="text-lg font-black tracking-tighter uppercase text-foreground flex items-center gap-2">
+                     <Trophy className="h-5 w-5 text-amber-500" />
+                     Top Guests
+                  </CardTitle>
+               </CardHeader>
+               <CardContent className="space-y-4 p-6">
+                  {[1,2,3].map((i) => (
+                     <div key={i} className="flex items-center justify-between group cursor-pointer p-3 hover:bg-secondary rounded-2xl transition-all">
+                        <div className="flex items-center gap-4">
+                           <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center font-black text-xs text-primary border border-primary/20">#{i}</div>
+                           <div>
+                              <p className="text-sm font-black text-foreground">Guest Name {i}</p>
+                              <p className="text-[10px] text-slate-400 font-black uppercase tracking-widest">12 Visits • 450 Pts</p>
+                           </div>
+                        </div>
+                        <Badge variant="outline" className="text-primary text-[10px] font-black border-primary/20 rounded-lg">GOLD</Badge>
+                     </div>
+                  ))}
+                  <Button variant="ghost" className="w-full h-12 rounded-xl text-xs font-black uppercase tracking-widest text-slate-400 hover:text-primary hover:bg-primary/5 transition-all">View All Customers</Button>
+               </CardContent>
+            </Card>
         </div>
       </div>
     </div>

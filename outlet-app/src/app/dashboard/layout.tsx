@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
+import GlobalHeader from '@/components/dashboard/GlobalHeader';
 import { Menu, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -29,18 +30,20 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Mobile Header */}
         <header className="md:hidden flex items-center justify-between p-4 bg-card border-b border-border shadow-sm z-30">
           <div className="flex items-center gap-3">
-            <div className="h-8 w-8 bg-indigo-600 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold text-sm">A</span>
+            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-primary-foreground font-black text-lg">A</span>
             </div>
-            <span className="font-bold text-card-foreground">AdruvaResto</span>
+            <span className="font-black text-foreground tracking-tighter uppercase">Adruva</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsMobileOpen(true)}>
-            <Menu className="h-6 w-6" />
+          <Button variant="ghost" size="icon" onClick={() => setIsMobileOpen(true)} className="h-12 w-12 rounded-xl hover:bg-secondary">
+            <Menu className="h-6 w-6 text-foreground" />
           </Button>
         </header>
+
+        {/* Global Desktop Header */}
+        <GlobalHeader />
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto">

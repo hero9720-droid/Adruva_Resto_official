@@ -28,6 +28,7 @@ const schema = z.object({
   preparation_time_minutes: z.preprocess(toNum, z.number().min(1)).default(15),
   is_available: z.boolean().default(true),
   is_featured: z.boolean().default(false),
+  station: z.enum(['kitchen', 'bar', 'grill', 'dessert', 'bakery']).default('kitchen'),
 });
 
 type FormValues = z.infer<typeof schema>;
@@ -57,6 +58,7 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
       is_featured: false,
       preparation_time_minutes: 15,
       cost_price_paise: 0,
+      station: 'kitchen',
     },
   });
 
@@ -72,10 +74,11 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
         preparation_time_minutes: item.preparation_time_minutes,
         is_available: item.is_available,
         is_featured: item.is_featured,
+        station: (item as any).station ?? 'kitchen',
       });
       setPhotoUrl(item.photo_url);
     } else if (open) {
-      reset({ food_type: 'veg', is_available: true, is_featured: false, preparation_time_minutes: 15, cost_price_paise: 0 });
+      reset({ food_type: 'veg', is_available: true, is_featured: false, preparation_time_minutes: 15, cost_price_paise: 0, station: 'kitchen' });
       setPhotoUrl(null);
     }
   }, [open, item, reset]);
@@ -205,6 +208,23 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
                 </SelectContent>
               </Select>
             </div>
+          </div>
+
+          {/* Station Mapping */}
+          <div className="space-y-1">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400">Prep Station *</Label>
+            <Select onValueChange={(v) => setValue('station', v as any)} defaultValue={watch('station')}>
+              <SelectTrigger className="h-14 rounded-2xl bg-slate-50 border-none font-bold">
+                <SelectValue placeholder="Select Station" />
+              </SelectTrigger>
+              <SelectContent className="rounded-2xl border-none shadow-xl">
+                <SelectItem value="kitchen">🍳 MAIN KITCHEN</SelectItem>
+                <SelectItem value="bar">🍹 BAR COUNTER</SelectItem>
+                <SelectItem value="grill">🔥 GRILL / TANDOOR</SelectItem>
+                <SelectItem value="dessert">🍰 DESSERT STATION</SelectItem>
+                <SelectItem value="bakery">🥐 BAKERY</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
 
           {/* Price + Cost */}
