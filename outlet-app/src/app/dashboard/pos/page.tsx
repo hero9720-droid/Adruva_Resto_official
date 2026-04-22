@@ -461,16 +461,16 @@ export default function POSPage() {
                </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-6 pb-20">
+            <div className="flex-1 overflow-y-auto no-scrollbar grid grid-cols-2 lg:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4 gap-4 md:gap-6 pb-20">
               {filteredItems?.map((item: any) => (
                 <motion.div 
                   layout
                   whileHover={{ y: -4 }}
                   key={item.id}
                   onClick={() => handleItemClick(item)}
-                  className="bg-card rounded-[2rem] shadow-soft border border-border overflow-hidden group cursor-pointer hover:shadow-xl transition-all duration-300 flex flex-col"
+                  className="bg-card rounded-[2rem] shadow-soft border border-border overflow-hidden group cursor-pointer hover:shadow-xl transition-all duration-300 flex flex-col min-w-[140px]"
                 >
-                  <div className="h-40 bg-slate-100 relative overflow-hidden">
+                  <div className="h-32 md:h-40 bg-secondary/50 relative overflow-hidden shrink-0">
                     <img src={item.photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" alt="" />
                     
                     {/* Advanced Item Badges */}
@@ -496,7 +496,7 @@ export default function POSPage() {
                     <div className="absolute bottom-0 left-0 right-0 p-3 bg-gradient-to-t from-slate-900/80 to-transparent flex justify-between items-end">
                        <div className="flex items-center gap-1.5 text-white/80">
                           <ClockIcon className="h-3 w-3" />
-                          <span className="text-[9px] font-black uppercase tracking-widest">{item.preparation_time_minutes || 15} MINS</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest hidden sm:inline-block">{item.preparation_time_minutes || 15} MINS</span>
                        </div>
                        {item.current_stock !== undefined && (
                          <span className={cn(
@@ -508,21 +508,21 @@ export default function POSPage() {
                        )}
                     </div>
                   </div>
-                  <div className="p-5 flex flex-col flex-1 justify-between bg-card relative">
+                  <div className="p-4 md:p-5 flex flex-col flex-1 justify-between bg-card relative">
                     {/* Glow effect on hover */}
                     <div className="absolute inset-0 bg-primary opacity-0 group-hover:opacity-[0.03] transition-opacity duration-300" />
                     
-                    <div>
-                      <h3 className="font-black text-foreground text-[17px] leading-tight mb-1 group-hover:text-primary transition-colors">{item.name}</h3>
-                      <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{item.description || 'Premium selection'}</p>
+                    <div className="mb-4">
+                      <h3 className="font-black text-foreground text-sm md:text-base leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2">{item.name}</h3>
+                      <p className="text-[9px] md:text-[10px] text-slate-400 font-bold uppercase tracking-widest truncate">{item.description || 'Premium selection'}</p>
                     </div>
-                    <div className="flex justify-between items-end mt-6">
+                    <div className="flex justify-between items-end mt-auto">
                       <div>
-                         <p className="text-[10px] font-black text-slate-300 uppercase tracking-widest mb-0.5">Price</p>
-                         <p className="text-xl font-black text-foreground tracking-tighter">₹{item.base_price_paise / 100}</p>
+                         <p className="text-[9px] md:text-[10px] font-black text-slate-400 uppercase tracking-widest mb-0.5">Price</p>
+                         <p className="text-lg md:text-xl font-black text-foreground tracking-tighter">₹{item.base_price_paise / 100}</p>
                       </div>
-                      <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
-                        <Plus className="h-5 w-5" />
+                      <div className="h-8 w-8 md:h-10 md:w-10 rounded-xl bg-secondary flex items-center justify-center text-slate-400 group-hover:bg-primary group-hover:text-primary-foreground group-hover:shadow-glow group-hover:scale-110 transition-all duration-300">
+                        <Plus className="h-4 w-4 md:h-5 md:w-5" />
                       </div>
                     </div>
                   </div>
