@@ -17,6 +17,7 @@ import settingsRoutes from './modules/settings/settings.routes';
 import superadminMgmtRoutes from './modules/superadmin/management/superadmin.routes';
 import chainMgmtRoutes from './modules/chain/management/chain.routes';
 import recipeRoutes from './modules/recipes/recipe.routes';
+import roomRoutes from './modules/rooms/rooms.routes';
 
 const router = Router();
 
@@ -65,6 +66,7 @@ router.use('/expenses', expenseRoutes);
 router.use('/customers', customerRoutes);
 router.use('/reservations', reservationRoutes);
 router.use('/settings', settingsRoutes);
+router.use('/rooms', roomRoutes);
 
 // Multi-Tenant Management
 router.use('/superadmin/mgmt', superadminMgmtRoutes);

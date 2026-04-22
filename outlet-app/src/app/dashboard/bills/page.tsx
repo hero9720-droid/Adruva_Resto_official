@@ -7,18 +7,15 @@ import {
   Printer, 
   CreditCard, 
   Banknote, 
-  MoreVertical,
   CheckCircle2,
   Clock,
-  Eye
+  Eye,
+  Scissors,
+  Gift,
+  ArrowRight,
+  ShieldCheck,
+  ChevronRight
 } from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -34,16 +31,20 @@ import {
 import { useBills, useBillDetails, useRecordPayment } from '@/hooks/useBills';
 import { useToast } from '@/hooks/use-toast';
 import ThermalReceipt from '@/components/dashboard/ThermalReceipt';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function BillsPage() {
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
-  const { data: bills, isLoading: billsLoading, isError: billsError, refetch } = useBills();
+  const [searchQuery, setSearchQuery] = useState('');
+  const { data: bills, isLoading: billsLoading, refetch } = useBills();
   const { data: bill, isLoading: billLoading } = useBillDetails(selectedBillId || '');
   const recordPayment = useRecordPayment();
   const { toast } = useToast();
   const printRef = useRef<HTMLDivElement>(null);
 
   const handlePrint = () => {
+    toast({ title: 'Sending to Printer...', description: 'Thermal KOT/Bill sequence started.' });
+    // In a real environment, we'd use the serial printer lib
     window.print();
   };
 
@@ -56,161 +57,280 @@ export default function BillsPage() {
         amount_paise: bill.total_paise
       });
       toast({ title: "Payment Recorded", description: `Bill #${bill.bill_number} marked as paid via ${method}.` });
+      refetch();
     } catch (error) {
       toast({ variant: "destructive", title: "Payment failed" });
     }
   };
 
+  const filteredBills = bills?.filter((b: any) => 
+    b.bill_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (b.table_name && b.table_name.toLowerCase().includes(searchQuery.toLowerCase()))
+  );
+
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-background -m-8 p-8 overflow-hidden font-sans">
+      {/* Header */}
+      <div className="flex items-center justify-between mb-8 shrink-0">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Billing & Receipts</h1>
-          <p className="text-slate-500">Track and settle customer bills.</p>
+          <h1 className="text-5xl font-black tracking-tighter text-slate-900 flex items-center gap-4">
+            REVENUE
+            <div className="h-4 w-4 bg-indigo-600 rounded-full shadow-lg shadow-indigo-600/50" />
+          </h1>
+          <p className="text-slate-500 font-medium text-lg mt-1">Billing & Settlement Command</p>
         </div>
-        <div className="relative w-64">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input placeholder="Search bill number..." className="pl-10" />
+        
+        <div className="flex items-center gap-4">
+           <div className="relative w-80">
+              <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+              <Input 
+                placeholder="Search bills or tables..." 
+                className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-white"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2 border-slate-200">
-          <CardHeader>
-             <CardTitle className="text-lg">Recent Bills</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-             <div className="divide-y divide-slate-100">
-               {billsLoading ? (
-                 <div className="p-8 text-center text-slate-400 animate-pulse">Loading bills...</div>
-               ) : billsError ? (
-                 <div className="p-8 text-center space-y-3">
-                   <p className="text-red-500 font-medium">Failed to load bills.</p>
-                   <button onClick={() => refetch()} className="text-sm text-indigo-600 underline">Retry</button>
-                 </div>
-               ) : bills?.length === 0 ? (
-                 <div className="p-8 text-center text-slate-400">No bills found.</div>
-               ) : (
-                 bills?.map((b: any) => (
-                   <div key={b.id} 
-                        className={cn("flex items-center justify-between p-4 hover:bg-slate-50 transition-colors cursor-pointer", selectedBillId === b.id && "bg-indigo-50/50 border-l-4 border-indigo-600")} 
-                        onClick={() => setSelectedBillId(b.id)}>
-                      <div className="flex items-center gap-4">
-                         <div className={cn("h-10 w-10 rounded-full flex items-center justify-center", b.status === 'paid' ? 'bg-green-100 text-green-600' : 'bg-orange-100 text-orange-600')}>
-                            <Receipt className="h-5 w-5" />
-                         </div>
-                         <div>
-                            <p className="font-bold text-slate-900">{b.bill_number}</p>
-                            <p className="text-xs text-slate-500">
-                              {b.table_name || 'Direct'} • {new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </p>
-                         </div>
-                      </div>
-                      <div className="flex items-center gap-6">
-                         <div className="text-right">
-                            <p className="font-bold">₹{(b.total_paise / 100).toLocaleString()}</p>
-                            <Badge variant="outline" className={b.status === 'paid' ? "text-green-600 bg-green-50 border-green-200" : "text-orange-600 bg-orange-50 border-orange-200"}>
-                               {b.status.toUpperCase()}
-                            </Badge>
-                         </div>
-                         <Button variant="ghost" size="icon"><Eye className="h-4 w-4" /></Button>
-                      </div>
-                   </div>
-                 ))
-               )}
-             </div>
-          </CardContent>
-        </Card>
-
-        {/* Bill Detail View (Right Sidebar) */}
-        <div className="space-y-6">
-          {selectedBillId ? (
-            <Card className="border-slate-200 shadow-lg sticky top-6">
-               <CardHeader className="bg-slate-50/50 border-b">
-                  <div className="flex justify-between items-start">
-                     <div>
-                        <CardTitle className="text-lg">Bill Summary</CardTitle>
-                        <CardDescription>BILL-00001</CardDescription>
-                     </div>
-                     <Badge className="bg-orange-500">Unpaid</Badge>
-                  </div>
-               </CardHeader>
-               <CardContent className="p-6 space-y-4">
-                  <div className="space-y-2">
-                     {/* Sample Items */}
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Paneer Tikka x 2</span>
-                        <span className="font-medium">₹640.00</span>
-                     </div>
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-600">Dal Makhani x 1</span>
-                        <span className="font-medium">₹350.00</span>
-                     </div>
-                  </div>
-                  
-                  <div className="border-t border-dashed pt-4 space-y-2">
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">Subtotal</span>
-                        <span>₹990.00</span>
-                     </div>
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500">GST (5%)</span>
-                        <span>₹49.50</span>
-                     </div>
-                     <div className="flex justify-between text-lg font-bold pt-2 border-t">
-                        <span>Grand Total</span>
-                        <span className="text-indigo-600">₹1,039.50</span>
-                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-3 pt-4">
-                     <Button variant="outline" className="w-full" onClick={handlePrint}>
-                        <Printer className="h-4 w-4 mr-2" />
-                        Print
-                     </Button>
-                     <Dialog>
-                        <DialogTrigger asChild>
-                           <Button className="w-full bg-green-600 hover:bg-green-700 shadow-lg shadow-green-100">
-                              <Banknote className="h-4 w-4 mr-2" />
-                              Settle
-                           </Button>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-md">
-                           <DialogHeader>
-                              <DialogTitle>Settle Bill #BILL-00001</DialogTitle>
-                           </DialogHeader>
-                           <div className="grid grid-cols-2 gap-4 py-4">
-                              <Button variant="outline" className="h-24 flex flex-col gap-2 border-2 hover:border-indigo-600 hover:bg-indigo-50" onClick={() => settleBill('cash')}>
-                                 <Banknote className="h-8 w-8 text-green-600" />
-                                 <span>Cash</span>
-                              </Button>
-                              <Button variant="outline" className="h-24 flex flex-col gap-2 border-2 hover:border-indigo-600 hover:bg-indigo-50" onClick={() => settleBill('card')}>
-                                 <CreditCard className="h-8 w-8 text-blue-600" />
-                                 <span>Card / POS</span>
-                              </Button>
-                              <Button variant="outline" className="h-24 flex flex-col gap-2 border-2 hover:border-indigo-600 hover:bg-indigo-50" onClick={() => settleBill('upi')}>
-                                 <div className="h-8 w-8 bg-indigo-100 rounded flex items-center justify-center font-bold text-indigo-600 text-xs italic">UPI</div>
-                                 <span>GPay / PhonePe</span>
-                              </Button>
-                           </div>
-                           <DialogFooter>
-                              <Button variant="ghost" className="w-full">Cancel</Button>
-                           </DialogFooter>
-                        </DialogContent>
-                     </Dialog>
-                  </div>
-               </CardContent>
-            </Card>
+      <div className="flex-1 flex gap-8 overflow-hidden">
+        {/* Left: Bill List */}
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
+          {billsLoading ? (
+             <div className="py-20 text-center animate-pulse text-slate-400 font-black">SYNCING WITH REVENUE ENGINE...</div>
+          ) : filteredBills?.length === 0 ? (
+             <div className="py-20 text-center text-slate-400 font-medium">No bills found for your search.</div>
           ) : (
-            <div className="h-64 border-2 border-dashed rounded-xl flex items-center justify-center text-slate-400 text-center p-8">
-               <p>Select a bill from the list to view details and settle payment.</p>
-            </div>
+            filteredBills?.map((b: any) => (
+              <motion.div
+                layout
+                key={b.id}
+                onClick={() => setSelectedBillId(b.id)}
+                className={cn(
+                  "p-6 rounded-[2rem] border-2 transition-all duration-300 cursor-pointer group flex items-center justify-between",
+                  selectedBillId === b.id 
+                    ? "bg-indigo-600 border-indigo-600 text-white shadow-glow" 
+                    : "bg-white border-slate-100 hover:border-slate-200 text-slate-600 shadow-soft"
+                )}
+              >
+                <div className="flex items-center gap-6">
+                  <div className={cn(
+                    "h-14 w-14 rounded-2xl flex items-center justify-center transition-colors",
+                    selectedBillId === b.id ? "bg-white/20" : "bg-slate-50 group-hover:bg-indigo-50"
+                  )}>
+                    <Receipt className={cn("h-7 w-7", selectedBillId === b.id ? "text-white" : "text-slate-400 group-hover:text-indigo-600")} />
+                  </div>
+                  <div>
+                    <h3 className={cn("text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-white" : "text-slate-900")}>
+                      #{b.bill_number}
+                    </h3>
+                    <div className="flex items-center gap-3 mt-1">
+                       <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-indigo-200" : "text-slate-400")}>
+                         {b.table_name || 'Counter'}
+                       </span>
+                       <span className={cn("h-1 w-1 rounded-full", selectedBillId === b.id ? "bg-indigo-400" : "bg-slate-200")} />
+                       <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-indigo-200" : "text-slate-400")}>
+                         {new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                       </span>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-8 text-right">
+                  <div>
+                    <p className={cn("text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-white" : "text-slate-900")}>
+                      ₹{(b.total_paise / 100).toLocaleString()}
+                    </p>
+                    <Badge className={cn(
+                      "px-3 py-1 rounded-lg font-black text-[9px] uppercase tracking-widest border-none mt-1",
+                      b.status === 'paid' 
+                        ? (selectedBillId === b.id ? "bg-white text-indigo-600" : "bg-emerald-100 text-emerald-700") 
+                        : (selectedBillId === b.id ? "bg-amber-400 text-white" : "bg-amber-100 text-amber-700")
+                    )}>
+                      {b.status}
+                    </Badge>
+                  </div>
+                  <ChevronRight className={cn("h-6 w-6 transition-transform", selectedBillId === b.id ? "text-white translate-x-1" : "text-slate-300 group-hover:text-indigo-400")} />
+                </div>
+              </motion.div>
+            ))
           )}
+        </div>
+
+        {/* Right: Detailed Summary */}
+        <div className="w-[450px] shrink-0">
+          <AnimatePresence mode="wait">
+            {selectedBillId && bill ? (
+              <motion.div
+                initial={{ opacity: 0, x: 20 }}
+                animate={{ opacity: 1, x: 0 }}
+                exit={{ opacity: 0, x: 20 }}
+                className="h-full bg-white rounded-[2.5rem] border border-slate-100 shadow-soft overflow-hidden flex flex-col"
+              >
+                <div className="p-8 bg-slate-50/50 border-b border-slate-100 flex justify-between items-center">
+                  <div>
+                    <h4 className="text-[11px] font-black text-slate-400 uppercase tracking-[0.2em] mb-1">Settlement Details</h4>
+                    <h2 className="text-3xl font-black text-slate-900 tracking-tighter">#{bill.bill_number}</h2>
+                  </div>
+                  <Badge className={cn(
+                    "px-4 py-1.5 rounded-xl font-black text-[10px] uppercase tracking-widest border-none",
+                    bill.status === 'paid' ? "bg-emerald-500 text-white shadow-glow" : "bg-amber-500 text-white shadow-glow"
+                  )}>
+                    {bill.status}
+                  </Badge>
+                </div>
+
+                <div className="flex-1 overflow-y-auto p-8 no-scrollbar space-y-8">
+                  {/* Itemized List */}
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-2 mb-4">
+                       <Package className="h-4 w-4 text-slate-400" />
+                       <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Order Items</span>
+                    </div>
+                    {bill.items?.map((item: any) => (
+                      <div key={item.id} className="flex justify-between items-start">
+                        <div className="flex flex-col">
+                           <span className="font-bold text-slate-900">{item.menu_item_name}</span>
+                           <span className="text-[11px] font-medium text-slate-500">Qty: {item.quantity} @ ₹{item.unit_price_paise / 100}</span>
+                        </div>
+                        <span className="font-black text-slate-900">₹{(item.total_paise / 100).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Loyalty & Discounts */}
+                  <div className="pt-6 border-t border-dashed border-slate-200 space-y-4">
+                    <div className="flex items-center justify-between p-4 bg-indigo-50/50 rounded-2xl border border-indigo-100">
+                       <div className="flex items-center gap-3">
+                          <Gift className="h-5 w-5 text-indigo-600" />
+                          <div>
+                             <p className="text-[10px] font-black text-indigo-400 uppercase tracking-widest">Loyalty Reward</p>
+                             <p className="text-sm font-bold text-indigo-900">Points available: 450</p>
+                          </div>
+                       </div>
+                       <Button variant="ghost" size="sm" className="text-indigo-600 font-black text-[10px] uppercase">Redeem</Button>
+                    </div>
+                  </div>
+
+                  {/* Totals */}
+                  <div className="space-y-3 pt-6 border-t border-dashed border-slate-200">
+                    <div className="flex justify-between text-sm">
+                       <span className="font-medium text-slate-500">Subtotal</span>
+                       <span className="font-bold text-slate-900">₹{(bill.subtotal_paise / 100).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                       <span className="font-medium text-slate-500">Service Charge ({bill.service_charge_percent || 0}%)</span>
+                       <span className="font-bold text-slate-900">₹{(bill.service_charge_paise / 100).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between text-sm">
+                       <span className="font-medium text-slate-500">GST (5%)</span>
+                       <span className="font-bold text-slate-900">₹{((bill.gst_5_paise + bill.gst_12_paise + bill.gst_18_paise) / 100).toLocaleString()}</span>
+                    </div>
+                    <div className="flex justify-between items-end pt-6">
+                       <div>
+                          <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Final Amount</p>
+                          <p className="text-4xl font-black text-indigo-600 tracking-tighter">₹{(bill.total_paise / 100).toLocaleString()}</p>
+                       </div>
+                       <div className="flex flex-col items-end gap-1">
+                          <Badge className="bg-slate-100 text-slate-600 border-none font-bold">Inclusive of all taxes</Badge>
+                       </div>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="p-8 bg-white border-t border-slate-100 shrink-0 grid grid-cols-2 gap-4">
+                  <Button variant="outline" className="h-16 rounded-2xl border-slate-200 text-slate-600 font-black uppercase" onClick={handlePrint}>
+                    <Printer className="h-5 w-5 mr-2" /> Print
+                  </Button>
+                  
+                  {bill.status !== 'paid' ? (
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button className="h-16 rounded-2xl bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-glow border-none uppercase tracking-widest">
+                          <Banknote className="h-5 w-5 mr-2" /> Settle
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent className="max-w-md p-10 rounded-[3rem] border-none shadow-2xl overflow-hidden">
+                         <div className="absolute top-0 right-0 p-8 opacity-5">
+                            <ShieldCheck className="h-48 w-48 -mr-12 -mt-12" />
+                         </div>
+                         <div className="relative z-10">
+                            <h2 className="text-4xl font-black text-slate-900 tracking-tighter mb-2">Settle Bill</h2>
+                            <p className="text-slate-500 font-medium mb-10">Choose payment method for <span className="text-indigo-600 font-black">₹{(bill.total_paise / 100).toLocaleString()}</span></p>
+                            
+                            <div className="grid grid-cols-1 gap-4">
+                               <Button 
+                                 variant="outline" 
+                                 className="h-20 rounded-2xl border-2 border-slate-100 hover:border-emerald-500 hover:bg-emerald-50 flex justify-between items-center px-6 transition-all group"
+                                 onClick={() => settleBill('cash')}
+                               >
+                                  <div className="flex items-center gap-4">
+                                     <div className="h-10 w-10 bg-emerald-100 rounded-xl flex items-center justify-center text-emerald-600">
+                                        <Banknote className="h-6 w-6" />
+                                     </div>
+                                     <span className="font-black text-slate-900 group-hover:text-emerald-700">Cash Settlement</span>
+                                  </div>
+                                  <ChevronRight className="h-5 w-5 text-slate-300" />
+                               </Button>
+                               
+                               <Button 
+                                 variant="outline" 
+                                 className="h-20 rounded-2xl border-2 border-slate-100 hover:border-blue-500 hover:bg-blue-50 flex justify-between items-center px-6 transition-all group"
+                                 onClick={() => settleBill('card')}
+                               >
+                                  <div className="flex items-center gap-4">
+                                     <div className="h-10 w-10 bg-blue-100 rounded-xl flex items-center justify-center text-blue-600">
+                                        <CreditCard className="h-6 w-6" />
+                                     </div>
+                                     <span className="font-black text-slate-900 group-hover:text-blue-700">Card / POS</span>
+                                  </div>
+                                  <ChevronRight className="h-5 w-5 text-slate-300" />
+                               </Button>
+
+                               <Button 
+                                 variant="outline" 
+                                 className="h-20 rounded-2xl border-2 border-slate-100 hover:border-indigo-500 hover:bg-indigo-50 flex justify-between items-center px-6 transition-all group"
+                                 onClick={() => settleBill('upi')}
+                               >
+                                  <div className="flex items-center gap-4">
+                                     <div className="h-10 w-10 bg-indigo-100 rounded-xl flex items-center justify-center text-indigo-600 font-black italic text-xs">UPI</div>
+                                     <span className="font-black text-slate-900 group-hover:text-indigo-700">GPay / PhonePe</span>
+                                  </div>
+                                  <ChevronRight className="h-5 w-5 text-slate-300" />
+                               </Button>
+                            </div>
+
+                            <div className="mt-8 flex gap-4">
+                               <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => {}}>Split Bill</Button>
+                               <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => {}}>Custom</Button>
+                            </div>
+                         </div>
+                      </DialogContent>
+                    </Dialog>
+                  ) : (
+                    <Button className="col-span-2 h-16 rounded-2xl bg-emerald-500 text-white font-black shadow-glow border-none uppercase tracking-widest cursor-default">
+                      <CheckCircle2 className="h-5 w-5 mr-2" /> SETTLED
+                    </Button>
+                  )}
+                </div>
+              </motion.div>
+            ) : (
+              <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-slate-50/50 rounded-[2.5rem] border-2 border-dashed border-slate-200 p-12 text-center">
+                 <div className="h-24 w-24 bg-white rounded-3xl flex items-center justify-center mb-8 shadow-soft">
+                    <Receipt className="h-10 w-10 text-slate-300" />
+                 </div>
+                 <p className="text-xl font-black text-slate-900 mb-2">NO BILL SELECTED</p>
+                 <p className="font-medium text-slate-500">Select a bill from the registry to view itemized details and process payment.</p>
+              </div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
 
       {/* Hidden Receipt for Printing */}
-      <ThermalReceipt ref={printRef} bill={null} outlet={null} />
+      <div className="hidden">
+        <ThermalReceipt ref={printRef} bill={bill} outlet={null} />
+      </div>
     </div>
   );
 }

@@ -113,7 +113,7 @@ async function processOrderCreation(outlet_id: string, data: any) {
 
 export async function getOrders(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
-  const { status, order_type } = req.query;
+  const { status, order_type, source } = req.query;
 
   const result = await withOutletContext(outlet_id, async (client) => {
     let query = `
@@ -147,6 +147,10 @@ export async function getOrders(req: Request, res: Response) {
     if (req.query.table_id) {
       params.push(req.query.table_id);
       query += ` AND o.table_id = $${params.length}`;
+    }
+    if (source) {
+      params.push(source);
+      query += ` AND o.source = $${params.length}`;
     }
 
     query += ' ORDER BY o.created_at DESC LIMIT 50';

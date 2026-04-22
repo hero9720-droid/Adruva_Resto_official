@@ -35,9 +35,9 @@ const ThermalReceipt = forwardRef<HTMLDivElement, ReceiptProps>(({ bill, outlet 
           <span className="w-1/4 text-center">Qty</span>
           <span className="w-1/4 text-right">Amt</span>
         </div>
-        {bill.orders?.flatMap((o: any) => o.items).map((item: any, idx: number) => (
+        {(bill.items || bill.orders?.flatMap((o: any) => o.items))?.map((item: any, idx: number) => (
           <div key={idx} className="flex justify-between py-1 text-xs">
-            <span className="w-1/2 truncate">{item.name}</span>
+            <span className="w-1/2 truncate">{item.menu_item_name || item.name}</span>
             <span className="w-1/4 text-center">{item.quantity}</span>
             <span className="w-1/4 text-right">₹{(item.total_paise / 100).toFixed(2)}</span>
           </div>

@@ -22,6 +22,7 @@ import {
   Globe,
   ChefHat,
   MessageSquare,
+  Bed,
 } from 'lucide-react';
 import { clearToken } from '@/lib/api';
 
@@ -36,6 +37,7 @@ const navGroups = [
       { name: 'Online Orders',href: '/dashboard/online-orders',icon: Globe },
       { name: 'Bills',        href: '/dashboard/bills',        icon: ReceiptText },
       { name: 'Reservations', href: '/dashboard/reservations', icon: CalendarClock },
+      { name: 'Rooms',        href: '/dashboard/rooms',        icon: Bed },
     ],
   },
   {
