@@ -204,7 +204,15 @@ export default function InventoryPage() {
                   {menuItems?.map((item: any) => (
                     <button
                       key={item.id}
-                      onClick={() => setSelectedMenuItem(item.id)                       <div className="flex justify-between items-center rotate-0">
+                      onClick={() => setSelectedMenuItem(item.id)}
+                      className={cn(
+                        "w-full p-4 rounded-[1.5rem] border-2 transition-all group",
+                        selectedMenuItem === item.id 
+                          ? "border-primary bg-secondary shadow-lg shadow-primary/10" 
+                          : "border-transparent hover:border-border bg-background"
+                      )}
+                    >
+                      <div className="flex justify-between items-center rotate-0">
                          <div className="flex items-center gap-5">
                             <div className="h-14 w-14 bg-secondary rounded-xl overflow-hidden border border-border shadow-sm group-hover:scale-105 transition-transform">
                                <img src={item.photo_url} className="w-full h-full object-cover" alt="" />
@@ -215,7 +223,6 @@ export default function InventoryPage() {
                          </div>
                          <ChevronRight className={cn("h-6 w-6 transition-transform", selectedMenuItem === item.id ? "text-primary translate-x-1" : "text-slate-400")} />
                       </div>
->
                     </button>
                   ))}
                 </div>
