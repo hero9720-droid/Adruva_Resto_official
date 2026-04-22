@@ -58,32 +58,35 @@ export default function OnboardChainModal({
       toast({ variant: "destructive", title: "Onboarding failed", description: "Please check the details and try again." });
     }
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
-        <DialogHeader>
-          <DialogTitle>Onboard New Restaurant Chain</DialogTitle>
-          <DialogDescription>
-            This will create a new business entity, an initial outlet, and a manager account.
+      <DialogContent className="max-w-2xl bg-card border-border rounded-[2.5rem] p-10 shadow-soft overflow-hidden">
+        <div className="absolute top-0 right-0 h-48 w-48 bg-primary rounded-full opacity-5 blur-[60px] -translate-y-10 translate-x-10" />
+        
+        <DialogHeader className="mb-8">
+          <DialogTitle className="text-3xl font-black tracking-tighter uppercase text-foreground">Provision Entity</DialogTitle>
+          <DialogDescription className="text-slate-500 font-bold text-base mt-2">
+            Register a new multi-tenant restaurant chain on the Adruva network.
           </DialogDescription>
         </DialogHeader>
         
-        <form onSubmit={handleSubmit} className="space-y-4 py-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Chain Name</Label>
+        <form onSubmit={handleSubmit} className="space-y-8 py-4 relative z-10">
+          <div className="grid grid-cols-2 gap-8">
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Business Name</Label>
               <Input 
                 placeholder="e.g. Pizza Galaxy" 
+                className="h-14 rounded-2xl bg-secondary/50 border-none font-bold text-foreground focus:ring-2 focus:ring-primary/20"
                 value={formData.chain_name}
                 onChange={e => setFormData({...formData, chain_name: e.target.value})}
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>First Outlet Name</Label>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Headquarters Name</Label>
               <Input 
-                placeholder="e.g. Pizza Galaxy HQ" 
+                placeholder="e.g. Galaxy HQ" 
+                className="h-14 rounded-2xl bg-secondary/50 border-none font-bold text-foreground focus:ring-2 focus:ring-primary/20"
                 value={formData.outlet_name}
                 onChange={e => setFormData({...formData, outlet_name: e.target.value})}
                 required
@@ -91,60 +94,65 @@ export default function OnboardChainModal({
             </div>
           </div>
 
-          <div className="space-y-2">
-            <Label>Subscription Plan</Label>
+          <div className="space-y-3">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Subscription Tier</Label>
             <select 
-              className="flex h-10 w-full rounded-md border border-slate-200 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-600"
+              className="flex h-14 w-full rounded-2xl bg-secondary/50 border-none px-5 py-2 text-sm font-bold text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 appearance-none shadow-inner"
               value={formData.plan_id}
               onChange={e => setFormData({...formData, plan_id: e.target.value})}
               required
             >
-              <option value="">Select a plan</option>
+              <option value="" className="bg-card">Select access level...</option>
               {plans?.map((plan: any) => (
-                <option key={plan.id} value={plan.id}>
-                  {plan.name} - ₹{plan.monthly_price_paise / 100}/mo
+                <option key={plan.id} value={plan.id} className="bg-card">
+                  {plan.name.toUpperCase()} — ₹{plan.monthly_price_paise / 100}/MO
                 </option>
               ))}
             </select>
           </div>
 
-          <div className="border-t border-slate-100 pt-4 space-y-4">
-            <p className="text-xs font-bold text-slate-400 uppercase tracking-widest">Administrator Details</p>
-            <div className="space-y-2">
-              <Label>Full Name</Label>
+          <div className="bg-secondary/30 rounded-3xl p-8 space-y-6 border border-border shadow-inner">
+            <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-2">Administrative Authority</p>
+            <div className="space-y-3">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Superuser Name</Label>
               <Input 
                 placeholder="e.g. Rahul Sharma" 
+                className="h-14 rounded-2xl bg-card border-border font-bold text-foreground focus:ring-2 focus:ring-primary/20 shadow-soft"
                 value={formData.admin_name}
                 onChange={e => setFormData({...formData, admin_name: e.target.value})}
                 required
               />
             </div>
-            <div className="space-y-2">
-              <Label>Email Address</Label>
-              <Input 
-                type="email"
-                placeholder="rahul@example.com" 
-                value={formData.admin_email}
-                onChange={e => setFormData({...formData, admin_email: e.target.value})}
-                required
-              />
-            </div>
-            <div className="space-y-2">
-              <Label>Initial Password</Label>
-              <Input 
-                type="password"
-                placeholder="••••••••" 
-                value={formData.admin_password}
-                onChange={e => setFormData({...formData, admin_password: e.target.value})}
-                required
-              />
+            <div className="grid grid-cols-2 gap-6">
+               <div className="space-y-3">
+                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Official Email</Label>
+                 <Input 
+                   type="email"
+                   placeholder="rahul@example.com" 
+                   className="h-14 rounded-2xl bg-card border-border font-bold text-foreground focus:ring-2 focus:ring-primary/20 shadow-soft"
+                   value={formData.admin_email}
+                   onChange={e => setFormData({...formData, admin_email: e.target.value})}
+                   required
+                 />
+               </div>
+               <div className="space-y-3">
+                 <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Master Password</Label>
+                 <Input 
+                   type="password"
+                   placeholder="••••••••" 
+                   className="h-14 rounded-2xl bg-card border-border font-bold text-foreground focus:ring-2 focus:ring-primary/20 shadow-soft"
+                   value={formData.admin_password}
+                   onChange={e => setFormData({...formData, admin_password: e.target.value})}
+                   required
+                 />
+               </div>
             </div>
           </div>
 
-          <DialogFooter className="pt-4">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)}>Cancel</Button>
-            <Button type="submit" className="bg-indigo-600 hover:bg-indigo-700" disabled={onboard.isPending}>
-              {onboard.isPending ? 'Onboarding...' : 'Create Chain'}
+          <DialogFooter className="pt-6 flex gap-4">
+            <Button type="button" variant="ghost" className="h-14 px-8 rounded-2xl font-black text-[11px] uppercase tracking-widest text-slate-500 hover:bg-secondary" onClick={() => onOpenChange(false)}>Cancel</Button>
+            <Button type="submit" className="h-14 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-[11px] uppercase tracking-widest shadow-glow border-none transition-all" disabled={onboard.isPending}>
+              {onboard.isPending ? 'Provisioning...' : 'Initialize Hierarchy'}
             </Button>
           </DialogFooter>
         </form>

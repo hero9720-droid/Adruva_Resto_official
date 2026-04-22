@@ -40,6 +40,13 @@ import { useIngredients, useSuppliers, useRecordMovement, useCreateIngredient } 
 import { useMenuItems } from '@/hooks/useMenu';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
 
 export default function InventoryPage() {
   const { data: ingredients, isLoading: itemsLoading } = useIngredients();
@@ -48,6 +55,16 @@ export default function InventoryPage() {
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const { toast } = useToast();
+  
+  const createIngredient = useCreateIngredient();
+  const [isAddOpen, setIsAddOpen] = useState(false);
+  const [newIngredient, setNewIngredient] = useState({
+    name: '',
+    category: '',
+    unit: '',
+    low_threshold: 10,
+    current_stock: 0
+  });
 
   const lowStockItems = ingredients?.filter((i: any) => i.current_stock <= i.low_threshold) || [];
 
@@ -67,71 +84,149 @@ export default function InventoryPage() {
     }
   };
 
+  const handleCreateIngredient = async () => {
+    try {
+      await createIngredient.mutateAsync(newIngredient);
+      setIsAddOpen(false);
+      setNewIngredient({ name: '', category: '', unit: '', low_threshold: 10, current_stock: 0 });
+      toast({ title: "Ingredient Added", description: "The ingredient has been successfully added to the registry.", className: "bg-emerald-600 text-white font-bold border-none" });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Failed to add ingredient" });
+    }
+  };
+
   return (
-    <div className="space-y-8 h-[calc(100vh-120px)] overflow-hidden flex flex-col -m-8 p-8 bg-background font-sans">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] overflow-hidden flex flex-col pb-10 bg-background font-sans">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground uppercase">
             Inventory
           </h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">Real-time stock tracking & culinary automation.</p>
+          <p className="text-slate-500 font-medium text-base md:text-lg mt-1">Real-time stock tracking & culinary automation.</p>
         </div>
-        <div className="flex gap-4">
-          <Button variant="outline" className="h-14 px-6 rounded-2xl border-none shadow-soft font-black tracking-widest uppercase bg-card text-primary hover:bg-secondary">
-            <History className="h-5 w-5 mr-3" />
+        <div className="flex gap-4 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
+          <Button variant="outline" className="h-12 md:h-14 px-6 rounded-2xl border-none shadow-soft font-black tracking-widest uppercase bg-card text-primary hover:bg-secondary shrink-0">
+            <History className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
             Stock Ledger
           </Button>
-          <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-glow tracking-widest uppercase transition-all active:scale-[0.98] border-none">
-            <Plus className="h-5 w-5 mr-3" />
-            Add Ingredient
-          </Button>
+          <Dialog open={isAddOpen} onOpenChange={setIsAddOpen}>
+            <DialogTrigger asChild>
+              <Button className="h-12 md:h-14 px-6 md:px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-glow tracking-widest uppercase transition-all active:scale-[0.98] border-none shrink-0">
+                <Plus className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
+                Add Ingredient
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[425px] rounded-[2rem] bg-card border-none shadow-2xl p-8">
+              <DialogHeader className="mb-6">
+                <DialogTitle className="text-2xl font-black text-foreground tracking-tighter uppercase">New Ingredient</DialogTitle>
+              </DialogHeader>
+              <div className="grid gap-6">
+                <div className="grid gap-2">
+                  <label className="text-xs font-black uppercase tracking-widest text-slate-500">Name</label>
+                  <Input 
+                    placeholder="e.g. Tomato Puree" 
+                    value={newIngredient.name}
+                    onChange={(e) => setNewIngredient({...newIngredient, name: e.target.value})}
+                    className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                  />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">Category</label>
+                    <Input 
+                      placeholder="e.g. VEG" 
+                      value={newIngredient.category}
+                      onChange={(e) => setNewIngredient({...newIngredient, category: e.target.value})}
+                      className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">Unit</label>
+                    <Input 
+                      placeholder="e.g. KG, LTR" 
+                      value={newIngredient.unit}
+                      onChange={(e) => setNewIngredient({...newIngredient, unit: e.target.value})}
+                      className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground uppercase"
+                    />
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">Initial Stock</label>
+                    <Input 
+                      type="number"
+                      value={newIngredient.current_stock}
+                      onChange={(e) => setNewIngredient({...newIngredient, current_stock: Number(e.target.value)})}
+                      className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                    />
+                  </div>
+                  <div className="grid gap-2">
+                    <label className="text-xs font-black uppercase tracking-widest text-slate-500">Low Threshold</label>
+                    <Input 
+                      type="number"
+                      value={newIngredient.low_threshold}
+                      onChange={(e) => setNewIngredient({...newIngredient, low_threshold: Number(e.target.value)})}
+                      className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                    />
+                  </div>
+                </div>
+                <Button 
+                  onClick={handleCreateIngredient}
+                  disabled={!newIngredient.name || !newIngredient.unit || createIngredient.isPending}
+                  className="w-full h-16 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest shadow-glow mt-4 border-none"
+                >
+                  {createIngredient.isPending ? 'Saving...' : 'Add to Inventory'}
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex items-center p-8 transition-transform hover:-translate-y-1 border border-border">
-          <div className="flex items-center gap-6">
-             <div className="h-16 w-16 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-inner">
-                <Package className="h-8 w-8" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 shrink-0">
+        <div className="bg-card shadow-soft rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex items-center p-6 md:p-8 transition-transform hover:-translate-y-1 border border-border">
+          <div className="flex items-center gap-4 md:gap-6">
+             <div className="h-12 w-12 md:h-16 md:w-16 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                <Package className="h-6 w-6 md:h-8 md:w-8" />
              </div>
              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Inventory Items</p>
-                <p className="text-4xl font-black text-foreground tracking-tighter mt-1">{ingredients?.length || 0}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Total Inventory Items</p>
+                <p className="text-3xl md:text-4xl font-black text-foreground tracking-tighter mt-1">{ingredients?.length || 0}</p>
              </div>
           </div>
         </div>
 
-        <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex items-center p-8 transition-transform hover:-translate-y-1 border border-border">
-          <div className="flex items-center gap-6">
-             <div className="h-16 w-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 shadow-inner">
-                <AlertTriangle className="h-8 w-8" />
+        <div className="bg-card shadow-soft rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex items-center p-6 md:p-8 transition-transform hover:-translate-y-1 border border-border">
+          <div className="flex items-center gap-4 md:gap-6">
+             <div className="h-12 w-12 md:h-16 md:w-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 shadow-inner">
+                <AlertTriangle className="h-6 w-6 md:h-8 md:w-8" />
              </div>
              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Low Stock Critical</p>
-                <p className="text-4xl font-black text-red-500 tracking-tighter mt-1">{lowStockItems.length}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Low Stock Critical</p>
+                <p className="text-3xl md:text-4xl font-black text-red-500 tracking-tighter mt-1">{lowStockItems.length}</p>
              </div>
           </div>
         </div>
 
-        <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex items-center p-8 transition-transform hover:-translate-y-1 border border-border">
-          <div className="flex items-center gap-6">
-             <div className="h-16 w-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-inner">
-                <Truck className="h-8 w-8" />
+        <div className="bg-card shadow-soft rounded-[2rem] md:rounded-[2.5rem] overflow-hidden flex items-center p-6 md:p-8 transition-transform hover:-translate-y-1 border border-border hidden md:flex">
+          <div className="flex items-center gap-4 md:gap-6">
+             <div className="h-12 w-12 md:h-16 md:w-16 bg-emerald-500/10 rounded-2xl flex items-center justify-center text-emerald-500 shadow-inner">
+                <Truck className="h-6 w-6 md:h-8 md:w-8" />
              </div>
              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Suppliers</p>
-                <p className="text-4xl font-black text-foreground tracking-tighter mt-1">{suppliers?.length || 0}</p>
+                <p className="text-[10px] md:text-[11px] font-black text-slate-500 uppercase tracking-[0.2em]">Active Suppliers</p>
+                <p className="text-3xl md:text-4xl font-black text-foreground tracking-tighter mt-1">{suppliers?.length || 0}</p>
              </div>
           </div>
         </div>
       </div>
 
       <Tabs defaultValue="stock" className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="bg-secondary p-2 rounded-[1.5rem] self-start shadow-inner border border-border mb-8">
-          <TabsTrigger value="stock" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Stock</TabsTrigger>
-          <TabsTrigger value="recipes" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Recipes (BOM)</TabsTrigger>
-          <TabsTrigger value="suppliers" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Suppliers</TabsTrigger>
-          <TabsTrigger value="po" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Procurement</TabsTrigger>
+        <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
+          <TabsTrigger value="stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Stock</TabsTrigger>
+          <TabsTrigger value="recipes" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Recipes (BOM)</TabsTrigger>
+          <TabsTrigger value="suppliers" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Suppliers</TabsTrigger>
+          <TabsTrigger value="po" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Procurement</TabsTrigger>
         </TabsList>
 
         <div className="flex-1 overflow-y-auto no-scrollbar">
@@ -144,8 +239,8 @@ export default function InventoryPage() {
               <Button variant="outline" className="h-16 px-8 rounded-[2rem] bg-card border-none shadow-soft font-black uppercase tracking-widest text-slate-500 hover:bg-secondary hover:text-foreground"><Filter className="h-5 w-5 mr-3" /> Filter</Button>
             </div>
 
-            <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border">
-              <Table>
+            <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border overflow-x-auto no-scrollbar">
+              <Table className="min-w-[800px]">
                 <TableHeader>
                    <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
                     <TableHead className="px-8 py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 h-14 pl-12">Ingredient</TableHead>

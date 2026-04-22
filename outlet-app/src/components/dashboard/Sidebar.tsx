@@ -139,14 +139,14 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
                       'flex items-center justify-between px-4 py-3.5 text-sm font-bold rounded-2xl transition-all group relative overflow-hidden',
                       isActive
                         ? 'bg-primary text-primary-foreground shadow-glow border border-primary/20'
-                        : 'text-slate-500 hover:bg-secondary hover:text-foreground'
+                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
                     )}
                   >
                      <div className="flex items-center gap-3 relative z-10">
                       <item.icon
                         className={cn(
                           'h-5 w-5 transition-colors',
-                          isActive ? 'text-primary-foreground' : 'text-slate-500 group-hover:text-primary'
+                          isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'
                         )}
                       />
                       {item.name}

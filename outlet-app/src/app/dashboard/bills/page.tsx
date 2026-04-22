@@ -71,23 +71,23 @@ export default function BillsPage() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-background -m-8 p-8 overflow-hidden font-sans">
+    <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] bg-background overflow-hidden font-sans pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 shrink-0">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 shrink-0 gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
             REVENUE
-            <div className="h-4 w-4 bg-primary rounded-full shadow-lg shadow-primary/50" />
+            <div className="h-3 w-3 md:h-4 md:w-4 bg-primary rounded-full shadow-lg shadow-primary/50" />
           </h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">Billing & Settlement Command</p>
+          <p className="text-slate-500 font-medium text-base md:text-lg mt-1">Billing & Settlement Command</p>
         </div>
         
-        <div className="flex items-center gap-4">
-            <div className="relative w-80">
+        <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="relative w-full md:w-80">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                <Input 
                  placeholder="Search bills or tables..." 
-                 className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-card text-foreground"
+                 className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-card text-foreground w-full"
                  value={searchQuery}
                  onChange={(e) => setSearchQuery(e.target.value)}
                />
@@ -95,9 +95,9 @@ export default function BillsPage() {
          </div>
       </div>
 
-      <div className="flex-1 flex gap-8 overflow-hidden">
+      <div className="flex-1 flex flex-col lg:flex-row gap-6 md:gap-8 overflow-hidden">
         {/* Left: Bill List */}
-        <div className="flex-1 overflow-y-auto no-scrollbar space-y-4">
+        <div className="flex-1 overflow-y-auto no-scrollbar space-y-4 pb-4 lg:pb-0">
           {billsLoading ? (
              <div className="py-20 text-center animate-pulse text-slate-400 font-black">SYNCING WITH REVENUE ENGINE...</div>
           ) : filteredBills?.length === 0 ? (
@@ -109,42 +109,42 @@ export default function BillsPage() {
                 key={b.id}
                 onClick={() => setSelectedBillId(b.id)}
                 className={cn(
-                  "p-6 rounded-[2rem] border-2 transition-all duration-300 cursor-pointer group flex items-center justify-between",
+                  "p-4 md:p-6 rounded-[2rem] border-2 transition-all duration-300 cursor-pointer group flex items-center justify-between",
                   selectedBillId === b.id 
                     ? "bg-primary border-primary text-primary-foreground shadow-glow" 
                     : "bg-card border-border hover:border-slate-300 text-slate-500 shadow-soft"
                 )}
               >
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-4 md:gap-6">
                    <div className={cn(
-                    "h-14 w-14 rounded-2xl flex items-center justify-center transition-colors",
+                    "h-12 w-12 md:h-14 md:w-14 rounded-2xl flex items-center justify-center transition-colors shrink-0",
                     selectedBillId === b.id ? "bg-primary-foreground/20" : "bg-secondary group-hover:bg-primary/10"
                   )}>
-                    <Receipt className={cn("h-7 w-7", selectedBillId === b.id ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary")} />
+                    <Receipt className={cn("h-6 w-6 md:h-7 md:w-7", selectedBillId === b.id ? "text-primary-foreground" : "text-slate-400 group-hover:text-primary")} />
                   </div>
                   <div>
-                    <h3 className={cn("text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-primary-foreground" : "text-foreground")}>
+                    <h3 className={cn("text-xl md:text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-primary-foreground" : "text-foreground")}>
                       #{b.bill_number}
                     </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                        <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-primary-foreground/70" : "text-slate-400")}>
+                    <div className="flex items-center gap-2 md:gap-3 mt-1">
+                        <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-primary-foreground/70" : "text-slate-400")}>
                          {b.table_name || 'Counter'}
                        </span>
                        <span className={cn("h-1 w-1 rounded-full", selectedBillId === b.id ? "bg-primary-foreground/40" : "bg-slate-200")} />
-                       <span className={cn("text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-primary-foreground/70" : "text-slate-400")}>
+                       <span className={cn("text-[9px] md:text-[10px] font-black uppercase tracking-widest", selectedBillId === b.id ? "text-primary-foreground/70" : "text-slate-400")}>
                          {new Date(b.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                        </span>
                     </div>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-8 text-right">
+                <div className="flex items-center gap-4 md:gap-8 text-right">
                    <div>
-                    <p className={cn("text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-primary-foreground" : "text-foreground")}>
+                    <p className={cn("text-xl md:text-2xl font-black tracking-tighter", selectedBillId === b.id ? "text-primary-foreground" : "text-foreground")}>
                       ₹{(b.total_paise / 100).toLocaleString()}
                     </p>
                      <Badge className={cn(
-                      "px-3 py-1 rounded-lg font-black text-[9px] uppercase tracking-widest border-none mt-1",
+                      "px-2 py-1 md:px-3 md:py-1 rounded-lg font-black text-[8px] md:text-[9px] uppercase tracking-widest border-none mt-1",
                       b.status === 'paid' 
                         ? (selectedBillId === b.id ? "bg-primary-foreground text-primary" : "bg-emerald-500/10 text-emerald-500") 
                         : (selectedBillId === b.id ? "bg-amber-400 text-white" : "bg-amber-500/10 text-amber-500")
@@ -152,7 +152,7 @@ export default function BillsPage() {
                       {b.status}
                     </Badge>
                    </div>
-                  <ChevronRight className={cn("h-6 w-6 transition-transform", selectedBillId === b.id ? "text-primary-foreground translate-x-1" : "text-slate-300 group-hover:text-primary")} />
+                  <ChevronRight className={cn("h-5 w-5 md:h-6 md:w-6 transition-transform", selectedBillId === b.id ? "text-primary-foreground translate-x-1" : "text-slate-300 group-hover:text-primary")} />
                 </div>
               </motion.div>
             ))
@@ -160,7 +160,10 @@ export default function BillsPage() {
         </div>
 
         {/* Right: Detailed Summary */}
-        <div className="w-[450px] shrink-0">
+        <div className={cn(
+          "w-full lg:w-[450px] shrink-0 overflow-hidden flex-col",
+          selectedBillId ? "flex h-[55vh] lg:h-auto" : "hidden lg:flex lg:h-auto"
+        )}>
           <AnimatePresence mode="wait">
             {selectedBillId && bill ? (
               <motion.div

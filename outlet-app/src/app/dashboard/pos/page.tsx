@@ -343,11 +343,11 @@ export default function POSPage() {
   );
 
   return (
-    <div className="flex flex-col h-[calc(100vh-100px)] gap-6 -m-4 font-sans bg-background">
-      <div className="flex flex-col lg:flex-row gap-8 flex-1 overflow-hidden p-6">
+    <div className="flex flex-col h-[calc(100vh-130px)] gap-6 font-sans bg-background">
+      <div className="flex flex-col lg:flex-row gap-6 flex-1 overflow-hidden md:p-2">
         
         {/* Left: Table & Menu Browser */}
-        <div className="flex-1 flex flex-col gap-8 overflow-hidden">
+        <div className="flex-1 flex flex-col gap-6 overflow-hidden">
           
           {/* Top Bar: Tables */}
           <div className="flex flex-col gap-4 p-6 bg-card rounded-3xl shadow-soft shrink-0 relative border border-border">

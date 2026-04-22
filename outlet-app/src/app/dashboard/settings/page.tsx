@@ -85,26 +85,26 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-8 h-[calc(100vh-120px)] overflow-hidden flex flex-col -m-8 p-8 bg-background font-sans">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] overflow-hidden flex flex-col pb-10 bg-background font-sans">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground uppercase">
             Configuration
           </h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">Fine-tune your restaurant's business rules and layout.</p>
+          <p className="text-slate-500 font-medium text-base md:text-lg mt-1">Fine-tune your restaurant's business rules and layout.</p>
         </div>
-        <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none" onClick={handleSaveProfile}>
-          <Save className="h-5 w-5 mr-3" />
+        <Button className="w-full md:w-auto h-12 md:h-14 px-6 md:px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none" onClick={handleSaveProfile}>
+          <Save className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
           Save Changes
         </Button>
       </div>
 
       <Tabs defaultValue="floor" className="flex-1 flex flex-col overflow-hidden">
-        <TabsList className="bg-secondary p-2 rounded-[1.5rem] self-start shadow-inner border border-border mb-8">
-          <TabsTrigger value="floor" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Visual Floor Plan</TabsTrigger>
-          <TabsTrigger value="profile" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Outlet Profile</TabsTrigger>
-          <TabsTrigger value="business" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Business Rules</TabsTrigger>
-          <TabsTrigger value="receipt" className="rounded-xl px-8 h-12 font-black text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none">Receipt Prefs</TabsTrigger>
+        <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
+          <TabsTrigger value="floor" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Visual Floor Plan</TabsTrigger>
+          <TabsTrigger value="profile" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Outlet Profile</TabsTrigger>
+          <TabsTrigger value="business" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Business Rules</TabsTrigger>
+          <TabsTrigger value="receipt" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Receipt Prefs</TabsTrigger>
         </TabsList>
 
         <div className="flex-1 overflow-y-auto no-scrollbar">

@@ -61,12 +61,12 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-[#0a0a0c] p-6 relative overflow-hidden font-sans">
+    <div className="min-h-screen flex items-center justify-center bg-background p-6 relative overflow-hidden font-sans">
       {/* Dynamic Background Elements */}
-      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-indigo-600/20 rounded-full blur-[120px]" />
-      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-600/10 rounded-full blur-[120px]" />
+      <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-primary/20 rounded-full blur-[120px]" />
+      <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-secondary/30 rounded-full blur-[120px]" />
       
-      <div className="absolute inset-0 z-0 opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
+      <div className="absolute inset-0 z-0 opacity-[0.03] dark:opacity-20 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
       
       <motion.div 
         initial={{ opacity: 0, y: 20 }}
@@ -74,20 +74,20 @@ export default function LoginPage() {
         transition={{ duration: 0.8, ease: "easeOut" }}
         className="w-full max-w-md z-10"
       >
-        <Card className="bg-white/5 backdrop-blur-2xl border border-white/10 shadow-[0_24px_80px_rgba(0,0,0,0.4)] rounded-[2.5rem] overflow-hidden">
+        <Card className="bg-card/80 backdrop-blur-2xl border border-border shadow-2xl rounded-[2.5rem] overflow-hidden">
           <CardHeader className="space-y-4 text-center pb-8 pt-10">
             <div className="flex justify-center">
               <motion.div 
                 whileHover={{ scale: 1.05 }}
-                className="h-20 w-20 bg-indigo-600 rounded-3xl flex items-center justify-center shadow-[0_0_40px_rgba(79,70,229,0.4)] relative group cursor-pointer"
+                className="h-20 w-20 bg-primary rounded-3xl flex items-center justify-center shadow-glow relative group cursor-pointer"
               >
                 <div className="absolute inset-0 bg-white/20 rounded-3xl opacity-0 group-hover:opacity-100 transition-opacity" />
-                <span className="text-white font-black text-4xl tracking-tighter italic">A</span>
+                <span className="text-primary-foreground font-black text-4xl tracking-tighter italic">A</span>
               </motion.div>
             </div>
             <div className="space-y-1">
-              <CardTitle className="text-4xl font-black tracking-tighter text-white uppercase italic">Adruva<span className="text-indigo-500">Resto</span></CardTitle>
-              <CardDescription className="text-slate-400 font-bold tracking-wide text-xs uppercase">
+              <CardTitle className="text-4xl font-black tracking-tighter text-foreground uppercase italic">Adruva<span className="text-primary">Resto</span></CardTitle>
+              <CardDescription className="text-slate-500 font-bold tracking-wide text-xs uppercase">
                 Operational Command Center
               </CardDescription>
             </div>
@@ -100,18 +100,18 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem className="space-y-2">
-                      <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400 ml-1">Email Access</FormLabel>
+                      <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500 ml-1">Email Access</FormLabel>
                       <FormControl>
                         <div className="relative">
                            <Input 
                              placeholder="name@adruvaresto.com" 
                              {...field} 
                              disabled={isLoading} 
-                             className="h-14 rounded-2xl bg-white/5 border-white/10 text-white font-bold placeholder:text-slate-600 focus-visible:ring-indigo-600/30 focus-visible:border-indigo-600/50 transition-all pl-6"
+                             className="h-14 rounded-2xl bg-secondary border-border text-foreground font-bold placeholder:text-slate-400 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all pl-6"
                            />
                         </div>
                       </FormControl>
-                      <FormMessage className="text-red-400 font-bold text-xs" />
+                      <FormMessage className="text-red-500 font-bold text-xs" />
                     </FormItem>
                   )}
                 />
@@ -121,8 +121,8 @@ export default function LoginPage() {
                   render={({ field }) => (
                     <FormItem className="space-y-2">
                       <div className="flex items-center justify-between ml-1">
-                        <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-400">Security Key</FormLabel>
-                        <Button variant="link" size="sm" className="px-0 h-auto font-black text-[10px] uppercase tracking-widest text-indigo-400 hover:text-indigo-300 transition-colors" asChild>
+                        <FormLabel className="text-[10px] font-black uppercase tracking-[0.2em] text-slate-500">Security Key</FormLabel>
+                        <Button variant="link" size="sm" className="px-0 h-auto font-black text-[10px] uppercase tracking-widest text-primary hover:text-primary/80 transition-colors" asChild>
                           <a href="/forgot-password">Reset PIN</a>
                         </Button>
                       </div>
@@ -132,16 +132,16 @@ export default function LoginPage() {
                           placeholder="••••••••" 
                           {...field} 
                           disabled={isLoading} 
-                          className="h-14 rounded-2xl bg-white/5 border-white/10 text-white font-bold placeholder:text-slate-600 focus-visible:ring-indigo-600/30 focus-visible:border-indigo-600/50 transition-all pl-6"
+                          className="h-14 rounded-2xl bg-secondary border-border text-foreground font-bold placeholder:text-slate-400 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all pl-6"
                         />
                       </FormControl>
-                      <FormMessage className="text-red-400 font-bold text-xs" />
+                      <FormMessage className="text-red-500 font-bold text-xs" />
                     </FormItem>
                   )}
                 />
                 <Button 
                   type="submit" 
-                  className="w-full bg-indigo-600 hover:bg-indigo-700 text-white h-16 rounded-2xl font-black text-sm tracking-[0.2em] uppercase shadow-[0_12px_40px_rgba(79,70,229,0.3)] transition-all active:scale-[0.98] border-none" 
+                  className="w-full bg-primary hover:bg-primary/90 text-primary-foreground h-16 rounded-2xl font-black text-sm tracking-[0.2em] uppercase shadow-glow transition-all active:scale-[0.98] border-none" 
                   disabled={isLoading}
                 >
                   {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : 'Authorize Entry'}
@@ -150,7 +150,7 @@ export default function LoginPage() {
             </Form>
           </CardContent>
           <div className="px-8 pb-8 text-center">
-             <p className="text-[9px] font-black text-slate-600 uppercase tracking-widest">
+             <p className="text-[9px] font-black text-slate-500 uppercase tracking-widest">
                 Protected by Adruva Shield &copy; 2026
              </p>
           </div>

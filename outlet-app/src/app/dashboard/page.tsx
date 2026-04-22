@@ -118,7 +118,7 @@ export default function DashboardPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-10 bg-background -m-8 p-10 min-h-screen font-sans">
+    <div className="flex flex-col gap-8 md:gap-10 bg-background min-h-[calc(100vh-120px)] font-sans pb-10">
       
       {/* Header with Glassmorphism */}
       <div className="flex flex-col lg:flex-row lg:items-end justify-between gap-6">
@@ -127,8 +127,8 @@ export default function DashboardPage() {
              <Badge className="bg-indigo-600 text-white border-none px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest shadow-glow">Live Command</Badge>
              <div className="h-1.5 w-1.5 rounded-full bg-emerald-500 animate-ping" />
           </div>
-          <h1 className="text-6xl font-black tracking-tighter text-foreground">SYSTEM PULSE</h1>
-          <p className="text-slate-500 font-medium text-xl mt-2 max-w-xl">Advanced operational oversight and financial intelligence for <span className="text-primary font-bold">Adruva Gourmet</span>.</p>
+          <h1 className="text-4xl md:text-6xl font-black tracking-tighter text-foreground">SYSTEM PULSE</h1>
+          <p className="text-slate-500 font-medium text-lg md:text-xl mt-2 max-w-xl">Advanced operational oversight and financial intelligence for <span className="text-primary font-bold">Adruva Gourmet</span>.</p>
         </div>
         
         <div className="flex items-center gap-4 bg-card/50 backdrop-blur-xl p-3 rounded-[2rem] border border-border shadow-soft">
@@ -205,17 +205,19 @@ export default function DashboardPage() {
                     dataKey="date" 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 'bold'}}
+                    tick={{fill: 'var(--muted-foreground)', fontSize: 11, fontWeight: 'bold'}}
                     tickFormatter={(str) => new Date(str).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}
                   />
                   <YAxis 
                     axisLine={false} 
                     tickLine={false} 
-                    tick={{fill: '#94a3b8', fontSize: 11, fontWeight: 'bold'}}
+                    tick={{fill: 'var(--muted-foreground)', fontSize: 11, fontWeight: 'bold'}}
                     tickFormatter={(val) => `₹${(val/100000).toFixed(1)}L`}
                   />
                   <Tooltip 
-                    contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', padding: '20px'}}
+                    contentStyle={{borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', padding: '20px', backgroundColor: 'var(--card)', color: 'var(--foreground)'}}
+                    itemStyle={{ fontWeight: 'bold', color: 'var(--primary)' }}
+                    labelStyle={{ fontWeight: 'bold', color: 'var(--muted-foreground)' }}
                     formatter={(val: any) => [`₹${(val/100).toLocaleString()}`, 'Revenue']}
                   />
                   <Area 

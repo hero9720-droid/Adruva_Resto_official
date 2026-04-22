@@ -106,13 +106,13 @@ export default function StaffPage() {
   };
 
   return (
-    <div className="space-y-8 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar -m-8 p-8 bg-background font-sans">
-      <div className="flex justify-between items-center">
+    <div className="space-y-6 md:space-y-8 h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] overflow-y-auto no-scrollbar pb-10 bg-background font-sans">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">WORKFORCE</h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">Manage attendance, shifts and staff members.</p>
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground uppercase">WORKFORCE</h1>
+          <p className="text-slate-500 font-medium text-base md:text-lg mt-1">Manage attendance, shifts and staff members.</p>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-row md:flex-row gap-2 md:gap-4 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0 shrink-0">
           <Button 
             variant="outline" 
             onClick={handleClockToggle} 
@@ -206,7 +206,7 @@ export default function StaffPage() {
         </div>
       </div>
 
-      <div className="flex gap-8 border-b border-border">
+      <div className="flex gap-4 md:gap-8 border-b border-border overflow-x-auto no-scrollbar shrink-0">
          {['directory', 'attendance', 'payroll'].map((tab) => (
            <button
              key={tab}
@@ -329,8 +329,8 @@ export default function StaffPage() {
                      </div>
                      <Badge className="bg-secondary text-primary hover:bg-secondary/90 border border-border px-4 py-2 font-black rounded-xl">ALL STAFF</Badge>
                   </div>
-                  <div className="p-0">
-                     <Table>
+                  <div className="p-0 overflow-x-auto no-scrollbar">
+                     <Table className="min-w-[600px]">
                         <TableHeader>
                            <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
                               <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14 pl-8">Staff Name</TableHead>
@@ -392,8 +392,8 @@ export default function StaffPage() {
                         {new Date().toLocaleString('default', { month: 'long', year: 'numeric' })}
                      </Badge>
                   </div>
-                  <div className="p-0">
-                     <Table>
+                  <div className="p-0 overflow-x-auto no-scrollbar">
+                     <Table className="min-w-[600px]">
                         <TableHeader>
                            <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
                               <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14 pl-8">Staff</TableHead>

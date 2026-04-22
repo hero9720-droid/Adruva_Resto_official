@@ -75,12 +75,12 @@ export default function AnalyticsPage() {
   );
 
   return (
-    <div className="space-y-8 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar -m-8 p-8 bg-background font-sans">
+    <div className="space-y-6 md:space-y-8 bg-background font-sans pb-10">
       
       {/* Header */}
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground">
             PERFORMANCE
           </h1>
           <p className="text-slate-500 font-medium text-lg mt-1">Data-driven insights for operational excellence.</p>

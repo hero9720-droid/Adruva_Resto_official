@@ -5,6 +5,8 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import { Menu, X, Bell } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
+import GlobalHeader from '@/components/dashboard/GlobalHeader';
+
 export default function DashboardLayout({
   children,
 }: {
@@ -13,11 +15,11 @@ export default function DashboardLayout({
   const [isMobileOpen, setIsMobileOpen] = useState(false);
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden font-sans text-slate-900">
+    <div className="flex h-screen bg-background overflow-hidden font-sans text-foreground">
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 
-          className="fixed inset-0 bg-slate-900/40 backdrop-blur-sm z-40 md:hidden"
+          className="fixed inset-0 bg-black/50 z-40 md:hidden"
           onClick={() => setIsMobileOpen(false)}
         />
       )}
@@ -29,38 +31,21 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Header */}
-        <header className="flex items-center justify-between px-8 h-20 bg-white/70 backdrop-blur-xl border-b border-slate-200/50 z-30 shrink-0">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="md:hidden" onClick={() => setIsMobileOpen(true)}>
-              <Menu className="h-6 w-6" />
-            </Button>
-            <div className="hidden md:flex flex-col">
-               <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Global Status</span>
-               <div className="flex items-center gap-2">
-                  <div className="h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />
-                  <span className="text-sm font-black text-slate-900">System Online</span>
-               </div>
+        {/* Mobile Header */}
+        <header className="md:hidden flex items-center justify-between p-4 bg-card border-b border-border shadow-sm z-30">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
+              <span className="text-primary-foreground font-black text-lg">A</span>
             </div>
+            <span className="font-black text-foreground tracking-tighter uppercase">Adruva Chain</span>
           </div>
-
-          <div className="flex items-center gap-6">
-             <button className="relative p-2.5 text-slate-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-xl transition-all">
-                <Bell className="h-6 w-6" />
-                <span className="absolute top-2.5 right-2.5 h-2.5 w-2.5 bg-rose-500 border-2 border-white rounded-full" />
-             </button>
-             <div className="h-10 w-px bg-slate-200/50 mx-2" />
-             <div className="flex items-center gap-4 group cursor-pointer">
-                <div className="flex flex-col items-end">
-                   <span className="text-sm font-black text-slate-900">Brand Admin</span>
-                   <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Global Owner</span>
-                </div>
-                <div className="h-12 w-12 bg-gradient-to-tr from-indigo-600 to-indigo-400 rounded-2xl flex items-center justify-center text-white font-black text-lg shadow-lg shadow-indigo-100 group-hover:scale-105 transition-transform">
-                   A
-                </div>
-             </div>
-          </div>
+          <Button variant="ghost" size="icon" onClick={() => setIsMobileOpen(true)} className="h-12 w-12 rounded-xl hover:bg-secondary">
+            <Menu className="h-6 w-6 text-foreground" />
+          </Button>
         </header>
+
+        {/* Global Desktop Header */}
+        <GlobalHeader />
 
         {/* Scrollable Content */}
         <div className="flex-1 overflow-y-auto no-scrollbar">

@@ -68,18 +68,18 @@ export default function OnlineOrdersPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-background -m-8 p-8 overflow-hidden font-sans">
+    <div className="flex flex-col h-[calc(100vh-120px)] bg-background overflow-hidden font-sans pb-10">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8 shrink-0">
+      <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 shrink-0 gap-4">
         <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
+          <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
             ONLINE INBOX
-            <div className="h-4 w-4 bg-primary rounded-full shadow-lg shadow-primary/50" />
+            <div className="h-3 w-3 md:h-4 md:w-4 bg-primary rounded-full shadow-lg shadow-primary/50" />
           </h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">External & QR Order Queue</p>
+          <p className="text-slate-500 font-medium text-base md:text-lg mt-1">External & QR Order Queue</p>
         </div>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
            <div className="flex bg-card p-1.5 rounded-2xl border border-border shadow-soft">
              <Button variant="ghost" className="rounded-xl px-6 font-black text-xs uppercase bg-secondary text-primary shadow-sm border-none">All Orders</Button>
              <Button variant="ghost" className="rounded-xl px-6 font-black text-xs uppercase text-slate-500 hover:text-primary hover:bg-secondary border-none">QR Only</Button>

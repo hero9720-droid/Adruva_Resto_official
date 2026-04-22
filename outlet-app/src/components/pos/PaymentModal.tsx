@@ -186,8 +186,8 @@ export default function PaymentModal({
         </div>
 
         {/* Right Panel: Payment Methods */}
-        <div className="flex-1 p-8 space-y-6 bg-white">
-           <h3 className="text-xl font-black text-slate-900 uppercase tracking-tighter">Select Payment Method</h3>
+        <div className="flex-1 p-8 space-y-6 bg-card">
+           <h3 className="text-xl font-black text-foreground uppercase tracking-tighter">Select Payment Method</h3>
            <div className="grid grid-cols-2 gap-4">
             {[
               { id: 'cash', name: 'Cash', icon: Banknote, color: 'text-green-600', bg: 'bg-green-50' },
@@ -200,14 +200,14 @@ export default function PaymentModal({
                 onClick={() => setMethod(m.id)}
                 className={`flex flex-col items-center justify-center p-6 rounded-3xl border-2 transition-all gap-3 ${
                   method === m.id 
-                    ? 'border-indigo-600 bg-indigo-50 shadow-lg shadow-indigo-100' 
-                    : 'border-slate-100 hover:border-slate-200 bg-white'
+                    ? 'border-primary bg-primary/5 shadow-lg shadow-primary/20' 
+                    : 'border-border hover:border-primary/50 bg-card'
                 }`}
               >
                 <div className={`p-3 rounded-2xl ${m.bg}`}>
                    <m.icon className={`h-6 w-6 ${m.color}`} />
                 </div>
-                <span className={`font-black text-xs uppercase tracking-widest ${method === m.id ? 'text-indigo-600' : 'text-slate-500'}`}>
+                <span className={`font-black text-xs uppercase tracking-widest ${method === m.id ? 'text-primary' : 'text-muted-foreground'}`}>
                    {m.name}
                 </span>
               </button>
@@ -215,7 +215,7 @@ export default function PaymentModal({
           </div>
 
           <Button 
-            className="w-full h-20 bg-slate-900 hover:bg-black text-white rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 shadow-2xl transition-all active:scale-95 disabled:opacity-50"
+            className="w-full h-20 bg-foreground hover:bg-foreground/90 text-background rounded-[2rem] font-black text-xl flex items-center justify-center gap-3 shadow-2xl transition-all active:scale-95 disabled:opacity-50"
             disabled={!method || processing}
             onClick={handlePayment}
           >
@@ -229,7 +229,7 @@ export default function PaymentModal({
             )}
           </Button>
           
-          <p className="text-center text-[10px] text-slate-400 font-bold uppercase tracking-widest">
+          <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
             This will mark the table as available and close the order session.
           </p>
         </div>
