@@ -1,4 +1,4 @@
-const CACHE_NAME = 'adruva-outlet-v1';
+const CACHE_NAME = 'adruva-outlet-v2';
 const STATIC_ASSETS = [
   '/',
   '/manifest.json',

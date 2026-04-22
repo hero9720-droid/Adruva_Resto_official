@@ -24,8 +24,21 @@ export default function RootLayout({
             __html: `
               if ('serviceWorker' in navigator) {
                 window.addEventListener('load', function() {
-                  navigator.worker = navigator.serviceWorker.register('/sw.js').then(
-                    function(reg) { console.log('SW Registered', reg.scope); },
+                  navigator.serviceWorker.register('/sw.js').then(
+                    function(registration) {
+                      console.log('SW Registered', registration.scope);
+                      registration.onupdatefound = () => {
+                        const installingWorker = registration.installing;
+                        if (installingWorker) {
+                          installingWorker.onstatechange = () => {
+                            if (installingWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                              // New content is available; please refresh.
+                              window.location.reload();
+                            }
+                          };
+                        }
+                      };
+                    },
                     function(err) { console.log('SW Failed', err); }
                   );
                 });
