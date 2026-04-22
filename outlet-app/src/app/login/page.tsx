@@ -104,7 +104,7 @@ export default function LoginPage() {
                       <FormControl>
                         <div className="relative">
                            <Input 
-                             placeholder="name@adruvaresto.com" 
+                             placeholder="name@adruva.app" 
                              {...field} 
                              disabled={isLoading} 
                              className="h-14 rounded-2xl bg-secondary border-border text-foreground font-bold placeholder:text-slate-400 focus-visible:ring-primary/30 focus-visible:border-primary/50 transition-all pl-6"
