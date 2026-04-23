@@ -101,6 +101,54 @@ export async function earnLoyaltyPoints(req: Request, res: Response) {
   res.json({ success: true, data: result });
 }
 
+export async function redeemLoyaltyPoints(req: Request, res: Response) {
+  const outlet_id = req.user.outlet_id;
+  const chain_id  = req.user.chain_id;
+  const { customer_id, points, bill_id } = req.body;
+
+  if (!points || points <= 0) throw new AppError(400, 'Invalid points to redeem', 'BAD_REQUEST');
+
+  const result = await withOutletContext(outlet_id, async (client) => {
+    // Check if customer has enough points
+    const customerRes = await db.query('SELECT loyalty_points FROM customers WHERE id = $1', [customer_id]);
+    if ((customerRes.rowCount ?? 0) === 0) throw new AppError(404, 'Customer not found', 'NOT_FOUND');
+    
+    if (customerRes.rows[0].loyalty_points < points) {
+      throw new AppError(400, 'Insufficient loyalty points', 'INSUFFICIENT_POINTS');
+    }
+
+    // Deduct points
+    await db.query(
+      `UPDATE customers
+       SET loyalty_points = loyalty_points - $1,
+           updated_at = NOW()
+       WHERE id = $2`,
+      [points, customer_id]
+    );
+
+    // Record redemption
+    await client.query(
+      `INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, bill_id, type, points)
+       VALUES ($1, $2, $3, $4, 'redeem', $5)`,
+      [customer_id, chain_id, outlet_id, bill_id, points]
+    );
+
+    // Update bill if provided (apply discount simulation)
+    if (bill_id) {
+       // ₹1 per 1 point (standard redemption)
+       const discount_paise = points * 100;
+       await client.query(
+         'UPDATE bills SET total_paise = GREATEST(0, total_paise - $1) WHERE id = $2',
+         [discount_paise, bill_id]
+       );
+    }
+
+    return { points_redeemed: points };
+  });
+
+  res.json({ success: true, data: result });
+}
+
 export async function getCustomerHistory(req: Request, res: Response) {
   const { id } = req.params;
   const chain_id = req.user.chain_id;

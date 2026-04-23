@@ -16,9 +16,11 @@ import {
   Utensils,
   Trash2,
   Smartphone,
-  Mail
+  Mail,
+  FileText
 } from 'lucide-react';
 import api from '@/lib/api';
+import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -36,9 +38,8 @@ import {
   TabsList, 
   TabsTrigger 
 } from '@/components/ui/tabs';
-import { useIngredients, useSuppliers, useRecordMovement, useCreateIngredient } from '@/hooks/useInventory';
+import { useIngredients, useSuppliers, useRecordMovement, useCreateIngredient, useCreateSupplier, useUpdateSupplier, useDeleteSupplier, useMovements } from '@/hooks/useInventory';
 import { useMenuItems } from '@/hooks/useMenu';
-import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import {
   Dialog,
@@ -46,12 +47,15 @@ import {
   DialogHeader,
   DialogTitle,
   DialogTrigger,
+  DialogFooter,
 } from '@/components/ui/dialog';
+import { Label } from '@/components/ui/label';
 
 export default function InventoryPage() {
   const { data: ingredients, isLoading: itemsLoading } = useIngredients();
   const { data: suppliers } = useSuppliers();
   const { data: menuItems } = useMenuItems();
+  const { data: movements } = useMovements();
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
   const { toast } = useToast();
@@ -65,6 +69,71 @@ export default function InventoryPage() {
     low_threshold: 10,
     current_stock: 0
   });
+
+  const [isSupplierDialogOpen, setIsSupplierDialogOpen] = useState(false);
+  const [editingSupplier, setEditingSupplier] = useState<any>(null);
+  const [supplierForm, setSupplierForm] = useState({
+    name: '',
+    contact_person: '',
+    email: '',
+    phone: '',
+    address: '',
+    gstin: ''
+  });
+
+  const createSupplier = useCreateSupplier();
+  const updateSupplier = useUpdateSupplier();
+  const deleteSupplier = useDeleteSupplier();
+
+  const openSupplierDialog = (supplier?: any) => {
+    if (supplier) {
+      setEditingSupplier(supplier);
+      setSupplierForm({
+        name: supplier.name,
+        contact_person: supplier.contact_person || '',
+        email: supplier.email || '',
+        phone: supplier.phone || '',
+        address: supplier.address || '',
+        gstin: supplier.gstin || ''
+      });
+    } else {
+      setEditingSupplier(null);
+      setSupplierForm({
+        name: '',
+        contact_person: '',
+        email: '',
+        phone: '',
+        address: '',
+        gstin: ''
+      });
+    }
+    setIsSupplierDialogOpen(true);
+  };
+
+  const handleSaveSupplier = async () => {
+    try {
+      if (editingSupplier) {
+        await updateSupplier.mutateAsync({ id: editingSupplier.id, ...supplierForm });
+        toast({ title: 'Supplier Updated', description: `${supplierForm.name} updated successfully.` });
+      } else {
+        await createSupplier.mutateAsync(supplierForm);
+        toast({ title: 'Supplier Registered', description: `${supplierForm.name} registered successfully.` });
+      }
+      setIsSupplierDialogOpen(false);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Save Failed' });
+    }
+  };
+
+  const handleDeleteSupplier = async (id: string) => {
+    if (!confirm('Are you sure you want to delete this supplier?')) return;
+    try {
+      await deleteSupplier.mutateAsync(id);
+      toast({ title: 'Supplier Deleted' });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Delete Failed' });
+    }
+  };
 
   const lowStockItems = ingredients?.filter((i: any) => i.current_stock <= i.low_threshold) || [];
 
@@ -96,7 +165,7 @@ export default function InventoryPage() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] overflow-hidden flex flex-col pb-10 bg-background font-sans">
+    <div className="space-y-6 md:space-y-8 min-h-0 flex flex-col pb-10 bg-background font-sans">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground uppercase">
@@ -223,31 +292,33 @@ export default function InventoryPage() {
 
       <Tabs defaultValue="stock" className="flex-1 flex flex-col overflow-hidden">
         <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
-          <TabsTrigger value="stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Stock</TabsTrigger>
+          <TabsTrigger value="stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Stock Registry</TabsTrigger>
+          <TabsTrigger value="low-stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/20 text-slate-500 hover:text-red-500 transition-all border-none whitespace-nowrap">Stock Alerts ({lowStockItems.length})</TabsTrigger>
           <TabsTrigger value="recipes" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Recipes (BOM)</TabsTrigger>
           <TabsTrigger value="suppliers" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Suppliers</TabsTrigger>
-          <TabsTrigger value="po" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Procurement</TabsTrigger>
+          <TabsTrigger value="history" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Movement Log</TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        </TabsList>
+
+        <div className="flex-1">
           <TabsContent value="stock" className="space-y-6 mt-0">
             <div className="flex gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
                 <Input placeholder="Search ingredients..." className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-card text-foreground placeholder:text-slate-500" />
               </div>
-              <Button variant="outline" className="h-16 px-8 rounded-[2rem] bg-card border-none shadow-soft font-black uppercase tracking-widest text-slate-500 hover:bg-secondary hover:text-foreground"><Filter className="h-5 w-5 mr-3" /> Filter</Button>
             </div>
 
-            <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border overflow-x-auto no-scrollbar">
-              <Table className="min-w-[800px]">
+            <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border">
+              <Table>
                 <TableHeader>
                    <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
-                    <TableHead className="px-8 py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 h-14 pl-12">Ingredient</TableHead>
-                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 h-14">Category</TableHead>
-                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 h-14">Current Stock</TableHead>
-                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 h-14">Cost/Unit</TableHead>
-                    <TableHead className="px-8 py-6 text-right font-black uppercase text-[11px] tracking-widest text-slate-500 h-14 pr-12">Action</TableHead>
+                    <TableHead className="px-8 py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 pl-12">Ingredient</TableHead>
+                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Category</TableHead>
+                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Current Stock</TableHead>
+                    <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Cost/Unit</TableHead>
+                    <TableHead className="px-8 py-6 text-right font-black uppercase text-[11px] tracking-widest text-slate-500 pr-12">Action</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -269,12 +340,12 @@ export default function InventoryPage() {
                               {item.current_stock}
                             </span>
                             {item.current_stock <= item.low_threshold && (
-                              <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] px-3 py-1.5 uppercase tracking-widest">REPLENISH</Badge>
+                              <Badge className="bg-red-500/10 text-red-500 border-none font-black text-[9px] px-3 py-1.5 uppercase tracking-widest">CRITICAL</Badge>
                             )}
                           </div>
                           <div className="w-40 h-3 bg-secondary rounded-full overflow-hidden shadow-inner p-0.5">
                             <div 
-                              className={cn("h-full rounded-full transition-all duration-500", item.current_stock <= item.low_threshold ? 'bg-red-500' : 'bg-primary')} 
+                              className={cn("h-full rounded-full transition-all duration-500 shadow-glow", item.current_stock <= item.low_threshold ? 'bg-red-500' : 'bg-primary')} 
                               style={{width: `${Math.min(100, (item.current_stock / (Math.max(1, item.low_threshold) * 2)) * 100)}%`}} 
                             />
                           </div>
@@ -282,13 +353,51 @@ export default function InventoryPage() {
                       </TableCell>
                       <TableCell className="font-black text-foreground text-lg">₹{(item.avg_cost_paise / 100).toFixed(2)}</TableCell>
                       <TableCell className="px-8 py-6 text-right pr-12">
-                         <Button variant="ghost" className="h-12 px-6 rounded-2xl font-black text-primary hover:bg-secondary uppercase tracking-widest text-xs">UPDATE</Button>
+                         <Button variant="ghost" className="h-12 px-6 rounded-2xl font-black text-primary hover:bg-secondary uppercase tracking-widest text-[10px]">Adjust</Button>
                       </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
               </Table>
             </div>
+          </TabsContent>
+
+          <TabsContent value="low-stock" className="mt-0">
+             <div className="bg-card shadow-soft rounded-[2.5rem] border border-border p-10">
+                <div className="flex items-center gap-5 mb-10">
+                   <div className="h-16 w-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 shadow-inner">
+                      <AlertTriangle className="h-8 w-8" />
+                   </div>
+                   <div>
+                      <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">Critical Stock Alerts</h2>
+                      <p className="text-slate-400 font-black text-[11px] uppercase tracking-widest mt-1">Immediate action required for these items</p>
+                   </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                   {lowStockItems.map((item: any) => (
+                      <div key={item.id} className="p-6 rounded-[2rem] bg-background border-2 border-red-500/20 flex flex-col gap-4 group hover:border-red-500 transition-all">
+                         <div className="flex justify-between items-start">
+                            <div>
+                               <h4 className="font-black text-foreground text-xl tracking-tight">{item.name}</h4>
+                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">{item.category}</p>
+                            </div>
+                            <Badge className="bg-red-500 text-white border-none font-black text-[10px] px-3 py-1">LOW</Badge>
+                         </div>
+                         <div className="flex justify-between items-end">
+                            <div>
+                               <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">In Stock</p>
+                               <p className="text-3xl font-black text-red-600 tracking-tighter">{item.current_stock} {item.unit}</p>
+                            </div>
+                            <Button className="h-12 px-6 rounded-xl bg-foreground text-background font-black text-[10px] uppercase tracking-widest hover:bg-primary hover:text-white transition-all">Restock</Button>
+                         </div>
+                      </div>
+                   ))}
+                   {lowStockItems.length === 0 && (
+                      <div className="col-span-full py-20 text-center text-slate-400 font-black uppercase tracking-widest">All stock levels are optimal.</div>
+                   )}
+                </div>
+             </div>
           </TabsContent>
 
           <TabsContent value="recipes" className="mt-0 space-y-6">
@@ -307,13 +416,13 @@ export default function InventoryPage() {
                           : "border-transparent hover:border-border bg-background"
                       )}
                     >
-                      <div className="flex justify-between items-center rotate-0">
+                      <div className="flex justify-between items-center">
                          <div className="flex items-center gap-5">
                             <div className="h-14 w-14 bg-secondary rounded-xl overflow-hidden border border-border shadow-sm group-hover:scale-105 transition-transform">
-                               <img src={item.photo_url} className="w-full h-full object-cover" alt="" />
+                               <img src={item.photo_url || 'https://images.unsplash.com/photo-1546069901-ba9599a7e63c?w=400'} className="w-full h-full object-cover" alt="" />
                             </div>
                             <span className={cn("font-black text-lg text-left leading-tight", selectedMenuItem === item.id ? "text-primary" : "text-slate-500 group-hover:text-foreground")}>
-                              {item.name}
+                               {item.name}
                             </span>
                          </div>
                          <ChevronRight className={cn("h-6 w-6 transition-transform", selectedMenuItem === item.id ? "text-primary translate-x-1" : "text-slate-400")} />
@@ -328,7 +437,7 @@ export default function InventoryPage() {
                    <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter">2. Recipe Composition</h2>
                    <Button 
                     disabled={!selectedMenuItem}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 h-12 font-black text-xs tracking-widest uppercase disabled:opacity-50"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl px-6 h-12 font-black text-[10px] tracking-widest uppercase disabled:opacity-50"
                     onClick={() => setRecipeIngredients([...recipeIngredients, { ingredient_id: ingredients?.[0]?.id, quantity: 0 }])}
                    >
                      ADD INGREDIENT
@@ -339,17 +448,17 @@ export default function InventoryPage() {
                    {!selectedMenuItem ? (
                      <div className="h-full flex flex-col items-center justify-center text-slate-400">
                         <Utensils className="h-20 w-20 opacity-20 mb-6" />
-                        <p className="font-black uppercase tracking-[0.2em] text-sm">Select a menu item to start</p>
+                        <p className="font-black uppercase tracking-[0.2em] text-xs">Select a menu item to start</p>
                      </div>
                    ) : recipeIngredients.length === 0 ? (
                      <div className="h-full flex flex-col items-center justify-center text-slate-400">
-                        <p className="font-black uppercase tracking-[0.2em] text-sm">No ingredients linked yet</p>
+                        <p className="font-black uppercase tracking-[0.2em] text-xs">No ingredients linked yet</p>
                      </div>
                    ) : (
                      recipeIngredients.map((ri, idx) => (
                        <div key={idx} className="flex gap-4 items-center bg-background p-4 rounded-[1.5rem] border border-border">
                           <select 
-                            className="flex-1 h-14 rounded-2xl border-none bg-card px-6 font-black text-foreground text-lg shadow-sm focus:ring-2 focus:ring-primary outline-none"
+                            className="flex-1 h-14 rounded-2xl border-none bg-card px-6 font-black text-foreground text-sm shadow-sm focus:ring-2 focus:ring-primary outline-none"
                             value={ri.ingredient_id}
                             onChange={(e) => {
                                const next = [...recipeIngredients];
@@ -362,7 +471,7 @@ export default function InventoryPage() {
                           <Input 
                             type="number" 
                             placeholder="Qty" 
-                            className="w-28 h-14 rounded-2xl border-none bg-card font-black text-lg text-center shadow-sm focus-visible:ring-primary text-foreground"
+                            className="w-24 h-14 rounded-2xl border-none bg-card font-black text-sm text-center shadow-sm focus-visible:ring-primary text-foreground"
                             value={ri.quantity || ''}
                             onChange={(e) => {
                                const next = [...recipeIngredients];
@@ -385,7 +494,7 @@ export default function InventoryPage() {
 
                 {selectedMenuItem && (
                   <Button 
-                    className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-[1.5rem] font-black text-sm tracking-widest uppercase shadow-xl shadow-primary/30 transition-all active:scale-[0.98] border-none"
+                    className="w-full h-16 bg-primary hover:bg-primary/90 text-primary-foreground rounded-[1.5rem] font-black text-xs tracking-widest uppercase shadow-xl shadow-primary/30 transition-all active:scale-[0.98] border-none"
                     onClick={handleSaveRecipe}
                   >
                     SAVE RECIPE & LINK INVENTORY
@@ -395,10 +504,67 @@ export default function InventoryPage() {
             </div>
           </TabsContent>
 
+          <TabsContent value="history" className="mt-0">
+             <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border">
+               <Table>
+                 <TableHeader>
+                   <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
+                     <TableHead className="px-8 py-6 font-black uppercase text-[11px] tracking-widest text-slate-500 pl-12">Date & Time</TableHead>
+                     <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Ingredient</TableHead>
+                     <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Type</TableHead>
+                     <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Quantity</TableHead>
+                     <TableHead className="py-6 font-black uppercase text-[11px] tracking-widest text-slate-500">Staff</TableHead>
+                     <TableHead className="px-8 py-6 text-right font-black uppercase text-[11px] tracking-widest text-slate-500 pr-12">Total Cost</TableHead>
+                   </TableRow>
+                 </TableHeader>
+                 <TableBody>
+                   {movements?.map((m: any) => (
+                     <TableRow key={m.id} className="border-border hover:bg-secondary/50 transition-colors">
+                       <TableCell className="px-8 py-6 pl-12 font-bold text-slate-500 text-xs">
+                         {new Date(m.created_at).toLocaleString()}
+                       </TableCell>
+                       <TableCell className="font-black text-foreground text-lg tracking-tight">
+                         {m.ingredient_name}
+                       </TableCell>
+                       <TableCell>
+                         <Badge className={cn(
+                           "border-none px-4 py-2 font-black text-[9px] uppercase tracking-widest rounded-xl",
+                           m.type === 'purchase' ? 'bg-emerald-500/10 text-emerald-500' :
+                           m.type === 'waste' ? 'bg-red-500/10 text-red-500' :
+                           'bg-indigo-500/10 text-indigo-500'
+                         )}>
+                           {m.type}
+                         </Badge>
+                       </TableCell>
+                       <TableCell className="font-black text-lg">
+                         {m.quantity}
+                       </TableCell>
+                       <TableCell className="font-bold text-slate-500 text-xs uppercase">
+                         {m.staff_name || 'SYSTEM'}
+                       </TableCell>
+                       <TableCell className="px-8 py-6 pr-12 text-right font-black text-foreground text-lg">
+                         ₹{(m.total_cost_paise / 100).toLocaleString()}
+                       </TableCell>
+                     </TableRow>
+                   ))}
+                   {movements?.length === 0 && (
+                      <TableRow>
+                         <TableCell colSpan={6} className="py-20 text-center text-slate-400 font-black uppercase tracking-widest">No movement records found.</TableCell>
+                      </TableRow>
+                   )}
+                 </TableBody>
+               </Table>
+             </div>
+          </TabsContent>
+
           <TabsContent value="suppliers" className="mt-0">
              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
-              {suppliers?.map((s: any) => (
-                <div key={s.id} className="bg-card shadow-soft border border-border rounded-[2.5rem] p-8 hover:border-primary hover:shadow-xl transition-all cursor-pointer group">
+               {suppliers?.map((s: any) => (
+                <div 
+                  key={s.id} 
+                  onClick={() => openSupplierDialog(s)}
+                  className="bg-card shadow-soft border border-border rounded-[2.5rem] p-8 hover:border-primary hover:shadow-xl transition-all cursor-pointer group relative"
+                >
                   <div className="flex justify-between items-start mb-8">
                      <div className="h-20 w-20 bg-secondary rounded-3xl flex items-center justify-center group-hover:bg-primary/10 transition-colors shadow-inner">
                         <Truck className="h-10 w-10 text-primary/40 group-hover:text-primary transition-colors" />
@@ -406,7 +572,7 @@ export default function InventoryPage() {
                      <Badge className="bg-emerald-500/10 text-emerald-500 border-none font-black px-4 py-2 text-[10px] uppercase tracking-widest rounded-xl">Active</Badge>
                   </div>
                   <h3 className="text-3xl font-black text-foreground tracking-tighter mb-2">{s.name}</h3>
-                  <p className="text-slate-400 font-black text-xs uppercase tracking-[0.2em] mb-8">{s.contact_person || 'GENERAL SUPPLIER'}</p>
+                  <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mb-8">{s.contact_person || 'GENERAL SUPPLIER'}</p>
                   
                   <div className="space-y-4">
                      <div className="flex items-center gap-4 text-sm font-bold text-slate-500">
@@ -418,9 +584,21 @@ export default function InventoryPage() {
                         <span className="truncate text-lg">{s.email || 'N/A'}</span>
                      </div>
                   </div>
+
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    className="absolute top-4 right-4 h-10 w-10 text-slate-300 hover:text-red-500 hover:bg-red-50"
+                    onClick={(e) => { e.stopPropagation(); handleDeleteSupplier(s.id); }}
+                  >
+                    <Trash2 className="h-5 w-5" />
+                  </Button>
                 </div>
               ))}
-              <button className="h-[380px] border-[3px] border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center gap-6 text-slate-400 hover:border-primary hover:text-primary hover:bg-secondary transition-all group">
+              <button 
+                onClick={() => openSupplierDialog()}
+                className="h-[380px] border-[3px] border-dashed border-border rounded-[2.5rem] flex flex-col items-center justify-center gap-6 text-slate-400 hover:border-primary hover:text-primary hover:bg-secondary transition-all group"
+              >
                  <div className="h-20 w-20 rounded-[2rem] border-[3px] border-dashed border-border flex items-center justify-center group-hover:border-primary">
                     <Plus className="h-10 w-10" />
                  </div>
@@ -428,27 +606,100 @@ export default function InventoryPage() {
               </button>
             </div>
           </TabsContent>
-          <TabsContent value="po" className="mt-0">
-             <div className="bg-card shadow-soft rounded-[2.5rem] p-10 flex flex-col items-center justify-center text-center border border-border">
-                <div className="h-32 w-32 bg-secondary rounded-[2.5rem] flex items-center justify-center mb-8 shadow-inner">
-                   <Truck className="h-14 w-14 text-primary" />
-                </div>
-                <h2 className="text-4xl font-black text-foreground tracking-tighter mb-4 uppercase">Procurement Engine</h2>
-                <p className="text-slate-500 font-medium text-lg max-w-xl mx-auto mb-10 leading-relaxed">
-                   Track purchase orders, manage vendor lead times, and reconcile received goods against digital invoices in one unified procurement hub.
-                </p>
-                <div className="flex gap-4">
-                   <Button className="h-16 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-glow tracking-widest uppercase border-none">
-                      <Plus className="h-5 w-5 mr-3" /> Create Purchase Order
-                   </Button>
-                   <Button variant="outline" className="h-16 px-10 rounded-2xl border-2 border-border font-black tracking-widest uppercase text-slate-500 hover:bg-secondary hover:text-foreground">
-                      View Open POs
-                   </Button>
-                </div>
-             </div>
-          </TabsContent>
         </div>
       </Tabs>
+
+      {/* Supplier CRUD Dialog */}
+      <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>
+        <DialogContent className="bg-card rounded-[2.5rem] border-border shadow-2xl p-10 max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-black text-foreground tracking-tighter uppercase">
+              {editingSupplier ? 'Update Supplier' : 'New Vendor Profile'}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid grid-cols-2 gap-6 py-6">
+             <div className="space-y-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Company Name *</Label>
+               <Input 
+                 placeholder="e.g. Fresh Veggies Ltd." 
+                 value={supplierForm.name}
+                 onChange={(e) => setSupplierForm({...supplierForm, name: e.target.value})}
+                 className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Contact Person</Label>
+               <Input 
+                 placeholder="Full Name" 
+                 value={supplierForm.contact_person}
+                 onChange={(e) => setSupplierForm({...supplierForm, contact_person: e.target.value})}
+                 className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+               />
+             </div>
+             <div className="space-y-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Phone Number</Label>
+               <div className="relative">
+                 <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                 <Input 
+                   placeholder="+91 00000 00000" 
+                   value={supplierForm.phone}
+                   onChange={(e) => setSupplierForm({...supplierForm, phone: e.target.value})}
+                   className="pl-12 h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                 />
+               </div>
+             </div>
+             <div className="space-y-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Email Address</Label>
+               <div className="relative">
+                 <Mail className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                 <Input 
+                   placeholder="supplier@example.com" 
+                   value={supplierForm.email}
+                   onChange={(e) => setSupplierForm({...supplierForm, email: e.target.value})}
+                   className="pl-12 h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                 />
+               </div>
+             </div>
+             <div className="space-y-2 col-span-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">GSTIN Registry</Label>
+               <div className="relative">
+                 <FileText className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                 <Input 
+                   placeholder="22AAAAA0000A1Z5" 
+                   value={supplierForm.gstin}
+                   onChange={(e) => setSupplierForm({...supplierForm, gstin: e.target.value})}
+                   className="pl-12 h-14 rounded-2xl bg-secondary border-none font-bold text-foreground uppercase"
+                 />
+               </div>
+             </div>
+             <div className="space-y-2 col-span-2">
+               <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Registered Address</Label>
+               <Input 
+                 placeholder="Full office or warehouse address" 
+                 value={supplierForm.address}
+                 onChange={(e) => setSupplierForm({...supplierForm, address: e.target.value})}
+                 className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+               />
+             </div>
+          </div>
+          <DialogFooter className="gap-4">
+             <Button 
+               variant="ghost" 
+               onClick={() => setIsSupplierDialogOpen(false)}
+               className="h-16 rounded-2xl font-black uppercase tracking-widest text-slate-400"
+             >
+               Discard
+             </Button>
+             <Button 
+               onClick={handleSaveSupplier}
+               disabled={!supplierForm.name}
+               className="h-16 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest border-none px-10 shadow-glow"
+             >
+               {editingSupplier ? 'Update Profile' : 'Confirm Registration'}
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

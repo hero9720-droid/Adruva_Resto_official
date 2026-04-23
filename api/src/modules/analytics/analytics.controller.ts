@@ -53,7 +53,20 @@ export async function getSalesOverview(req: Request, res: Response) {
         AND created_at >= date_trunc('day', NOW())
     `, [outlet_id]);
 
-    // 4. This week vs last week comparison
+    // 4. Category breakdown
+    const categoryBreakdown = await client.query(`
+      SELECT 
+        mi.category,
+        COALESCE(SUM(oi.total_paise), 0)::int AS total_revenue
+      FROM order_items oi
+      JOIN menu_items mi ON mi.id = oi.menu_item_id
+      WHERE oi.outlet_id = $1
+        AND oi.created_at >= NOW() - INTERVAL '${interval}'
+      GROUP BY mi.category
+      ORDER BY total_revenue DESC
+    `, [outlet_id]);
+
+    // 5. This week vs last week comparison
     const weekComparison = await client.query(`
       SELECT
         COALESCE(SUM(CASE WHEN created_at >= date_trunc('week', NOW()) THEN total_paise END), 0)::int AS this_week,
@@ -64,10 +77,11 @@ export async function getSalesOverview(req: Request, res: Response) {
     `, [outlet_id]);
 
     return {
-      salesTrend:      salesTrend.rows,
-      paymentMethods:  paymentMethods.rows,
-      today:           metrics.rows[0],
-      weekComparison:  weekComparison.rows[0],
+      salesTrend:        salesTrend.rows,
+      paymentMethods:    paymentMethods.rows,
+      categoryBreakdown: categoryBreakdown.rows,
+      today:             metrics.rows[0],
+      weekComparison:    weekComparison.rows[0],
     };
   });
 

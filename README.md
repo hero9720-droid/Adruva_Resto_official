@@ -10,27 +10,31 @@ The platform is divided into four main pillars:
    - Node.js / Express / TypeScript
    - PostgreSQL (Supabase) + Redis (Session/Cache)
    - Multi-tenant architecture with Row-Level Security (RLS)
-   - Real-time WebSockets via `socket.io`
+   - Real-time WebSockets via `socket.io` for KDS/Pulse
+   - Integrated Razorpay Subscriptions & GST Invoicing
 
-2. **`outlet-app/` (Operational POS & Management)**
+2. **`outlet-app/` (Operational Command Center)**
    - Next.js 15 / Tailwind CSS / Shadcn UI
-   - Touch-optimized Point of Sale (POS)
-   - Real-time Kitchen Display System (KDS)
-   - Inventory, Staff, and CRM modules
+   - **Advanced POS**: N-way split billing, custom variants, and modifiers
+   - **Live Pulse**: Real-time table occupancy grid and system health telemetry
+   - **AI Inventory**: Low-stock alerts, supplier registry, and movement tracking
+   - **Operational KDS**: Multi-station kitchen display with timer tracking
 
 3. **`chain-app/` (Multi-Unit Command Center)**
    - Next.js 15
    - Consolidated revenue reporting across outlets
-   - Master Menu synchronization
+   - **Global Governance**: Master Menu synchronization and chain-wide loyalty
 
 4. **`superadmin-app/` (SaaS HQ)**
    - Next.js 15
    - Global subscription management and health monitoring
+   - Automated entity provisioning and billing oversight
 
-5. **`customer-app/` (Digital Menu & Ordering)**
+5. **`customer-app/` (Digital Experience)**
    - Next.js 15 / Framer Motion
-   - Mobile-first digital menu for guests
-   - QR-code based ordering and loyalty tracking
+   - **Interactive Menu**: Multi-lingual digital menu for guests
+   - **Loyalty Wallet**: QR-based ordering and point redemption
+   - **Feedback Loop**: Integrated guest review management
 
 ## Getting Started
 

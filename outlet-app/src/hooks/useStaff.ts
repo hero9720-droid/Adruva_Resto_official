@@ -37,6 +37,20 @@ export function useAttendance(params?: any) {
       const { data } = await api.post('/staff/clock-in');
       return data.data;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['staff', 'current-status'] });
+      const previousStatus = queryClient.getQueryData(['staff', 'current-status']);
+      queryClient.setQueryData(['staff', 'current-status'], (old: any) => ({
+        ...old,
+        isClockedIn: true
+      }));
+      return { previousStatus };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousStatus) {
+        queryClient.setQueryData(['staff', 'current-status'], context.previousStatus);
+      }
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['staff', 'current-status'] });
@@ -47,6 +61,20 @@ export function useAttendance(params?: any) {
     mutationFn: async () => {
       const { data } = await api.post('/staff/clock-out');
       return data.data;
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['staff', 'current-status'] });
+      const previousStatus = queryClient.getQueryData(['staff', 'current-status']);
+      queryClient.setQueryData(['staff', 'current-status'], (old: any) => ({
+        ...old,
+        isClockedIn: false
+      }));
+      return { previousStatus };
+    },
+    onError: (err, variables, context) => {
+      if (context?.previousStatus) {
+        queryClient.setQueryData(['staff', 'current-status'], context.previousStatus);
+      }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
@@ -75,6 +103,18 @@ export function useShift() {
       const { data } = await api.post('/staff/shifts/start', values);
       return data.data;
     },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['staff', 'current-status'] });
+      const previousStatus = queryClient.getQueryData(['staff', 'current-status']);
+      queryClient.setQueryData(['staff', 'current-status'], (old: any) => ({
+        ...old,
+        isShiftActive: true
+      }));
+      return { previousStatus };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previousStatus) queryClient.setQueryData(['staff', 'current-status'], context.previousStatus);
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });
       queryClient.invalidateQueries({ queryKey: ['staff', 'current-status'] });
@@ -85,6 +125,18 @@ export function useShift() {
     mutationFn: async (values?: any) => {
       const { data } = await api.post('/staff/shifts/end', values);
       return data.data;
+    },
+    onMutate: async () => {
+      await queryClient.cancelQueries({ queryKey: ['staff', 'current-status'] });
+      const previousStatus = queryClient.getQueryData(['staff', 'current-status']);
+      queryClient.setQueryData(['staff', 'current-status'], (old: any) => ({
+        ...old,
+        isShiftActive: false
+      }));
+      return { previousStatus };
+    },
+    onError: (err, vars, context) => {
+      if (context?.previousStatus) queryClient.setQueryData(['staff', 'current-status'], context.previousStatus);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['attendance'] });

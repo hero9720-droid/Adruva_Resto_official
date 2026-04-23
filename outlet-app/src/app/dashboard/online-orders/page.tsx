@@ -23,6 +23,7 @@ import { Badge } from '@/components/ui/badge';
 
 export default function OnlineOrdersPage() {
   const [orders, setOrders] = useState<any[]>([]);
+  const [activeFilter, setActiveFilter] = useState<'all' | 'qr' | 'online'>('all');
   const { socket } = useSocket('billing');
   const { toast } = useToast();
 
@@ -81,9 +82,36 @@ export default function OnlineOrdersPage() {
         
         <div className="flex items-center gap-4 w-full md:w-auto overflow-x-auto no-scrollbar pb-2 md:pb-0">
            <div className="flex bg-card p-1.5 rounded-2xl border border-border shadow-soft">
-             <Button variant="ghost" className="rounded-xl px-6 font-black text-xs uppercase bg-secondary text-primary shadow-sm border-none">All Orders</Button>
-             <Button variant="ghost" className="rounded-xl px-6 font-black text-xs uppercase text-slate-500 hover:text-primary hover:bg-secondary border-none">QR Only</Button>
-             <Button variant="ghost" className="rounded-xl px-6 font-black text-xs uppercase text-slate-500 hover:text-primary hover:bg-secondary border-none">Aggregators</Button>
+             <Button 
+              variant="ghost" 
+              onClick={() => setActiveFilter('all')}
+              className={cn(
+                "rounded-xl px-6 font-black text-xs uppercase transition-all border-none",
+                activeFilter === 'all' ? "bg-secondary text-primary shadow-sm" : "text-slate-500 hover:text-primary hover:bg-secondary"
+              )}
+             >
+              All Orders
+             </Button>
+             <Button 
+              variant="ghost" 
+              onClick={() => setActiveFilter('qr')}
+              className={cn(
+                "rounded-xl px-6 font-black text-xs uppercase transition-all border-none",
+                activeFilter === 'qr' ? "bg-secondary text-primary shadow-sm" : "text-slate-500 hover:text-primary hover:bg-secondary"
+              )}
+             >
+              QR Only
+             </Button>
+             <Button 
+              variant="ghost" 
+              onClick={() => setActiveFilter('online')}
+              className={cn(
+                "rounded-xl px-6 font-black text-xs uppercase transition-all border-none",
+                activeFilter === 'online' ? "bg-secondary text-primary shadow-sm" : "text-slate-500 hover:text-primary hover:bg-secondary"
+              )}
+             >
+              Aggregators
+             </Button>
            </div>
         </div>
       </div>
@@ -100,7 +128,9 @@ export default function OnlineOrdersPage() {
                  <p className="text-slate-500 font-medium mt-1">New online orders will appear here in real-time.</p>
               </div>
             ) : (
-              orders.map((order) => (
+              orders
+                .filter(o => activeFilter === 'all' ? true : o.source === activeFilter)
+                .map((order) => (
                 <motion.div
                   layout
                   initial={{ opacity: 0, y: 20 }}

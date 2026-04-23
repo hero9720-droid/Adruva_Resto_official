@@ -10,7 +10,7 @@ type AnySocket = any;
 
 export function useSocket(room: string) {
   const [isConnected, setIsConnected] = useState(false);
-  const socketRef = useRef<AnySocket>(null);
+  const [socket, setSocket] = useState<AnySocket>(null);
 
   useEffect(() => {
     const token = typeof window !== 'undefined'
@@ -18,7 +18,7 @@ export function useSocket(room: string) {
       : undefined;
 
     const connectFn = socketIOClient.io ?? socketIOClient.connect ?? socketIOClient.default ?? socketIOClient;
-    const socket: AnySocket = connectFn(
+    const newSocket: AnySocket = connectFn(
       process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
       {
         withCredentials: true,
@@ -27,24 +27,24 @@ export function useSocket(room: string) {
       }
     );
 
-    socketRef.current = socket;
+    setSocket(newSocket);
 
-    socket.on('connect', () => {
+    newSocket.on('connect', () => {
       setIsConnected(true);
-      socket.emit('join', room);
+      newSocket.emit('join', room);
     });
 
-    socket.on('disconnect', () => {
+    newSocket.on('disconnect', () => {
       setIsConnected(false);
     });
 
     return () => {
-      socket.disconnect();
+      newSocket.disconnect();
     };
   }, [room]);
 
   return {
-    socket: socketRef.current as AnySocket,
+    socket,
     isConnected,
   };
 }

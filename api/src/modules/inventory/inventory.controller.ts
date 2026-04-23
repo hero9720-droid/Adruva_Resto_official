@@ -140,3 +140,41 @@ export async function getSuppliers(req: Request, res: Response) {
 
   res.json({ success: true, data: result });
 }
+
+export async function updateSupplier(req: Request, res: Response) {
+  const { id } = req.params;
+  const outlet_id = req.user.outlet_id;
+  const updates = req.body;
+
+  const result = await withOutletContext(outlet_id, async (client) => {
+    const fields = Object.keys(updates);
+    const setClause = fields.map((f, i) => `${f} = $${i + 1}`).join(', ');
+    const params = Object.values(updates);
+    
+    const r = await client.query(
+      `UPDATE suppliers SET ${setClause}, updated_at = NOW() 
+       WHERE id = $${fields.length + 1} AND outlet_id = $${fields.length + 2} RETURNING *`,
+      [...params, id, outlet_id]
+    );
+
+    if (r.rows.length === 0) throw new AppError(404, 'Supplier not found', 'NOT_FOUND');
+    return r.rows[0];
+  });
+
+  res.json({ success: true, data: result });
+}
+
+export async function deleteSupplier(req: Request, res: Response) {
+  const { id } = req.params;
+  const outlet_id = req.user.outlet_id;
+
+  await withOutletContext(outlet_id, async (client) => {
+    const r = await client.query(
+      'DELETE FROM suppliers WHERE id = $1 AND outlet_id = $2',
+      [id, outlet_id]
+    );
+    if (r.rowCount === 0) throw new AppError(404, 'Supplier not found', 'NOT_FOUND');
+  });
+
+  res.json({ success: true, message: 'Supplier deleted' });
+}

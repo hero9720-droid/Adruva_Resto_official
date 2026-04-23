@@ -30,3 +30,13 @@ export function useStaffPerformance() {
     },
   });
 }
+
+export function useHourlyHeatmap() {
+  return useQuery({
+    queryKey: ['hourly_heatmap'],
+    queryFn: async () => {
+      const { data } = await api.get('/analytics/hourly-heatmap');
+      return data.data;
+    },
+  });
+}

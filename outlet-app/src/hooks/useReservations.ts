@@ -19,7 +19,7 @@ export function useCreateReservation() {
       return data.data;
     },
     onSuccess: (_, variables) => {
-      const date = variables.reservation_time.split('T')[0];
+      const date = variables.reservation_at.split('T')[0];
       queryClient.invalidateQueries({ queryKey: ['reservations', date] });
     },
   });
@@ -33,7 +33,7 @@ export function useUpdateReservationStatus() {
       return data.data;
     },
     onSuccess: (data) => {
-      const date = data.reservation_time.split('T')[0];
+      const date = data.reservation_at.split('T')[0];
       queryClient.invalidateQueries({ queryKey: ['reservations', date] });
       queryClient.invalidateQueries({ queryKey: ['tables'] }); // Table status might change
     },

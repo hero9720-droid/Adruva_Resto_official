@@ -46,3 +46,50 @@ export function useCreateIngredient() {
     },
   });
 }
+export function useCreateSupplier() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: any) => {
+      const { data } = await api.post('/inventory/suppliers', values);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+    },
+  });
+}
+
+export function useUpdateSupplier() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, ...values }: any) => {
+      const { data } = await api.patch(`/inventory/suppliers/${id}`, values);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+    },
+  });
+}
+
+export function useDeleteSupplier() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (id: string) => {
+      await api.delete(`/inventory/suppliers/${id}`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['suppliers'] });
+    },
+  });
+}
+
+export function useMovements(ingredientId?: string) {
+  return useQuery({
+    queryKey: ['movements', ingredientId],
+    queryFn: async () => {
+      const { data } = await api.get('/inventory/movements', { params: { ingredient_id: ingredientId } });
+      return data.data;
+    },
+  });
+}

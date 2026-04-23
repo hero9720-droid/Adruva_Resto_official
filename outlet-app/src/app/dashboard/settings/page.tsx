@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Building2, 
@@ -14,7 +14,19 @@ import {
   Store,
   MapPin,
   Phone,
-  FileText
+  FileText,
+  Printer,
+  ChevronRight,
+  ShieldCheck,
+  UserCheck,
+  Lock,
+  Languages,
+  Database,
+  CloudUpload,
+  HardDrive,
+  Activity,
+  Server,
+  QrCode
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -46,14 +58,38 @@ export default function SettingsPage() {
   const updateTable = useUpdateTable();
   const { toast } = useToast();
 
-  const handleSaveProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const [profileForm, setProfileForm] = useState({
+    name: '',
+    gstin: '',
+    phone: '',
+    address: '',
+    gst_percentage: 5,
+    service_charge_percentage: 0
+  });
+
+  const [language, setLanguage] = useState('English');
+
+  useEffect(() => {
+    if (profile) {
+      setProfileForm({
+        name: profile.name || '',
+        gstin: profile.gstin || '',
+        phone: profile.phone || '',
+        address: profile.address || '',
+        gst_percentage: profile.settings_tax?.gst_percentage || 5,
+        service_charge_percentage: profile.settings_tax?.service_charge_percentage || 0
+      });
+    }
+  }, [profile]);
+
+  const handleSaveProfile = async () => {
     try {
       await updateProfile.mutateAsync({
-        name: (document.querySelector('input[placeholder="Restaurant Name"]') as HTMLInputElement)?.value,
-        gstin: (document.querySelector('input[placeholder="27AAAAA0000A1Z5"]') as HTMLInputElement)?.value,
-        phone: (document.querySelector('input[placeholder="Primary Phone"]') as HTMLInputElement)?.value,
-        address: (document.querySelector('input[placeholder="Official Address"]') as HTMLInputElement)?.value,
+        ...profileForm,
+        settings_tax: {
+          gst_percentage: Number(profileForm.gst_percentage),
+          service_charge_percentage: Number(profileForm.service_charge_percentage)
+        }
       });
       toast({ title: "Settings Saved", description: "Outlet configuration has been updated.", className: "bg-foreground text-background border-none" });
     } catch (error) {
@@ -65,11 +101,9 @@ export default function SettingsPage() {
     const table = tables?.find((t: any) => t.id === tableId);
     if (!table) return;
 
-    // Approximate snap to grid (e.g. 20px grid)
     const newX = Math.round((table.pos_x + info.offset.x) / 20) * 20;
     const newY = Math.round((table.pos_y + info.offset.y) / 20) * 20;
 
-    // Constrain to bounds
     const boundedX = Math.max(0, Math.min(newX, 800));
     const boundedY = Math.max(0, Math.min(newY, 600));
 
@@ -85,7 +119,8 @@ export default function SettingsPage() {
   };
 
   return (
-    <div className="space-y-6 md:space-y-8 h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] overflow-hidden flex flex-col pb-10 bg-background font-sans">
+  return (
+    <div className="space-y-6 md:space-y-8 min-h-0 flex flex-col pb-10 bg-background font-sans">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground uppercase">
@@ -93,10 +128,16 @@ export default function SettingsPage() {
           </h1>
           <p className="text-slate-500 font-medium text-base md:text-lg mt-1">Fine-tune your restaurant's business rules and layout.</p>
         </div>
-        <Button className="w-full md:w-auto h-12 md:h-14 px-6 md:px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none" onClick={handleSaveProfile}>
-          <Save className="h-4 w-4 md:h-5 md:w-5 mr-2 md:mr-3" />
-          Save Changes
-        </Button>
+        <div className="flex gap-4 w-full md:w-auto">
+           <Button variant="outline" className="h-12 md:h-14 px-6 rounded-2xl border-none shadow-soft font-black tracking-widest uppercase bg-card text-primary shrink-0" onClick={() => setLanguage(language === 'English' ? 'Hindi' : 'English')}>
+              <Languages className="h-5 w-5 mr-3" />
+              {language}
+           </Button>
+           <Button className="flex-1 md:flex-none h-12 md:h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none" onClick={handleSaveProfile}>
+              <Save className="h-5 w-5 mr-3" />
+              Save Changes
+           </Button>
+        </div>
       </div>
 
       <Tabs defaultValue="floor" className="flex-1 flex flex-col overflow-hidden">
@@ -104,10 +145,14 @@ export default function SettingsPage() {
           <TabsTrigger value="floor" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Visual Floor Plan</TabsTrigger>
           <TabsTrigger value="profile" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Outlet Profile</TabsTrigger>
           <TabsTrigger value="business" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Business Rules</TabsTrigger>
+          <TabsTrigger value="roles" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Roles & Security</TabsTrigger>
+          <TabsTrigger value="system" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">System & Backups</TabsTrigger>
           <TabsTrigger value="receipt" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Receipt Prefs</TabsTrigger>
+          <TabsTrigger value="printers" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Printers</TabsTrigger>
+          <TabsTrigger value="qr" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">QR Ordering</TabsTrigger>
         </TabsList>
 
-        <div className="flex-1 overflow-y-auto no-scrollbar">
+        <div className="flex-1">
           
           <TabsContent value="floor" className="mt-0 h-full">
              <div className="bg-card shadow-soft rounded-[2.5rem] p-8 h-full flex flex-col border border-border">
@@ -129,8 +174,8 @@ export default function SettingsPage() {
                     </DialogTrigger>
                     <AddTableDialog />
                   </Dialog>
-               </div>
-               <div className="flex-1 relative bg-background rounded-[2.5rem] border-2 border-dashed border-border overflow-hidden" 
+                </div>
+                <div className="flex-1 relative bg-background rounded-[2.5rem] border-2 border-dashed border-border overflow-hidden" 
                      style={{ backgroundImage: 'radial-gradient(var(--border) 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
                   
                   {tablesLoading ? (
@@ -156,11 +201,11 @@ export default function SettingsPage() {
                       </motion.div>
                     ))
                   )}
-               </div>
+                </div>
              </div>
           </TabsContent>
 
-           <TabsContent value="profile" className="mt-0">
+          <TabsContent value="profile" className="mt-0">
             <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
               <div className="flex items-center gap-5 mb-10">
                  <div className="h-16 w-16 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-inner">
@@ -177,35 +222,52 @@ export default function SettingsPage() {
                     <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Restaurant Name</Label>
                     <div className="relative">
                        <Store className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                       <Input defaultValue={profile?.name} className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" />
+                       <Input 
+                        value={profileForm.name} 
+                        onChange={e => setProfileForm({...profileForm, name: e.target.value})}
+                        className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" 
+                       />
                     </div>
                  </div>
                   <div className="space-y-3">
                     <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">GSTIN Number</Label>
                     <div className="relative">
                        <FileText className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                       <Input defaultValue={profile?.gstin} placeholder="27AAAAA0000A1Z5" className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground uppercase" />
+                       <Input 
+                        value={profileForm.gstin} 
+                        onChange={e => setProfileForm({...profileForm, gstin: e.target.value})}
+                        placeholder="27AAAAA0000A1Z5" 
+                        className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground uppercase" 
+                       />
                     </div>
                  </div>
                   <div className="space-y-3">
                     <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Primary Phone</Label>
                     <div className="relative">
                        <Phone className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                       <Input defaultValue={profile?.phone} className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" />
+                       <Input 
+                        value={profileForm.phone} 
+                        onChange={e => setProfileForm({...profileForm, phone: e.target.value})}
+                        className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" 
+                       />
                     </div>
                  </div>
                   <div className="space-y-3">
                     <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Official Address</Label>
                     <div className="relative">
                        <MapPin className="absolute left-6 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-300" />
-                       <Input defaultValue={profile?.address} className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" />
+                       <Input 
+                        value={profileForm.address} 
+                        onChange={e => setProfileForm({...profileForm, address: e.target.value})}
+                        className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-background text-foreground" 
+                       />
                     </div>
                  </div>
               </div>
             </div>
           </TabsContent>
 
-           <TabsContent value="business" className="mt-0">
+          <TabsContent value="business" className="mt-0">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
                   <div className="flex items-center gap-5 mb-10">
@@ -217,16 +279,29 @@ export default function SettingsPage() {
                      </div>
                   </div>
                    <div className="space-y-8">
-                     <div className="space-y-3">
-                        <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">GST Percentage (%)</Label>
-                        <Input type="number" defaultValue={profile?.settings_tax?.gst_percentage || 5} className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" />
-                        <p className="text-[10px] text-slate-400 font-bold uppercase tracking-widest ml-2">Applied as CGST/SGST automatically</p>
-                     </div>
-                     <div className="space-y-3">
-                        <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Service Charge (%)</Label>
-                        <Input type="number" defaultValue={profile?.settings_tax?.service_charge_percentage || 0} className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" />
-                     </div>
-                  </div>
+                      <div className="space-y-3">
+                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">GST Percentage (%)</Label>
+                         <Input 
+                            type="number" 
+                            value={profileForm.gst_percentage} 
+                            onChange={e => setProfileForm({...profileForm, gst_percentage: Number(e.target.value)})}
+                            className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
+                           />
+                         <div className="flex gap-4 mt-2 ml-2">
+                            <Badge className="bg-secondary text-slate-500 border-none font-bold">CGST: {profileForm.gst_percentage / 2}%</Badge>
+                            <Badge className="bg-secondary text-slate-500 border-none font-bold">SGST: {profileForm.gst_percentage / 2}%</Badge>
+                         </div>
+                      </div>
+                      <div className="space-y-3">
+                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Service Charge (%)</Label>
+                         <Input 
+                            type="number" 
+                            value={profileForm.service_charge_percentage} 
+                            onChange={e => setProfileForm({...profileForm, service_charge_percentage: Number(e.target.value)})}
+                            className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
+                           />
+                      </div>
+                   </div>
                </div>
 
                 <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
@@ -239,20 +314,133 @@ export default function SettingsPage() {
                      </div>
                   </div>
                    <div className="space-y-8">
-                     <div className="space-y-3">
-                        <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Currency Symbol</Label>
-                        <Input defaultValue="₹ (INR)" disabled className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-xl bg-secondary text-slate-500 opacity-70 cursor-not-allowed" />
-                     </div>
-                     <div className="space-y-3">
-                        <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Timezone</Label>
-                        <Input defaultValue="Asia/Kolkata (GMT+5:30)" disabled className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-xl bg-secondary text-slate-500 opacity-70 cursor-not-allowed" />
-                     </div>
-                  </div>
+                      <div className="space-y-3">
+                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Currency Symbol</Label>
+                         <Input defaultValue="₹ (INR)" disabled className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-xl bg-secondary text-slate-500 opacity-70 cursor-not-allowed" />
+                      </div>
+                      <div className="space-y-3">
+                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Timezone</Label>
+                         <Input defaultValue="Asia/Kolkata (GMT+5:30)" disabled className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-xl bg-secondary text-slate-500 opacity-70 cursor-not-allowed" />
+                      </div>
+                   </div>
                </div>
             </div>
           </TabsContent>
 
-           <TabsContent value="receipt" className="mt-0">
+          <TabsContent value="roles" className="mt-0">
+             <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+                <div className="flex items-center gap-5 mb-10">
+                   <div className="h-16 w-16 bg-indigo-500/10 rounded-2xl flex items-center justify-center text-indigo-500 shadow-inner">
+                      <ShieldCheck className="h-8 w-8" />
+                   </div>
+                   <div>
+                      <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">Roles & Permissions</h2>
+                      <p className="text-slate-400 font-black text-[11px] uppercase tracking-widest mt-1">Audit and configure access levels</p>
+                   </div>
+                </div>
+                
+                <div className="space-y-6">
+                   {[
+                      { role: 'Admin', users: 2, permissions: ['FULL_ACCESS', 'REVENUE_VIEW', 'SET_PRICES'], color: 'bg-red-500' },
+                      { role: 'Manager', users: 3, permissions: ['VOID_BILLS', 'MANAGE_STOCK', 'VIEW_REPORTS'], color: 'bg-indigo-500' },
+                      { role: 'Captain', users: 8, permissions: ['PUNCH_ORDERS', 'BILL_GENERATE', 'TABLE_TRANSFER'], color: 'bg-emerald-500' },
+                      { role: 'Waiter', users: 15, permissions: ['VIEW_MENU', 'CHECK_STATUS'], color: 'bg-amber-500' }
+                   ].map((r) => (
+                      <div key={r.role} className="p-6 rounded-[2rem] bg-background border border-border flex items-center justify-between group hover:border-indigo-500 transition-all">
+                         <div className="flex items-center gap-5">
+                            <div className={cn("h-14 w-14 rounded-2xl flex items-center justify-center text-white shadow-lg", r.color)}>
+                               <UserCheck className="h-6 w-6" />
+                            </div>
+                            <div>
+                               <h4 className="font-black text-foreground text-xl tracking-tight uppercase">{r.role}</h4>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{r.users} ACTIVE ACCOUNTS</p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-3">
+                            {r.permissions.slice(0, 2).map(p => (
+                               <Badge key={p} variant="outline" className="border-indigo-100 text-indigo-400 font-black text-[9px] uppercase px-3 py-1">{p}</Badge>
+                            ))}
+                            {r.permissions.length > 2 && <Badge variant="outline" className="border-indigo-100 text-indigo-400 font-black text-[9px] px-2">+{r.permissions.length - 2}</Badge>}
+                            <Button variant="ghost" size="icon" className="ml-4 h-12 w-12 rounded-xl text-slate-300 hover:text-indigo-500 hover:bg-indigo-50">
+                               <Lock className="h-5 w-5" />
+                            </Button>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          </TabsContent>
+
+          <TabsContent value="system" className="mt-0">
+             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+                   <div className="flex items-center gap-5 mb-10">
+                      <div className="h-16 w-16 bg-blue-500/10 rounded-2xl flex items-center justify-center text-blue-500 shadow-inner">
+                         <Database className="h-8 w-8" />
+                      </div>
+                      <div>
+                         <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">Automated Backups</h2>
+                      </div>
+                   </div>
+                   
+                   <div className="space-y-8">
+                      <div className="p-6 bg-background rounded-3xl border border-border flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <CloudUpload className="h-6 w-6 text-emerald-500" />
+                            <div>
+                               <p className="font-black text-foreground uppercase tracking-tight text-sm">Cloud Storage</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">ENABLED • DAILY @ 03:00 AM</p>
+                            </div>
+                         </div>
+                         <Button variant="outline" size="sm" className="rounded-xl font-black text-[10px] uppercase">Configure</Button>
+                      </div>
+
+                      <div className="p-6 bg-background rounded-3xl border border-border flex items-center justify-between">
+                         <div className="flex items-center gap-4">
+                            <HardDrive className="h-6 w-6 text-blue-500" />
+                            <div>
+                               <p className="font-black text-foreground uppercase tracking-tight text-sm">Local Dump</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">LAST SYNC: 14 MINS AGO</p>
+                            </div>
+                         </div>
+                         <Button variant="outline" size="sm" className="rounded-xl font-black text-[10px] uppercase">Download</Button>
+                      </div>
+
+                      <Button className="w-full h-16 rounded-[2rem] bg-indigo-600 hover:bg-indigo-700 text-white font-black shadow-lg shadow-indigo-200 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
+                         Run Manual Backup Now
+                      </Button>
+                   </div>
+                </div>
+
+                <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+                   <div className="flex items-center gap-5 mb-10">
+                      <div className="h-16 w-16 bg-slate-900 rounded-2xl flex items-center justify-center text-white shadow-inner">
+                         <Server className="h-8 w-8" />
+                      </div>
+                      <div>
+                         <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">System Logs</h2>
+                      </div>
+                   </div>
+                   
+                   <div className="space-y-4 max-h-[300px] overflow-y-auto no-scrollbar pr-2">
+                      {[
+                         { time: '14:22', msg: 'Backup cycle completed successfully.', type: 'info' },
+                         { time: '14:15', msg: 'Table 4 status updated via Socket.', type: 'socket' },
+                         { time: '13:58', msg: 'New Staff "Rahul" added to outlet.', type: 'auth' },
+                         { time: '12:45', msg: 'Database migration v2.4 applied.', type: 'db' },
+                         { time: '10:30', msg: 'Printer "KOT-1" went offline.', type: 'error' }
+                      ].map((log, i) => (
+                         <div key={i} className="p-4 bg-background rounded-2xl border border-border flex gap-4 text-xs">
+                            <span className="font-bold text-slate-400 shrink-0">{log.time}</span>
+                            <span className="font-medium text-slate-600">{log.msg}</span>
+                         </div>
+                      ))}
+                   </div>
+                </div>
+             </div>
+          </TabsContent>
+
+          <TabsContent value="receipt" className="mt-0">
              <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
                 <div className="flex items-center gap-5 mb-10">
                    <div className="h-16 w-16 bg-red-500/10 rounded-2xl flex items-center justify-center text-red-500 shadow-inner">
@@ -284,6 +472,106 @@ export default function SettingsPage() {
                 </div>
              </div>
           </TabsContent>
+
+          <TabsContent value="printers" className="mt-0">
+             <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+                <div className="flex items-center justify-between mb-10">
+                   <div className="flex items-center gap-5">
+                      <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                         <Printer className="h-8 w-8" />
+                      </div>
+                      <div>
+                         <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">Hardware Configuration</h2>
+                         <p className="text-slate-400 font-black text-[11px] uppercase tracking-widest mt-1">Manage network & USB printers</p>
+                      </div>
+                   </div>
+                   <Button variant="outline" className="h-12 px-6 rounded-2xl border-border shadow-soft font-black uppercase tracking-widest text-slate-500 hover:text-primary">
+                      Scan Network
+                   </Button>
+                </div>
+
+                <div className="space-y-6">
+                   {[
+                      { name: 'Kitchen Thermal (KOT)', ip: '192.168.1.102', status: 'online', type: 'LAN' },
+                      { name: 'Main Billing Printer', ip: 'USB-001', status: 'online', type: 'USB' },
+                      { name: 'Bar Station (D-80)', ip: '192.168.1.105', status: 'offline', type: 'LAN' }
+                   ].map((printer) => (
+                      <div key={printer.name} className="p-6 rounded-[2rem] bg-background border border-border flex items-center justify-between group hover:border-primary transition-all">
+                         <div className="flex items-center gap-5">
+                            <div className={cn(
+                               "h-12 w-12 rounded-xl flex items-center justify-center transition-all",
+                               printer.status === 'online' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                            )}>
+                               <Printer className="h-6 w-6" />
+                            </div>
+                            <div>
+                               <p className="font-black text-foreground uppercase tracking-tight">{printer.name}</p>
+                               <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{printer.type} • {printer.ip}</p>
+                            </div>
+                         </div>
+                         <div className="flex items-center gap-4">
+                            <Badge className={cn(
+                               "border-none px-3 py-1 font-black text-[9px] uppercase tracking-widest rounded-lg",
+                               printer.status === 'online' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'
+                            )}>
+                               {printer.status}
+                            </Badge>
+                            <Button variant="ghost" size="sm" className="font-black text-[10px] uppercase tracking-widest text-primary">Test Print</Button>
+                         </div>
+                      </div>
+                   ))}
+                </div>
+             </div>
+          </TabsContent>
+           <TabsContent value="qr" className="mt-0">
+              <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+                <div className="flex items-center gap-5 mb-10">
+                   <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center text-primary shadow-inner">
+                      <QrCode className="h-8 w-8" />
+                   </div>
+                   <div>
+                      <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">QR Ordering System</h2>
+                      <p className="text-slate-400 font-black text-[11px] uppercase tracking-widest mt-1">Manage digital menu access and self-ordering</p>
+                   </div>
+                </div>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                   <div className="p-8 bg-background rounded-[2rem] border border-border space-y-6">
+                      <div className="flex items-center justify-between">
+                         <h3 className="font-black text-foreground uppercase tracking-tight">QR Ordering</h3>
+                         <Badge className="bg-emerald-500 text-white border-none uppercase text-[9px] px-3">Active</Badge>
+                      </div>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                        Allow customers to scan QR codes on tables to view the menu and place orders directly.
+                      </p>
+                      <Button className="w-full h-12 rounded-xl bg-secondary text-primary font-black text-[10px] uppercase border-none hover:bg-primary/10">
+                        View Public Menu URL
+                      </Button>
+                   </div>
+
+                   <div className="p-8 bg-background rounded-[2rem] border border-border space-y-6">
+                      <h3 className="font-black text-foreground uppercase tracking-tight">Bulk QR Export</h3>
+                      <p className="text-xs text-slate-500 font-medium leading-relaxed">
+                        Generate and download high-resolution QR codes for all active tables.
+                      </p>
+                      <Button className="w-full h-12 rounded-xl bg-primary text-white font-black text-[10px] uppercase border-none shadow-glow">
+                        Generate Bulk QRs
+                      </Button>
+                   </div>
+                </div>
+
+                <div className="mt-10 p-8 bg-primary/5 rounded-[2rem] border border-primary/10 flex items-center gap-6">
+                   <div className="h-20 w-20 bg-white rounded-2xl flex items-center justify-center shadow-sm p-4 shrink-0">
+                      <QrCode className="h-full w-full text-slate-900" />
+                   </div>
+                   <div className="flex-1">
+                      <h4 className="font-black text-primary uppercase tracking-tight text-lg leading-tight">Master QR Code</h4>
+                      <p className="text-slate-500 text-sm font-medium mt-1">This QR can be used for general menu browsing (non-table specific).</p>
+                   </div>
+                   <Button variant="ghost" className="font-black text-[11px] uppercase tracking-widest text-primary">Download PNG</Button>
+                </div>
+              </div>
+           </TabsContent>
         </div>
       </Tabs>
     </div>
@@ -350,4 +638,3 @@ function AddTableDialog() {
     </DialogContent>
   );
 }
-

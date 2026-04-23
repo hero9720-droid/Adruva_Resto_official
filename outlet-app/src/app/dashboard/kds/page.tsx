@@ -11,15 +11,18 @@ import {
 } from 'lucide-react';
 import { useSocket } from '@/hooks/useSocket';
 import { useToast } from '@/hooks/use-toast';
+import { useTables } from '@/hooks/useSettings';
 import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
+import { Badge } from '@/components/ui/badge';
 
 export default function KDSPage() {
   const [orders, setOrders] = useState<any[]>([]);
   const [selectedStation, setSelectedStation] = useState<string>('all');
   const { socket, isConnected } = useSocket('kitchen');
   const { toast } = useToast();
+  const { data: tables } = useTables();
 
   useEffect(() => {
     fetchOrders();
@@ -27,6 +30,13 @@ export default function KDSPage() {
     if (socket) {
       socket.on('order:new', (newOrder: any) => {
         setOrders(prev => [newOrder, ...prev]);
+        
+        // Play notification sound
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.play().catch(e => console.warn('Sound play blocked by browser', e));
+        } catch (e) {}
+
         toast({ 
           title: "🔥 NEW ORDER", 
           description: `Order #${newOrder.order_number} for ${newOrder.table_id ? 'Table ' + newOrder.table_id : 'Takeaway'}`,
@@ -60,19 +70,48 @@ export default function KDSPage() {
     const nextStatus = currentStatus === 'pending' ? 'preparing' : 
                      currentStatus === 'preparing' ? 'ready' : 'served';
     
+    // Optimistic Update
+    setOrders(prev => prev.map(o => {
+      if (o.id === orderId) {
+        return {
+          ...o,
+          items: o.items.map((i: any) => i.id === itemId ? { ...i, status: nextStatus } : i)
+        };
+      }
+      return o;
+    }));
+
     try {
       await api.patch(`/orders/items/${itemId}/status`, { status: nextStatus });
-      setOrders(prev => prev.map(o => {
-        if (o.id === orderId) {
-          return {
-            ...o,
-            items: o.items.map((i: any) => i.id === itemId ? { ...i, status: nextStatus } : i)
-          };
-        }
-        return o;
-      }));
     } catch (error) {
       toast({ variant: 'destructive', title: 'Update failed' });
+      fetchOrders(); // Revert
+    }
+  };
+
+  const markAllReady = async (order: any) => {
+    const pendingItems = order.items.filter((i: any) => i.status === 'pending' || i.status === 'preparing');
+    if (pendingItems.length === 0) return;
+
+    // Optimistic Update
+    setOrders(prev => prev.map(o => {
+      if (o.id === order.id) {
+        return {
+          ...o,
+          items: o.items.map((i: any) => (i.status === 'pending' || i.status === 'preparing') ? { ...i, status: 'ready' } : i)
+        };
+      }
+      return o;
+    }));
+
+    try {
+      await Promise.all(pendingItems.map((i: any) => 
+        api.patch(`/orders/items/${i.id}/status`, { status: 'ready' })
+      ));
+      toast({ title: 'Ticket Marked Ready', className: "bg-emerald-600 text-white border-none" });
+    } catch (error) {
+      toast({ variant: 'destructive', title: 'Bulk update failed' });
+      fetchOrders(); // Revert
     }
   };
 
@@ -178,12 +217,19 @@ export default function KDSPage() {
                       )}>
                         <div className="flex justify-between items-start mb-4">
                           <div className="flex flex-col">
-                             <span className={cn(
-                               "text-[10px] font-black uppercase tracking-[0.2em] mb-1",
-                               isDelayed ? "text-red-500" : "text-primary"
-                             )}>
-                                Order Number
-                             </span>
+                             <div className="flex items-center gap-3 mb-1">
+                                <span className={cn(
+                                  "text-[10px] font-black uppercase tracking-[0.2em]",
+                                  isDelayed ? "text-red-600" : "text-primary"
+                                )}>
+                                   Order Number
+                                </span>
+                                {isDelayed && (
+                                  <Badge className="bg-red-500 text-white border-none font-black text-[9px] h-5 px-2 animate-bounce shadow-lg shadow-red-500/50 uppercase tracking-widest">
+                                    Delayed
+                                  </Badge>
+                                )}
+                             </div>
                              <span className="font-black text-4xl tracking-tighter text-foreground leading-none">
                                 #{order.order_number}
                              </span>
@@ -206,16 +252,30 @@ export default function KDSPage() {
                           {order.table_id && (
                             <div className="flex items-center gap-2 bg-card border border-border px-4 py-2 rounded-xl shadow-sm">
                                <span className="text-[10px] font-black text-slate-400">TABLE</span>
-                               <span className="font-black text-foreground text-lg leading-none">{order.table_id}</span>
+                               <span className="font-black text-foreground text-lg leading-none">
+                                 {tables?.find((t: any) => t.id === order.table_id)?.name || order.table_id.substring(0, 4)}
+                               </span>
                             </div>
                           )}
                         </div>
+                        {!allItemsReady && (
+                          <div className="mt-3">
+                            <Button 
+                              onClick={() => markAllReady(order)}
+                              className="w-full h-8 text-[10px] font-black uppercase tracking-widest bg-secondary hover:bg-emerald-500 hover:text-white text-slate-500 transition-colors border-none"
+                            >
+                              <CheckCircle2 className="h-3.5 w-3.5 mr-1.5" /> MARK ALL READY
+                            </Button>
+                          </div>
+                        )}
                       </div>
                       
                       {/* Ticket Items */}
                       <div className="flex-1 p-3 overflow-y-auto no-scrollbar bg-secondary/20">
                         <div className="flex flex-col gap-3">
-                          {order.items.map((item: any) => {
+                          {order.items
+                            .filter((item: any) => selectedStation === 'all' || item.station === selectedStation)
+                            .map((item: any) => {
                             const modifiers = item.modifiers_json ? (typeof item.modifiers_json === 'string' ? JSON.parse(item.modifiers_json) : item.modifiers_json) : {};
                             
                             return (

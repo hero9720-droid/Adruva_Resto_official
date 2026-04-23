@@ -209,7 +209,14 @@ export async function getBillDetails(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
 
   const result = await withOutletContext(outlet_id, async (client) => {
-    const billRes = await client.query('SELECT * FROM bills WHERE id = $1', [id]);
+    const billRes = await client.query(`
+      SELECT b.*, 
+             c.loyalty_points as customer_loyalty_points, 
+             c.name as customer_name 
+      FROM bills b 
+      LEFT JOIN customers c ON c.id = b.customer_id 
+      WHERE b.id = $1
+    `, [id]);
     if ((billRes.rowCount ?? 0) === 0) throw new AppError(404, 'Bill not found', 'NOT_FOUND');
 
     const bill = billRes.rows[0];

@@ -20,6 +20,17 @@ import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from 'next/navigation';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { useCreateRoom } from '@/hooks/useRooms';
 
 export default function RoomsPage() {
   const router = useRouter();
@@ -56,10 +67,10 @@ export default function RoomsPage() {
     router.push(`/dashboard/pos?room_id=${room.id}`);
   };
 
-  if (isLoading) return <div className="p-8">Loading Rooms...</div>;
+  if (isLoading) return <div className="p-8 h-screen flex items-center justify-center text-slate-400 font-black uppercase tracking-widest animate-pulse">Syncing Hospitality Ledger...</div>;
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] bg-background -m-8 p-8 overflow-hidden font-sans">
+    <div className="flex flex-col min-h-0 bg-background font-sans pb-10">
       {/* Header */}
       <div className="flex items-center justify-between mb-8 shrink-0">
         <div>
@@ -70,25 +81,31 @@ export default function RoomsPage() {
           <p className="text-slate-500 font-medium text-lg mt-1">Hotel Hospitality Control</p>
         </div>
         
-        <div className="flex items-center gap-6">
-           <div className="flex bg-secondary p-1.5 rounded-2xl border border-border shadow-inner">
-             <div className="flex items-center gap-2 px-6 py-2.5 bg-card rounded-xl shadow-sm border border-border">
-               <span className="h-2 w-2 rounded-full bg-emerald-500" />
-               <span className="text-[11px] font-black uppercase tracking-widest text-foreground">
-                 {rooms?.filter((r:any) => r.status === 'available').length} Vacant
-               </span>
-             </div>
-             <div className="flex items-center gap-2 px-6 py-2.5 text-slate-500">
-               <span className="h-2 w-2 rounded-full bg-primary" />
-               <span className="text-[11px] font-black uppercase tracking-widest">
-                 {rooms?.filter((r:any) => r.status === 'occupied').length} Occupied
-               </span>
-             </div>
+           <div className="flex flex-col sm:flex-row items-center gap-6">
+              <div className="flex bg-secondary p-1.5 rounded-2xl border border-border shadow-inner">
+                <div className="flex items-center gap-2 px-6 py-2.5 bg-card rounded-xl shadow-sm border border-border">
+                  <span className="h-2 w-2 rounded-full bg-emerald-500" />
+                  <span className="text-[11px] font-black uppercase tracking-widest text-foreground">
+                    {rooms?.filter((r:any) => r.status === 'available').length} Vacant
+                  </span>
+                </div>
+                <div className="flex items-center gap-2 px-6 py-2.5 text-slate-500">
+                  <span className="h-2 w-2 rounded-full bg-primary" />
+                  <span className="text-[11px] font-black uppercase tracking-widest">
+                    {rooms?.filter((r:any) => r.status === 'occupied').length} Occupied
+                  </span>
+                </div>
+              </div>
+              
+              <Dialog>
+                <DialogTrigger asChild>
+                  <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none w-full sm:w-auto">
+                    <Plus className="h-5 w-5 mr-2" /> ADD ROOM
+                  </Button>
+                </DialogTrigger>
+                <AddRoomDialog />
+              </Dialog>
            </div>
-           <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
-             <Plus className="h-5 w-5 mr-2" /> ADD ROOM
-           </Button>
-        </div>
       </div>
 
       {/* Room Grid */}
@@ -254,5 +271,76 @@ export default function RoomsPage() {
         )}
       </AnimatePresence>
     </div>
+  );
+}
+
+function AddRoomDialog() {
+  const createRoom = useCreateRoom();
+  const { toast } = useToast();
+  const [form, setForm] = useState({
+    name: '',
+    type: 'Standard',
+    capacity: 2,
+    floor: 1,
+    status: 'available'
+  });
+
+  const handleSave = async () => {
+    if (!form.name) return;
+    try {
+      await createRoom.mutateAsync(form);
+      toast({ title: "Room Created", description: `Room ${form.name} added to inventory.` });
+      setForm({ name: '', type: 'Standard', capacity: 2, floor: 1, status: 'available' });
+    } catch (e) {
+      toast({ variant: "destructive", title: "Failed to create room" });
+    }
+  };
+
+  return (
+     <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-card shadow-soft font-sans">
+      <DialogHeader>
+        <DialogTitle className="text-3xl font-black text-foreground tracking-tighter uppercase">New Room</DialogTitle>
+      </DialogHeader>
+      <div className="space-y-6 py-6">
+         <div className="space-y-2">
+          <Label className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-1">Room Name / Number</Label>
+          <Input 
+            value={form.name}
+            onChange={(e) => setForm({...form, name: e.target.value})}
+            placeholder="e.g. 101 or Executive A" 
+            className="px-6 h-14 rounded-2xl border-none shadow-soft font-black text-lg bg-background text-foreground" 
+          />
+        </div>
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-1">Floor</Label>
+            <Input 
+              type="number"
+              value={form.floor}
+              onChange={(e) => setForm({...form, floor: parseInt(e.target.value)})}
+              className="px-6 h-14 rounded-2xl border-none shadow-soft font-black text-lg bg-background text-foreground" 
+            />
+          </div>
+          <div className="space-y-2">
+            <Label className="font-black text-[10px] uppercase tracking-widest text-slate-400 ml-1">Capacity</Label>
+            <Input 
+              type="number"
+              value={form.capacity}
+              onChange={(e) => setForm({...form, capacity: parseInt(e.target.value)})}
+              className="px-6 h-14 rounded-2xl border-none shadow-soft font-black text-lg bg-background text-foreground" 
+            />
+          </div>
+        </div>
+      </div>
+      <DialogFooter>
+         <Button 
+          onClick={handleSave}
+          disabled={!form.name || createRoom.isPending}
+          className="w-full h-14 rounded-2xl bg-foreground hover:bg-foreground/90 text-background font-black shadow-lg shadow-black/10 tracking-widest uppercase transition-all active:scale-[0.98] border-none"
+        >
+          {createRoom.isPending ? 'CREATING...' : 'ADD ROOM TO HOTEL'}
+        </Button>
+      </DialogFooter>
+    </DialogContent>
   );
 }

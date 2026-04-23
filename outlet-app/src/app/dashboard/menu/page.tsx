@@ -24,6 +24,8 @@ import ItemDialog from '@/components/menu/ItemDialog';
 import CategoryPanel from '@/components/menu/CategoryPanel';
 import VariantsDialog from '@/components/menu/VariantsDialog';
 import { ListPlus } from 'lucide-react';
+import { ToastAction } from "@/components/ui/toast";
+import { useToast } from "@/hooks/use-toast";
 
 const FOOD_TYPE_CONFIG: Record<string, { label: string; color: string }> = {
   veg:     { label: 'Veg',     color: 'text-green-600 border-green-200 bg-green-50' },
@@ -47,6 +49,7 @@ export default function MenuPage() {
   );
   const updateItem = useUpdateMenuItem();
   const deleteItem = useDeleteMenuItem();
+  const { toast } = useToast();
 
   // Client-side search filter
   const filteredItems = useMemo(() => {
@@ -59,7 +62,18 @@ export default function MenuPage() {
   function openEdit(item: MenuItem) { setEditingItem(item); setItemDialogOpen(true); }
 
   async function toggleAvailability(item: MenuItem) {
-    await updateItem.mutateAsync({ id: item.id, is_available: !item.is_available });
+    const newState = !item.is_available;
+    await updateItem.mutateAsync({ id: item.id, is_available: newState });
+
+    toast({
+      title: newState ? "🟢 Item Available" : "🔴 Item Sold Out",
+      description: `${item.name} is now ${newState ? 'visible' : 'hidden'} to customers.`,
+      action: (
+        <ToastAction altText="Undo" onClick={() => updateItem.mutate({ id: item.id, is_available: !newState })}>
+          UNDO
+        </ToastAction>
+      ),
+    });
   }
 
   async function confirmDelete() {

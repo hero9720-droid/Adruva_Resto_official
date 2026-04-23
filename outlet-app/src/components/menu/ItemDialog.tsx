@@ -15,6 +15,7 @@ import { Switch } from '@/components/ui/switch';
 import { Textarea } from '@/components/ui/textarea';
 import { MenuItem, Category, useCreateMenuItem, useUpdateMenuItem, useUploadMenuPhoto } from '@/hooks/useMenu';
 import { useToast } from '@/hooks/use-toast';
+import { motion } from 'framer-motion';
 
 const toNum = (v: unknown) => (v === '' || v === null || v === undefined ? 0 : Number(v));
 
@@ -47,6 +48,7 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
   const upload = useUploadMenuPhoto();
   const { toast } = useToast();
   const [photoUrl, setPhotoUrl] = useState<string | null>(null);
+  const [uploadProgress, setUploadProgress] = useState(0);
   const [uploading, setUploading] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -80,6 +82,7 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
     } else if (open) {
       reset({ food_type: 'veg', is_available: true, is_featured: false, preparation_time_minutes: 15, cost_price_paise: 0, station: 'kitchen' });
       setPhotoUrl(null);
+      setUploadProgress(0);
     }
   }, [open, item, reset]);
 
@@ -92,28 +95,39 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
     const file = e.target.files?.[0];
     if (!file) return;
     setUploading(true);
+    setUploadProgress(10);
     try {
-      // Compress image before uploading — saves R2 storage significantly
+      // Step 1: Compression
+      setUploadProgress(25);
       const compressed = await imageCompression(file, {
         maxSizeMB: 0.3,           // Max 300KB per image
         maxWidthOrHeight: 800,    // Resize to max 800px
         useWebWorker: true,
         fileType: 'image/webp',   // Convert to WebP — best compression
       });
+      setUploadProgress(50);
 
       const originalKB = Math.round(file.size / 1024);
       const compressedKB = Math.round(compressed.size / 1024);
       console.log(`Image compressed: ${originalKB}KB → ${compressedKB}KB`);
 
+      // Step 2: Upload
+      setUploadProgress(75);
       const url = await upload.mutateAsync(compressed as File);
+      setUploadProgress(100);
+      
       setPhotoUrl(url);
       toast({ title: '✅ Photo uploaded!', description: `${originalKB}KB → ${compressedKB}KB (saved ${Math.round((1 - compressedKB/originalKB)*100)}%)` });
     } catch (err: any) {
       console.error('Upload error:', err);
       const msg = err?.response?.data?.error || err?.message || 'Upload failed';
       toast({ variant: 'destructive', title: 'Upload Failed', description: msg });
+      setUploadProgress(0);
     } finally {
-      setUploading(false);
+      setTimeout(() => {
+        setUploading(false);
+        setUploadProgress(0);
+      }, 500);
       if (fileRef.current) fileRef.current.value = '';
     }
   }
@@ -160,7 +174,20 @@ export default function ItemDialog({ open, onClose, categories, item }: Props) {
                 </button>
               </>
             ) : uploading ? (
-              <Loader2 className="h-8 w-8 animate-spin text-slate-400" />
+              <div className="flex flex-col items-center gap-2">
+                <div className="relative">
+                   <Loader2 className="h-10 w-10 animate-spin text-primary" />
+                   <span className="absolute inset-0 flex items-center justify-center text-[8px] font-black">{uploadProgress}%</span>
+                </div>
+                <div className="w-32 h-1.5 bg-slate-200 rounded-full overflow-hidden border border-slate-100 shadow-inner">
+                   <motion.div 
+                     initial={{ width: 0 }}
+                     animate={{ width: `${uploadProgress}%` }}
+                     className="h-full bg-primary"
+                   />
+                </div>
+                <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest animate-pulse">Uploading...</p>
+              </div>
             ) : (
               <>
                 <Upload className="h-8 w-8 text-slate-300 mb-1" />

@@ -27,13 +27,29 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
-import { useReservations, useUpdateReservationStatus } from '@/hooks/useReservations';
+import { useReservations, useUpdateReservationStatus, useCreateReservation } from '@/hooks/useReservations';
 import { useToast } from '@/hooks/use-toast';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 export default function ReservationsPage() {
   const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
+  const [isBookingOpen, setIsBookingOpen] = useState(false);
+  const [bookingForm, setBookingForm] = useState({
+    customer_name: '',
+    phone: '',
+    party_size: 2,
+    reservation_at: '',
+    notes: ''
+  });
   const { data: reservations, isLoading } = useReservations(selectedDate);
   const updateStatus = useUpdateReservationStatus();
+  const createReservation = useCreateReservation();
   const { toast } = useToast();
 
   const handleStatusUpdate = async (id: string, status: string) => {
@@ -45,6 +61,33 @@ export default function ReservationsPage() {
     }
   };
 
+  const handlePrevDay = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() - 1);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
+
+  const handleNextDay = () => {
+    const d = new Date(selectedDate);
+    d.setDate(d.getDate() + 1);
+    setSelectedDate(d.toISOString().split('T')[0]);
+  };
+
+  const handleCreateBooking = async () => {
+    if (!bookingForm.customer_name || !bookingForm.reservation_at) {
+      toast({ variant: "destructive", title: "Missing fields" });
+      return;
+    }
+    try {
+      await createReservation.mutateAsync(bookingForm);
+      toast({ title: "Booking Created", description: "Successfully added." });
+      setIsBookingOpen(false);
+      setBookingForm({ customer_name: '', phone: '', party_size: 2, reservation_at: '', notes: '' });
+    } catch (error) {
+      toast({ variant: "destructive", title: "Booking failed" });
+    }
+  };
+
   return (
     <div className="space-y-6 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar bg-background -m-8 p-8 font-sans">
       <div className="flex justify-between items-center">
@@ -52,20 +95,81 @@ export default function ReservationsPage() {
           <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">Table Reservations</h1>
           <p className="text-slate-500 font-medium text-lg mt-1">Manage guest bookings and floor availability.</p>
         </div>
-        <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
-          <Plus className="h-4 w-4 mr-2" />
-          New Booking
-        </Button>
+        <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
+          <DialogTrigger asChild>
+            <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
+              <Plus className="h-4 w-4 mr-2" />
+              New Booking
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[425px] rounded-3xl">
+            <DialogHeader>
+              <DialogTitle className="font-black uppercase text-xl">New Booking</DialogTitle>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-slate-500">Guest Name</label>
+                <Input 
+                  value={bookingForm.customer_name}
+                  onChange={e => setBookingForm({...bookingForm, customer_name: e.target.value})}
+                  className="rounded-xl bg-card border-border h-12"
+                  placeholder="John Doe"
+                />
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-slate-500">Phone</label>
+                  <Input 
+                    value={bookingForm.phone}
+                    onChange={e => setBookingForm({...bookingForm, phone: e.target.value})}
+                    className="rounded-xl bg-card border-border h-12"
+                    placeholder="+91..."
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="text-xs font-bold uppercase text-slate-500">Party Size</label>
+                  <Input 
+                    type="number" min="1"
+                    value={bookingForm.party_size}
+                    onChange={e => setBookingForm({...bookingForm, party_size: parseInt(e.target.value) || 1})}
+                    className="rounded-xl bg-card border-border h-12"
+                  />
+                </div>
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-slate-500">Date & Time</label>
+                <Input 
+                  type="datetime-local"
+                  value={bookingForm.reservation_at}
+                  onChange={e => setBookingForm({...bookingForm, reservation_at: e.target.value})}
+                  className="rounded-xl bg-card border-border h-12"
+                />
+              </div>
+              <div className="space-y-2">
+                <label className="text-xs font-bold uppercase text-slate-500">Notes (Optional)</label>
+                <Input 
+                  value={bookingForm.notes}
+                  onChange={e => setBookingForm({...bookingForm, notes: e.target.value})}
+                  className="rounded-xl bg-card border-border h-12"
+                  placeholder="Anniversary, corner table..."
+                />
+              </div>
+            </div>
+            <Button onClick={handleCreateBooking} disabled={createReservation.isPending} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest">
+              {createReservation.isPending ? 'CREATING...' : 'CONFIRM BOOKING'}
+            </Button>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border shadow-soft">
          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" className="border-border hover:bg-secondary"><ChevronLeft className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={handlePrevDay} className="border-border hover:bg-secondary"><ChevronLeft className="h-4 w-4" /></Button>
             <div className="flex items-center gap-2 font-black text-foreground">
                <CalendarIcon className="h-4 w-4 text-primary" />
                {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
             </div>
-            <Button variant="outline" size="icon" className="border-border hover:bg-secondary"><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="outline" size="icon" onClick={handleNextDay} className="border-border hover:bg-secondary"><ChevronRight className="h-4 w-4" /></Button>
          </div>
          <div className="flex gap-2">
             <Badge variant="outline" className="bg-secondary border-border text-slate-500">Total: {reservations?.length || 0}</Badge>

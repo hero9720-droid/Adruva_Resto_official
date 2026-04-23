@@ -94,9 +94,13 @@ async function processOrderCreation(outlet_id: string, data: any) {
         ]
       );
       
-      // Add menu item name for the WebSocket payload
-      const miNameRes = await client.query("SELECT name FROM menu_items WHERE id = $1", [item.menu_item_id]);
-      createdItems.push({ ...itemRes.rows[0], menu_item_name: miNameRes.rows[0]?.name });
+      // Add menu item name and station for the WebSocket payload
+      const miInfoRes = await client.query("SELECT name, station FROM menu_items WHERE id = $1", [item.menu_item_id]);
+      createdItems.push({ 
+        ...itemRes.rows[0], 
+        menu_item_name: miInfoRes.rows[0]?.name,
+        station: miInfoRes.rows[0]?.station || 'kitchen'
+      });
 
       // Deduct inventory
       await deductInventory(client, outlet_id, item.menu_item_id, item.quantity, data.created_by);
@@ -122,13 +126,16 @@ export async function getOrders(req: Request, res: Response) {
           'id', oi.id,
           'menu_item_id', oi.menu_item_id,
           'menu_item_name', mi.name,
+          'category_name', c.name,
           'quantity', oi.quantity,
           'status', oi.status,
           'notes', oi.notes,
           'unit_price_paise', oi.unit_price_paise,
-          'total_paise', oi.total_paise
+          'total_paise', oi.total_paise,
+          'station', mi.station
         )) FROM order_items oi 
          JOIN menu_items mi ON mi.id = oi.menu_item_id
+         LEFT JOIN menu_categories c ON c.id = mi.category_id
          WHERE oi.order_id = o.id) as items
       FROM orders o 
       LEFT JOIN tables t ON t.id = o.table_id

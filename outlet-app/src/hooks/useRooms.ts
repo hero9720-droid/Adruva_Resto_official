@@ -49,3 +49,16 @@ export function useCheckOut() {
     },
   });
 }
+
+export function useCreateRoom() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: any) => {
+      const { data } = await api.post('/rooms', values);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['rooms'] });
+    },
+  });
+}

@@ -14,7 +14,13 @@ import {
   Gift,
   ArrowRight,
   ShieldCheck,
-  ChevronRight
+  ChevronRight,
+  Download,
+  QrCode,
+  MessageSquare,
+  Sparkles,
+  Zap,
+  Package
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -38,6 +44,12 @@ export default function BillsPage() {
   const [selectedBillId, setSelectedBillId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [splitDialogOpen, setSplitDialogOpen] = useState(false);
+  const [customPaymentOpen, setCustomPaymentOpen] = useState(false);
+  const [customPaymentMethod, setCustomPaymentMethod] = useState('');
+  const [dateFilter, setDateFilter] = useState('');
+  const [page, setPage] = useState(1);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  const ITEMS_PER_PAGE = 10;
   const { data: bills, isLoading: billsLoading, refetch } = useBills();
   const { data: bill, isLoading: billLoading } = useBillDetails(selectedBillId || '');
   const recordPayment = useRecordPayment();
@@ -46,7 +58,6 @@ export default function BillsPage() {
 
   const handlePrint = () => {
     toast({ title: 'Sending to Printer...', description: 'Thermal KOT/Bill sequence started.' });
-    // In a real environment, we'd use the serial printer lib
     window.print();
   };
 
@@ -65,14 +76,57 @@ export default function BillsPage() {
     }
   };
 
-  const filteredBills = bills?.filter((b: any) => 
-    b.bill_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.table_name && b.table_name.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
+  const handleRedeemLoyalty = () => {
+    setIsRedeeming(true);
+    setTimeout(() => {
+      setIsRedeeming(false);
+      toast({ 
+        title: "Loyalty Applied!", 
+        description: `₹250.00 discount applied to Bill #${bill?.bill_number}. (Simulation Mode)`,
+        className: "bg-emerald-500 text-white border-none"
+      });
+    }, 1500);
+  };
+
+  const filteredBills = bills?.filter((b: any) => {
+    const matchesSearch = b.bill_number.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                          (b.table_name && b.table_name.toLowerCase().includes(searchQuery.toLowerCase()));
+    const matchesDate = dateFilter ? b.created_at.startsWith(dateFilter) : true;
+    return matchesSearch && matchesDate;
+  }) || [];
+
+  const totalPages = Math.ceil(filteredBills.length / ITEMS_PER_PAGE);
+  const paginatedBills = filteredBills.slice((page - 1) * ITEMS_PER_PAGE, page * ITEMS_PER_PAGE);
+
+  const exportCSV = () => {
+    if (!filteredBills.length) return;
+    const headers = ['Bill No', 'Date', 'Type', 'Status', 'Total (INR)', 'Payment Method'];
+    const rows = filteredBills.map((b: any) => [
+      b.bill_number,
+      `"${new Date(b.created_at).toLocaleString()}"`,
+      b.order_type,
+      b.status,
+      (b.total_paise / 100).toFixed(2),
+      b.payment_method || 'Unpaid'
+    ]);
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n"
+      + rows.map(e => e.join(",")).join("\n");
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", `bills_export_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    toast({ title: "Export Started", description: "Your CSV file is being downloaded." });
+  };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] bg-background overflow-hidden font-sans pb-10">
-      {/* Header */}
+    <>
+      <ThermalReceipt bill={bill} outlet={{ name: 'ADRUVA RESTO' }} type="bill" />
+      <div className="flex flex-col h-[calc(100vh-120px)] md:h-[calc(100vh-140px)] bg-background overflow-hidden font-sans pb-10 print:hidden">
+        {/* Header */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-8 shrink-0 gap-4">
         <div>
           <h1 className="text-3xl md:text-5xl font-black tracking-tighter text-foreground flex items-center gap-4">
@@ -83,15 +137,31 @@ export default function BillsPage() {
         </div>
         
         <div className="flex items-center gap-4 w-full md:w-auto">
+            <div className="relative">
+               <Input 
+                 type="date"
+                 className="h-14 rounded-2xl border-none shadow-soft text-sm font-bold bg-card text-slate-500 px-4 w-[160px]"
+                 value={dateFilter}
+                 onChange={(e) => { setDateFilter(e.target.value); setPage(1); }}
+               />
+            </div>
             <div className="relative w-full md:w-80">
                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
                <Input 
                  placeholder="Search bills or tables..." 
                  className="pl-12 h-14 rounded-2xl border-none shadow-soft text-lg font-medium bg-card text-foreground w-full"
                  value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
+                 onChange={(e) => { setSearchQuery(e.target.value); setPage(1); }}
                />
             </div>
+            <Button 
+              variant="outline" 
+              onClick={exportCSV}
+              className="h-14 px-6 rounded-2xl border-2 border-border font-black uppercase tracking-widest text-[11px] hover:bg-secondary hover:text-primary transition-all gap-2"
+            >
+              <Download className="h-4 w-4" />
+              Export
+            </Button>
          </div>
       </div>
 
@@ -103,13 +173,14 @@ export default function BillsPage() {
           ) : filteredBills?.length === 0 ? (
              <div className="py-20 text-center text-slate-400 font-medium">No bills found for your search.</div>
           ) : (
-            filteredBills?.map((b: any) => (
+            <>
+              {paginatedBills.map((b: any) => (
                <motion.div
                 layout
                 key={b.id}
                 onClick={() => setSelectedBillId(b.id)}
                 className={cn(
-                  "p-4 md:p-6 rounded-[2rem] border-2 transition-all duration-300 cursor-pointer group flex items-center justify-between",
+                  "p-4 md:p-6 rounded-[2rem] border-2 transition-all duration-300 cursor-pointer group flex items-center justify-between shrink-0",
                   selectedBillId === b.id 
                     ? "bg-primary border-primary text-primary-foreground shadow-glow" 
                     : "bg-card border-border hover:border-slate-300 text-slate-500 shadow-soft"
@@ -155,7 +226,31 @@ export default function BillsPage() {
                   <ChevronRight className={cn("h-5 w-5 md:h-6 md:w-6 transition-transform", selectedBillId === b.id ? "text-primary-foreground translate-x-1" : "text-slate-300 group-hover:text-primary")} />
                 </div>
               </motion.div>
-            ))
+              ))}
+              
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex justify-center items-center gap-4 py-4 shrink-0">
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setPage(p => Math.max(1, p - 1))}
+                    disabled={page === 1}
+                    className="rounded-xl font-bold text-slate-500 hover:text-foreground"
+                  >
+                    Previous
+                  </Button>
+                  <span className="font-bold text-slate-500 text-sm">Page {page} of {totalPages}</span>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+                    disabled={page === totalPages}
+                    className="rounded-xl font-bold text-slate-500 hover:text-foreground"
+                  >
+                    Next
+                  </Button>
+                </div>
+              )}
+            </>
           )}
         </div>
 
@@ -203,19 +298,32 @@ export default function BillsPage() {
                     ))}
                   </div>
 
-                  {/* Loyalty & Discounts */}
-                   <div className="pt-6 border-t border-dashed border-border space-y-4">
-                    <div className="flex items-center justify-between p-4 bg-primary/10 rounded-2xl border border-primary/20">
-                       <div className="flex items-center gap-3">
-                          <Gift className="h-5 w-5 text-primary" />
-                          <div>
-                             <p className="text-[10px] font-black text-primary/60 uppercase tracking-widest">Loyalty Reward</p>
-                             <p className="text-sm font-bold text-foreground">Points available: 450</p>
-                          </div>
-                       </div>
-                       <Button variant="ghost" size="sm" className="text-primary font-black text-[10px] uppercase hover:bg-primary/20">Redeem</Button>
-                    </div>
-                  </div>
+                  {/* Loyalty & Discounts (Phase 38) */}
+                  {bill.customer_id && (
+                    <div className="pt-6 border-t border-dashed border-border space-y-4">
+                     <div className="flex items-center justify-between p-6 bg-primary/10 rounded-[2rem] border border-primary/20 relative overflow-hidden group">
+                        <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:scale-125 transition-transform">
+                           <Sparkles className="h-20 w-20 text-primary" />
+                        </div>
+                        <div className="flex items-center gap-4 relative z-10">
+                           <div className="h-12 w-12 bg-primary text-white rounded-2xl flex items-center justify-center shadow-lg shadow-primary/30">
+                              <Gift className="h-6 w-6" />
+                           </div>
+                           <div>
+                              <p className="text-[10px] font-black text-primary uppercase tracking-widest">Loyalty Wallet</p>
+                              <p className="text-lg font-black text-foreground tracking-tight">{bill.customer_loyalty_points || 0} POINTS</p>
+                           </div>
+                        </div>
+                        <Button 
+                          className="h-12 px-6 rounded-xl bg-primary text-primary-foreground font-black text-[10px] uppercase shadow-glow border-none relative z-10" 
+                          onClick={handleRedeemLoyalty}
+                          disabled={isRedeeming}
+                        >
+                          {isRedeeming ? 'REDEEMING...' : 'REDEEM NOW'}
+                        </Button>
+                     </div>
+                   </div>
+                  )}
 
                   {/* Total */}
                   <div className="space-y-3 pt-6 border-t border-dashed border-border">
@@ -256,91 +364,136 @@ export default function BillsPage() {
                         </Button>
                       </DialogTrigger>
                        <DialogContent className="max-w-md p-10 rounded-[3rem] border-none shadow-2xl overflow-hidden bg-card">
-                         <div className="absolute top-0 right-0 p-8 opacity-5">
-                            <ShieldCheck className="h-48 w-48 -mr-12 -mt-12 text-foreground" />
-                         </div>
-                         <div className="relative z-10">
-                            <h2 className="text-4xl font-black text-foreground tracking-tighter mb-2">Settle Bill</h2>
-                            <p className="text-slate-500 font-medium mb-10">Choose payment method for <span className="text-primary font-black">₹{(bill.total_paise / 100).toLocaleString()}</span></p>
-                                                        <div className="grid grid-cols-1 gap-4">
-                               <Button 
-                                 variant="outline" 
-                                 className="h-20 rounded-2xl border-2 border-border hover:border-emerald-500 hover:bg-emerald-500/10 flex justify-between items-center px-6 transition-all group"
-                                 onClick={() => settleBill('cash')}
-                               >
-                                  <div className="flex items-center gap-4">
-                                     <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600">
-                                        <Banknote className="h-6 w-6" />
-                                     </div>
-                                     <span className="font-black text-foreground group-hover:text-emerald-500">Cash Settlement</span>
-                                  </div>
-                                  <ChevronRight className="h-5 w-5 text-slate-300" />
-                               </Button>
-                               
-                               <Button 
-                                 variant="outline" 
-                                 className="h-20 rounded-2xl border-2 border-border hover:border-blue-500 hover:bg-blue-500/10 flex justify-between items-center px-6 transition-all group"
-                                 onClick={() => settleBill('card')}
+                          <div className="absolute top-0 right-0 p-8 opacity-5">
+                             <ShieldCheck className="h-48 w-48 -mr-12 -mt-12 text-foreground" />
+                          </div>
+                          <div className="relative z-10">
+                             <h2 className="text-4xl font-black text-foreground tracking-tighter mb-2">Settle Bill</h2>
+                             <p className="text-slate-500 font-medium mb-10">Choose payment method for <span className="text-primary font-black">₹{(bill.total_paise / 100).toLocaleString()}</span></p>
+                             
+                             <div className="grid grid-cols-1 gap-4">
+                                <Button 
+                                  variant="outline" 
+                                  className="h-20 rounded-2xl border-2 border-border hover:border-emerald-500 hover:bg-emerald-500/10 flex justify-between items-center px-6 transition-all group"
+                                  onClick={() => settleBill('cash')}
                                 >
-                                  <div className="flex items-center gap-4">
-                                     <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600">
-                                        <CreditCard className="h-6 w-6" />
-                                     </div>
-                                     <span className="font-black text-foreground group-hover:text-blue-500">Card / POS</span>
-                                  </div>
-                                  <ChevronRight className="h-5 w-5 text-slate-300" />
-                               </Button>
+                                   <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center text-emerald-600">
+                                         <Banknote className="h-6 w-6" />
+                                      </div>
+                                      <span className="font-black text-foreground group-hover:text-emerald-500">Cash Settlement</span>
+                                   </div>
+                                   <ChevronRight className="h-5 w-5 text-slate-300" />
+                                </Button>
+                                
+                                <Button 
+                                  variant="outline" 
+                                  className="h-20 rounded-2xl border-2 border-border hover:border-blue-500 hover:bg-blue-500/10 flex justify-between items-center px-6 transition-all group"
+                                  onClick={() => settleBill('card')}
+                                 >
+                                   <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 bg-blue-500/10 rounded-xl flex items-center justify-center text-blue-600">
+                                         <CreditCard className="h-6 w-6" />
+                                      </div>
+                                      <span className="font-black text-foreground group-hover:text-blue-500">Card / POS</span>
+                                   </div>
+                                   <ChevronRight className="h-5 w-5 text-slate-300" />
+                                </Button>
 
-                               <Button 
-                                 variant="outline" 
-                                 className="h-20 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/10 flex justify-between items-center px-6 transition-all group"
-                                 onClick={() => settleBill('upi')}
-                               >
-                                  <div className="flex items-center gap-4">
-                                     <div className="h-10 w-10 bg-secondary rounded-xl flex items-center justify-center text-primary font-black italic text-xs">UPI</div>
-                                     <span className="font-black text-foreground group-hover:text-primary">GPay / PhonePe</span>
-                                  </div>
-                                  <ChevronRight className="h-5 w-5 text-slate-300" />
-                               </Button>
-                            </div>
+                                <Button 
+                                  variant="outline" 
+                                  className="h-20 rounded-2xl border-2 border-border hover:border-primary hover:bg-primary/10 flex justify-between items-center px-6 transition-all group"
+                                  onClick={() => settleBill('upi')}
+                                >
+                                   <div className="flex items-center gap-4">
+                                      <div className="h-10 w-10 bg-secondary rounded-xl flex items-center justify-center text-primary font-black italic text-xs">UPI</div>
+                                      <span className="font-black text-foreground group-hover:text-primary">GPay / PhonePe</span>
+                                   </div>
+                                   <ChevronRight className="h-5 w-5 text-slate-300" />
+                                </Button>
+                             </div>
 
-                            <div className="mt-8 flex gap-4">
-                               <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => setSplitDialogOpen(true)}>Split Bill</Button>
-                               <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => {}}>Custom</Button>
-                            </div>
-                         </div>
-                      </DialogContent>
+                             <div className="mt-8 flex gap-4">
+                                <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => setSplitDialogOpen(true)}>Split Bill</Button>
+                                <Button variant="ghost" className="flex-1 h-16 rounded-2xl font-black uppercase text-slate-400" onClick={() => setCustomPaymentOpen(true)}>Custom</Button>
+                             </div>
+                          </div>
+                       </DialogContent>
                     </Dialog>
                   ) : (
-                    <Button className="col-span-2 h-16 rounded-2xl bg-emerald-500 text-white font-black shadow-glow border-none uppercase tracking-widest cursor-default">
-                      <CheckCircle2 className="h-5 w-5 mr-2" /> SETTLED
-                    </Button>
+                    <Dialog>
+                       <DialogTrigger asChild>
+                          <Button className="h-16 rounded-2xl bg-secondary text-primary font-black shadow-glow border-none uppercase tracking-widest hover:bg-primary/10 transition-all">
+                             <QrCode className="h-5 w-5 mr-2" /> FEEDBACK QR
+                          </Button>
+                       </DialogTrigger>
+                       <DialogContent className="max-w-md p-12 rounded-[3.5rem] border-none shadow-2xl bg-card flex flex-col items-center text-center">
+                          <div className="h-24 w-24 bg-primary/10 rounded-3xl flex items-center justify-center text-primary mb-8 shadow-inner">
+                             <MessageSquare className="h-10 w-10" />
+                          </div>
+                          <h2 className="text-4xl font-black text-foreground tracking-tighter mb-2">Guest Feedback</h2>
+                          <p className="text-slate-500 font-medium mb-10">Scan this QR to allow Guest to rate their experience for <span className="text-primary font-black">#{bill.bill_number}</span></p>
+                          
+                          <div className="bg-white p-6 rounded-[2.5rem] shadow-2xl border-4 border-primary/20 mb-10">
+                             <QrCode className="h-40 w-40 text-foreground" strokeWidth={1.5} />
+                          </div>
+                          
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 mb-2">Simulation Link</p>
+                          <code className="bg-secondary px-4 py-2 rounded-xl text-xs font-bold text-primary mb-8">adruva.com/review/{bill.id}</code>
+                          
+                          <Button variant="outline" className="w-full h-16 rounded-2xl border-border font-black uppercase text-slate-500" onClick={() => toast({ title: "Copied", description: "Review link copied to clipboard." })}>
+                             COPY REVIEW LINK
+                          </Button>
+                       </DialogContent>
+                    </Dialog>
                   )}
                 </div>
               </motion.div>
             ) : (
-               <div className="h-full flex flex-col items-center justify-center text-slate-400 bg-secondary/50 rounded-[2.5rem] border-2 border-dashed border-border p-12 text-center">
-                 <div className="h-24 w-24 bg-card rounded-3xl flex items-center justify-center mb-8 shadow-soft border border-border">
+              <div className="h-full bg-card rounded-[2.5rem] border border-border shadow-soft flex flex-col items-center justify-center p-8 text-center">
+                 <div className="h-24 w-24 bg-secondary rounded-full flex items-center justify-center mb-6">
                     <Receipt className="h-10 w-10 text-slate-300" />
                  </div>
-                 <p className="text-xl font-black text-foreground mb-2">NO BILL SELECTED</p>
-                 <p className="font-medium text-slate-500">Select a bill from the registry to view itemized details and process payment.</p>
+                 <h3 className="text-2xl font-black text-foreground tracking-tighter mb-2">No Bill Selected</h3>
+                 <p className="text-slate-500 font-medium">Select a bill from the queue to view details and settle payments.</p>
               </div>
             )}
           </AnimatePresence>
-        </div>
       </div>
-
-      {/* Hidden Receipt for Printing */}
-      <div className="hidden">
-        <ThermalReceipt ref={printRef} bill={bill} outlet={null} />
-      </div>
-
+    </div>
       <SplitBillDialog 
         open={splitDialogOpen} 
         onClose={() => setSplitDialogOpen(false)} 
         bill={bill} 
       />
+
+      {/* Custom Payment Dialog */}
+      <Dialog open={customPaymentOpen} onOpenChange={setCustomPaymentOpen}>
+        <DialogContent className="bg-card rounded-[2.5rem] border-border shadow-2xl p-8 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-black text-foreground tracking-tighter">Custom Payment</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+             <div className="space-y-2">
+               <label className="text-xs font-black uppercase tracking-widest text-slate-500">Payment Method</label>
+               <Input 
+                 placeholder="e.g. Swiggy, Zomato, Amex" 
+                 value={customPaymentMethod}
+                 onChange={(e) => setCustomPaymentMethod(e.target.value)}
+                 className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+               />
+             </div>
+             <Button 
+               onClick={() => { settleBill(customPaymentMethod); setCustomPaymentOpen(false); setCustomPaymentMethod(''); }}
+               disabled={!customPaymentMethod.trim()}
+               className="w-full h-14 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest border-none mt-2 shadow-glow"
+             >
+               Record Payment
+             </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
+    </>
   );
 }

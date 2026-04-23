@@ -15,5 +15,6 @@ router.post('/', CustomerController.createOrUpdateCustomer);
 router.get('/phone/:phone', CustomerController.getCustomerByPhone);
 router.get('/:id/history', CustomerController.getCustomerHistory);
 router.post('/loyalty/earn', CustomerController.earnLoyaltyPoints);
+router.post('/loyalty/redeem', CustomerController.redeemLoyaltyPoints);
 
 export default router;

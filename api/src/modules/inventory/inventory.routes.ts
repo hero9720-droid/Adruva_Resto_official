@@ -30,5 +30,13 @@ router.post('/suppliers',
   requireRole(['outlet_manager']),
   InventoryController.createSupplier
 );
+router.patch('/suppliers/:id',
+  requireRole(['outlet_manager']),
+  InventoryController.updateSupplier
+);
+router.delete('/suppliers/:id',
+  requireRole(['outlet_manager']),
+  InventoryController.deleteSupplier
+);
 
 export default router;

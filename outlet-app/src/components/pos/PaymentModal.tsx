@@ -18,11 +18,13 @@ import {
   Gift,
   Search,
   Loader2,
-  Plus
+  Plus,
+  Users
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 export default function PaymentModal({ 
   open, 
@@ -41,14 +43,22 @@ export default function PaymentModal({
   const [searchPhone, setSearchPhone] = useState('');
   const [loadingCustomer, setLoadingCustomer] = useState(false);
   const [loyaltyDiscount, setLoyaltyDiscount] = useState(0);
+  
+  const [splitCount, setSplitCount] = useState(1);
+  const [currentSplitIndex, setCurrentSplitIndex] = useState(0);
+  
   const { toast } = useToast();
 
   useEffect(() => {
-    if (open && bill?.customer_id) {
-      fetchCustomer(bill.customer_id);
-    } else {
-      setCustomer(null);
+    if (open) {
+      if (bill?.customer_id) {
+        fetchCustomer(bill.customer_id);
+      }
+      setMethod(null);
+      setProcessing(false);
       setLoyaltyDiscount(0);
+      setSplitCount(1);
+      setCurrentSplitIndex(0);
     }
   }, [open, bill]);
 
@@ -68,7 +78,6 @@ export default function PaymentModal({
     if (!customer || customer.loyalty_points < 100) return;
     try {
       const pointsToRedeem = Math.min(customer.loyalty_points, Math.floor((bill.total_paise - loyaltyDiscount) / 10));
-      // Standard: 10 points = 1 Rupee
       const discountRupees = pointsToRedeem / 10;
       setLoyaltyDiscount(prev => prev + (discountRupees * 100));
       setCustomer({ ...customer, loyalty_points: customer.loyalty_points - pointsToRedeem });
@@ -82,14 +91,27 @@ export default function PaymentModal({
     if (!method) return;
     setProcessing(true);
     try {
+      const amountToSplit = bill.total_paise - loyaltyDiscount;
+      const amountPerSplit = Math.floor(amountToSplit / splitCount);
+      const actualAmount = currentSplitIndex === splitCount - 1 
+        ? amountToSplit - (amountPerSplit * (splitCount - 1))
+        : amountPerSplit;
+
       await api.post('/billing/payments', {
         bill_id: bill.id,
         payment_method: method,
-        amount_paise: bill.total_paise - loyaltyDiscount
+        amount_paise: actualAmount
       });
-      toast({ title: "Payment Recorded", description: "Table is now available." });
-      onSuccess();
-      onOpenChange(false);
+
+      if (splitCount > 1 && currentSplitIndex < splitCount - 1) {
+        toast({ title: `Part ${currentSplitIndex + 1} Settled`, description: `Remaining: ₹${((amountToSplit - (amountPerSplit * (currentSplitIndex + 1))) / 100).toLocaleString()}` });
+        setCurrentSplitIndex(prev => prev + 1);
+        setMethod(null);
+      } else {
+        toast({ title: "Payment Recorded", description: "Table is now available." });
+        onSuccess();
+        onOpenChange(false);
+      }
     } catch (error) {
       toast({ variant: "destructive", title: "Payment Failed" });
     } finally {
@@ -98,10 +120,11 @@ export default function PaymentModal({
   };
 
   const finalAmount = bill?.total_paise - loyaltyDiscount;
+  const splitAmount = Math.floor(finalAmount / splitCount);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl flex flex-col md:flex-row h-[600px] md:h-auto">
+      <DialogContent className="max-w-4xl p-0 overflow-hidden rounded-[2.5rem] border-none shadow-2xl flex flex-col md:flex-row h-[700px] md:h-auto">
         {/* Left Panel: Bill & Loyalty */}
         <div className="flex-1 bg-indigo-600 p-8 text-white relative flex flex-col justify-between">
           <div className="absolute top-0 right-0 p-8 opacity-10">
@@ -127,67 +150,91 @@ export default function PaymentModal({
                  </div>
                )}
                <div className="pt-4 border-t border-indigo-400/30 flex flex-col">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">Balance Payable</span>
-                  <span className="text-6xl font-black text-white tracking-tighter">₹{(finalAmount / 100).toLocaleString()}</span>
+                  <span className="text-[10px] font-black uppercase tracking-widest text-indigo-200">
+                    {splitCount > 1 ? `Part ${currentSplitIndex + 1} of ${splitCount}` : 'Balance Payable'}
+                  </span>
+                  <span className="text-6xl font-black text-white tracking-tighter">
+                    ₹{((splitCount > 1 ? splitAmount : finalAmount) / 100).toLocaleString()}
+                  </span>
                </div>
             </div>
           </div>
 
-          <div className="mt-12 p-6 bg-white/10 rounded-3xl border border-white/10 backdrop-blur-sm">
-             <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                   <Gift className="h-5 w-5 text-yellow-400" />
-                   <span className="font-black text-sm uppercase tracking-tighter">Loyalty Rewards</span>
+          <div className="space-y-4">
+             {/* Split Bill Controls */}
+             <div className="p-6 bg-white/10 rounded-3xl border border-white/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="flex items-center gap-2">
+                      <Users className="h-5 w-5 text-indigo-200" />
+                      <span className="font-black text-sm uppercase tracking-tighter">Split Settlement</span>
+                   </div>
+                   <Badge className="bg-indigo-500 text-white border-none font-black">{splitCount} WAY</Badge>
                 </div>
-                {customer && <Badge className="bg-yellow-400 text-indigo-900 border-none font-black">{customer.loyalty_points} PTS</Badge>}
+                <div className="flex gap-2">
+                   {[1, 2, 3, 4, 5].map(n => (
+                      <button 
+                         key={n}
+                         onClick={() => { setSplitCount(n); setCurrentSplitIndex(0); }}
+                         className={cn(
+                            "flex-1 h-10 rounded-xl font-black text-xs transition-all",
+                            splitCount === n ? "bg-white text-indigo-600" : "bg-white/5 text-white hover:bg-white/10"
+                         )}
+                      >
+                         {n}
+                      </button>
+                   ))}
+                </div>
              </div>
 
-             {!customer ? (
-               <div className="space-y-3">
-                  <div className="relative">
-                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-300" />
-                     <Input 
-                      placeholder="Customer Phone" 
-                      className="bg-white/5 border-white/10 pl-10 text-white placeholder:text-indigo-300 h-10 rounded-xl"
-                      value={searchPhone}
-                      onChange={(e) => setSearchPhone(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && fetchCustomer(searchPhone)}
-                     />
-                  </div>
-                  <Button 
-                    variant="ghost" 
-                    className="w-full text-indigo-200 hover:text-white hover:bg-white/5 text-xs font-bold"
-                    onClick={() => fetchCustomer(searchPhone)}
-                    disabled={loadingCustomer}
-                  >
-                    {loadingCustomer ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Plus className="h-4 w-4 mr-2" />}
-                    LINK GUEST PROFILE
-                  </Button>
-               </div>
-             ) : (
-               <div className="space-y-4">
-                  <div className="flex items-center gap-3">
-                     <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">{customer.name[0]}</div>
-                     <div>
-                        <p className="font-black text-sm">{customer.name}</p>
-                        <p className="text-[10px] font-bold text-indigo-200">{customer.phone}</p>
+             <div className="p-6 bg-white/10 rounded-3xl border border-white/10 backdrop-blur-sm">
+                <div className="flex items-center justify-between mb-4">
+                   <div className="flex items-center gap-2">
+                      <Gift className="h-5 w-5 text-yellow-400" />
+                      <span className="font-black text-sm uppercase tracking-tighter">Loyalty Rewards</span>
+                   </div>
+                   {customer && <Badge className="bg-yellow-400 text-indigo-900 border-none font-black">{customer.loyalty_points} PTS</Badge>}
+                </div>
+
+                {!customer ? (
+                  <div className="space-y-3">
+                     <div className="relative">
+                        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-indigo-300" />
+                        <Input 
+                         placeholder="Customer Phone" 
+                         className="bg-white/5 border-white/10 pl-10 text-white placeholder:text-indigo-300 h-10 rounded-xl"
+                         value={searchPhone}
+                         onChange={(e) => setSearchPhone(e.target.value)}
+                         onKeyDown={(e) => e.key === 'Enter' && fetchCustomer(searchPhone)}
+                        />
                      </div>
                   </div>
-                  <Button 
-                    className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl h-10 text-xs"
-                    onClick={handleRedeem}
-                    disabled={customer.loyalty_points < 100}
-                  >
-                    REDEEM POINTS (10 PTS = ₹1)
-                  </Button>
-               </div>
-             )}
+                ) : (
+                  <div className="space-y-4">
+                     <div className="flex items-center gap-3">
+                        <div className="h-10 w-10 rounded-xl bg-white/20 flex items-center justify-center font-bold text-lg">{customer.name[0]}</div>
+                        <div>
+                           <p className="font-black text-sm">{customer.name}</p>
+                           <p className="text-[10px] font-bold text-indigo-200">{customer.phone}</p>
+                        </div>
+                     </div>
+                     <Button 
+                       className="w-full bg-white text-indigo-600 hover:bg-indigo-50 font-black rounded-xl h-10 text-xs"
+                       onClick={handleRedeem}
+                       disabled={customer.loyalty_points < 100}
+                     >
+                       REDEEM POINTS (10 PTS = ₹1)
+                     </Button>
+                  </div>
+                )}
+             </div>
           </div>
         </div>
 
         {/* Right Panel: Payment Methods */}
-        <div className="flex-1 p-8 space-y-6 bg-card">
-           <h3 className="text-xl font-black text-foreground uppercase tracking-tighter">Select Payment Method</h3>
+        <div className="flex-1 p-8 space-y-6 bg-card flex flex-col justify-center">
+           <h3 className="text-xl font-black text-foreground uppercase tracking-tighter">
+             {splitCount > 1 ? `Pay Part ${currentSplitIndex + 1}` : 'Select Payment Method'}
+           </h3>
            <div className="grid grid-cols-2 gap-4">
             {[
               { id: 'cash', name: 'Cash', icon: Banknote, color: 'text-green-600', bg: 'bg-green-50' },
@@ -224,13 +271,16 @@ export default function PaymentModal({
             ) : (
               <>
                 <CheckCircle2 className="h-8 w-8 text-green-400" />
-                COMPLETE SETTLEMENT
+                {splitCount > 1 ? 'RECORD PARTIAL' : 'COMPLETE SETTLEMENT'}
               </>
             )}
           </Button>
           
           <p className="text-center text-[10px] text-muted-foreground font-bold uppercase tracking-widest">
-            This will mark the table as available and close the order session.
+            {splitCount > 1 
+              ? `Recording payment ${currentSplitIndex + 1} of ${splitCount}`
+              : 'This will mark the table as available and close the order session.'
+            }
           </p>
         </div>
       </DialogContent>
