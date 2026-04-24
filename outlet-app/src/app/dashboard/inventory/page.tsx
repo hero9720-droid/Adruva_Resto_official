@@ -299,8 +299,6 @@ export default function InventoryPage() {
           <TabsTrigger value="history" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Movement Log</TabsTrigger>
         </TabsList>
 
-        </TabsList>
-
         <div className="flex-1">
           <TabsContent value="stock" className="space-y-6 mt-0">
             <div className="flex gap-4">

@@ -27,6 +27,7 @@ import {
   Calendar,
   IndianRupee,
   Activity,
+  QrCode,
   Zap,
   Target,
   Clock,
@@ -47,6 +48,7 @@ import {
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { useToast } from '@/hooks/use-toast';
 import { useSalesOverview, useTopItems, useStaffPerformance, useHourlyHeatmap } from '@/hooks/useAnalytics';
 import { useIngredients } from '@/hooks/useInventory';
 import { useTables } from '@/hooks/useSettings';

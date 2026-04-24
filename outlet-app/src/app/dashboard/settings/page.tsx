@@ -119,7 +119,6 @@ export default function SettingsPage() {
   };
 
   return (
-  return (
     <div className="space-y-6 md:space-y-8 min-h-0 flex flex-col pb-10 bg-background font-sans">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
         <div>
