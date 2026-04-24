@@ -742,5 +742,6 @@ function AddTableDialog() {
         </Button>
       </DialogFooter>
     </DialogContent>
+    </Dialog>
   );
 }
