@@ -8,8 +8,9 @@ import { requireRole } from '../../middleware/rbac';
 
 const router = Router();
 
-// Public route for Customer QR App
+// Public routes for Customer QR App
 router.post('/public', OrdersController.createPublicOrder);
+router.get('/public/:id', OrdersController.getPublicOrder);
 
 router.use(verifyToken);
 router.use(requireActiveSubscription);

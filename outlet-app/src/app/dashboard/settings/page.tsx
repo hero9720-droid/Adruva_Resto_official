@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { motion } from 'framer-motion';
 import { 
   Building2, 
@@ -26,7 +26,10 @@ import {
   HardDrive,
   Activity,
   Server,
-  QrCode
+  QrCode,
+  Upload,
+  ImageIcon,
+  Loader2
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -48,6 +51,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useOutletProfile, useUpdateProfile, useTables, useUpdateTable, useCreateTable } from '@/hooks/useSettings';
+import { useUploadMenuPhoto } from '@/hooks/useMenu';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
@@ -63,9 +67,29 @@ export default function SettingsPage() {
     gstin: '',
     phone: '',
     address: '',
-    gst_percentage: 5,
-    service_charge_percentage: 0
+    tax_rate_percent: 5,
+    service_charge_percent: 0,
+    logo_url: ''
   });
+
+  const [isUploading, setIsUploading] = useState(false);
+  const logoInputRef = useRef<HTMLInputElement>(null);
+  const upload = useUploadMenuPhoto();
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setIsUploading(true);
+    try {
+      const url = await upload.mutateAsync(file);
+      setProfileForm(prev => ({ ...prev, logo_url: url }));
+      toast({ title: "Logo Uploaded", description: "Save changes to finalize." });
+    } catch (err) {
+      toast({ variant: "destructive", title: "Upload failed" });
+    } finally {
+      setIsUploading(false);
+    }
+  };
 
   const [language, setLanguage] = useState('English');
 
@@ -76,21 +100,16 @@ export default function SettingsPage() {
         gstin: profile.gstin || '',
         phone: profile.phone || '',
         address: profile.address || '',
-        gst_percentage: profile.settings_tax?.gst_percentage || 5,
-        service_charge_percentage: profile.settings_tax?.service_charge_percentage || 0
+        tax_rate_percent: profile.tax_rate_percent || 5,
+        service_charge_percent: profile.service_charge_percent || 0,
+        logo_url: profile.logo_url || ''
       });
     }
   }, [profile]);
 
   const handleSaveProfile = async () => {
     try {
-      await updateProfile.mutateAsync({
-        ...profileForm,
-        settings_tax: {
-          gst_percentage: Number(profileForm.gst_percentage),
-          service_charge_percentage: Number(profileForm.service_charge_percentage)
-        }
-      });
+      await updateProfile.mutateAsync(profileForm);
       toast({ title: "Settings Saved", description: "Outlet configuration has been updated.", className: "bg-foreground text-background border-none" });
     } catch (error) {
       toast({ variant: "destructive", title: "Failed to save settings" });
@@ -139,7 +158,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="floor" className="flex-1 flex flex-col overflow-hidden">
+      <Tabs defaultValue="floor" className="flex-1 flex flex-col">
         <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
           <TabsTrigger value="floor" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Visual Floor Plan</TabsTrigger>
           <TabsTrigger value="profile" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Outlet Profile</TabsTrigger>
@@ -165,14 +184,7 @@ export default function SettingsPage() {
                          <p className="text-slate-400 font-black text-[10px] uppercase tracking-[0.2em] mt-0.5">Drag to position tables</p>
                       </div>
                    </div>
-                   <Dialog>
-                    <DialogTrigger asChild>
-                      <Button variant="outline" className="h-12 px-6 rounded-2xl border-border shadow-soft font-black uppercase tracking-widest text-slate-500 bg-secondary/50 hover:bg-secondary hover:text-primary">
-                         <Plus className="h-4 w-4 mr-2" /> Add Table
-                      </Button>
-                    </DialogTrigger>
-                    <AddTableDialog />
-                  </Dialog>
+                   <AddTableDialog />
                 </div>
                 <div className="flex-1 relative bg-background rounded-[2.5rem] border-2 border-dashed border-border overflow-hidden" 
                      style={{ backgroundImage: 'radial-gradient(var(--border) 2px, transparent 2px)', backgroundSize: '40px 40px' }}>
@@ -206,6 +218,60 @@ export default function SettingsPage() {
 
           <TabsContent value="profile" className="mt-0">
             <div className="bg-card shadow-soft rounded-[2.5rem] p-10 border border-border">
+              {/* Profile/Logo Upload Section */}
+              <div className="flex flex-col md:flex-row items-center gap-10 mb-12 pb-10 border-b border-border/50">
+                 <div className="relative group">
+                    <div className="h-40 w-40 rounded-[2.5rem] bg-secondary flex items-center justify-center overflow-hidden border-4 border-card shadow-xl group-hover:border-primary/20 transition-all">
+                       {profileForm.logo_url ? (
+                         <img src={profileForm.logo_url} className="w-full h-full object-cover" alt="Logo" />
+                       ) : (
+                         <ImageIcon className="h-16 w-16 text-slate-300" />
+                       )}
+                       <div 
+                         className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex flex-col items-center justify-center transition-opacity cursor-pointer backdrop-blur-sm"
+                         onClick={() => logoInputRef.current?.click()}
+                       >
+                          <Upload className="h-8 w-8 text-white mb-2" />
+                          <span className="text-[10px] font-black text-white uppercase tracking-widest">Update Logo</span>
+                       </div>
+                    </div>
+                    {isUploading && (
+                      <div className="absolute inset-0 flex items-center justify-center bg-card/80 rounded-[2.5rem] z-20">
+                         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                      </div>
+                    )}
+                    <input 
+                      type="file" 
+                      ref={logoInputRef} 
+                      className="hidden" 
+                      accept="image/*" 
+                      onChange={handleLogoUpload} 
+                    />
+                 </div>
+                 <div className="flex-1 text-center md:text-left">
+                    <h3 className="text-3xl font-black text-foreground tracking-tighter uppercase mb-2">Outlet Brand Identity</h3>
+                    <p className="text-slate-500 font-medium text-lg mb-6">Upload your restaurant logo. This will appear on digital menus, invoices, and the customer app.</p>
+                    <div className="flex flex-wrap justify-center md:justify-start gap-4">
+                       <Button 
+                        variant="outline" 
+                        className="rounded-xl font-black text-xs uppercase tracking-widest border-border text-slate-400"
+                        onClick={() => logoInputRef.current?.click()}
+                       >
+                         Choose File
+                       </Button>
+                       {profileForm.logo_url && (
+                         <Button 
+                          variant="ghost" 
+                          className="rounded-xl font-black text-xs uppercase tracking-widest text-red-500 hover:bg-red-50"
+                          onClick={() => setProfileForm({...profileForm, logo_url: ''})}
+                         >
+                           Remove
+                         </Button>
+                       )}
+                    </div>
+                 </div>
+              </div>
+
               <div className="flex items-center gap-5 mb-10">
                  <div className="h-16 w-16 bg-secondary rounded-2xl flex items-center justify-center text-primary shadow-inner">
                     <Building2 className="h-8 w-8" />
@@ -279,27 +345,27 @@ export default function SettingsPage() {
                   </div>
                    <div className="space-y-8">
                       <div className="space-y-3">
-                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">GST Percentage (%)</Label>
-                         <Input 
-                            type="number" 
-                            value={profileForm.gst_percentage} 
-                            onChange={e => setProfileForm({...profileForm, gst_percentage: Number(e.target.value)})}
-                            className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
-                           />
-                         <div className="flex gap-4 mt-2 ml-2">
-                            <Badge className="bg-secondary text-slate-500 border-none font-bold">CGST: {profileForm.gst_percentage / 2}%</Badge>
-                            <Badge className="bg-secondary text-slate-500 border-none font-bold">SGST: {profileForm.gst_percentage / 2}%</Badge>
-                         </div>
-                      </div>
-                      <div className="space-y-3">
-                         <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Service Charge (%)</Label>
-                         <Input 
-                            type="number" 
-                            value={profileForm.service_charge_percentage} 
-                            onChange={e => setProfileForm({...profileForm, service_charge_percentage: Number(e.target.value)})}
-                            className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
-                           />
-                      </div>
+                          <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">GST Percentage (%)</Label>
+                          <Input 
+                             type="number" 
+                             value={profileForm.tax_rate_percent} 
+                             onChange={e => setProfileForm({...profileForm, tax_rate_percent: Number(e.target.value)})}
+                             className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
+                            />
+                          <div className="flex gap-4 mt-2 ml-2">
+                             <Badge className="bg-secondary text-slate-500 border-none font-bold">CGST: {profileForm.tax_rate_percent / 2}%</Badge>
+                             <Badge className="bg-secondary text-slate-500 border-none font-bold">SGST: {profileForm.tax_rate_percent / 2}%</Badge>
+                          </div>
+                       </div>
+                       <div className="space-y-3">
+                          <Label className="font-black text-xs uppercase tracking-widest text-slate-500 ml-2">Service Charge (%)</Label>
+                          <Input 
+                             type="number" 
+                             value={profileForm.service_charge_percent} 
+                             onChange={e => setProfileForm({...profileForm, service_charge_percent: Number(e.target.value)})}
+                             className="px-6 h-16 rounded-[2rem] border-none shadow-soft font-black text-2xl bg-background text-foreground" 
+                            />
+                       </div>
                    </div>
                </div>
 
@@ -567,8 +633,41 @@ export default function SettingsPage() {
                       <h4 className="font-black text-primary uppercase tracking-tight text-lg leading-tight">Master QR Code</h4>
                       <p className="text-slate-500 text-sm font-medium mt-1">This QR can be used for general menu browsing (non-table specific).</p>
                    </div>
-                   <Button variant="ghost" className="font-black text-[11px] uppercase tracking-widest text-primary">Download PNG</Button>
                 </div>
+
+                <div className="mt-12">
+                   <h3 className="text-2xl font-black text-foreground tracking-tighter uppercase mb-6 flex items-center gap-3">
+                      Table QR Catalog
+                      <Badge className="bg-secondary text-primary border-none text-[9px] px-3">{tables?.length || 0} Tables</Badge>
+                   </h3>
+                   
+                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+                      {tablesLoading ? (
+                        Array(4).fill(0).map((_, i) => (
+                          <div key={i} className="h-64 bg-secondary animate-pulse rounded-[2rem]" />
+                        ))
+                      ) : tables?.map((table: any) => (
+                        <div key={table.id} className="bg-background border border-border rounded-[2rem] p-6 flex flex-col items-center group hover:border-primary transition-all shadow-sm hover:shadow-glow-sm">
+                           <div className="h-32 w-32 bg-white rounded-2xl flex items-center justify-center p-3 mb-6 shadow-inner border border-border group-hover:scale-105 transition-transform">
+                              <img 
+                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://adruvaresto-customer.vercel.app/${profile?.slug}?table=${table.id}`)}`} 
+                                alt={`QR Table ${table.name}`}
+                                className="w-full h-full object-contain"
+                              />
+                           </div>
+                           <div className="text-center">
+                              <h4 className="font-black text-foreground uppercase tracking-tight text-xl mb-1">TABLE {table.name}</h4>
+                              <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{table.zone_name || 'Main Zone'}</p>
+                              <div className="flex gap-2">
+                                 <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl border-border text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-primary">Download</Button>
+                                 <Button variant="secondary" size="sm" className="h-9 px-4 rounded-xl bg-secondary text-primary text-[9px] font-black uppercase tracking-widest border-none">Print</Button>
+                              </div>
+                           </div>
+                        </div>
+                      ))}
+                   </div>
+                </div>
+                <Button variant="ghost" className="font-black text-[11px] uppercase tracking-widest text-primary">Download PNG</Button>
               </div>
            </TabsContent>
         </div>
@@ -582,6 +681,7 @@ function AddTableDialog() {
   const { toast } = useToast();
   const [name, setName] = useState('');
   const [capacity, setCapacity] = useState(4);
+  const [isOpen, setIsOpen] = useState(false);
 
   const handleCreate = async () => {
     if (!name) return;
@@ -595,13 +695,20 @@ function AddTableDialog() {
       });
       toast({ title: "Table Created", description: `Table ${name} added to floor plan.` });
       setName('');
+      setIsOpen(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to create table" });
     }
   };
 
   return (
-     <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-card shadow-soft font-sans">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="h-12 px-6 rounded-2xl border-border shadow-soft font-black uppercase tracking-widest text-slate-500 bg-secondary/50 hover:bg-secondary hover:text-primary">
+            <Plus className="h-4 w-4 mr-2" /> Add Table
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-card shadow-soft font-sans">
       <DialogHeader>
         <DialogTitle className="text-3xl font-black text-foreground tracking-tighter uppercase">New Table</DialogTitle>
       </DialogHeader>

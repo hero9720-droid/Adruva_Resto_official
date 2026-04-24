@@ -85,12 +85,18 @@ export default function DigitalMenu() {
         if (data.data.categories.length > 0) {
           setSelectedCategory(data.data.categories[0].id);
         }
+        
+        const savedOrderId = localStorage.getItem('active_order_id');
+        if (savedOrderId) {
+          rehydrateActiveOrder(savedOrderId, data.data.outlet.id);
+        }
       } catch (err) {
         console.error('Failed to fetch menu', err);
       } finally {
         setLoading(false);
       }
     }
+    
     fetchMenu();
 
     const savedPhone = localStorage.getItem('customer_phone');
@@ -98,6 +104,19 @@ export default function DigitalMenu() {
       handleLogin(savedPhone);
     }
   }, [outletSlug]);
+
+  const rehydrateActiveOrder = async (orderId: string, outletId: string) => {
+    try {
+      const { data } = await api.get(`/orders/public/${orderId}?outlet_id=${outletId}`);
+      if (data.data && data.data.status !== 'served' && data.data.status !== 'cancelled') {
+        setActiveOrder(data.data);
+      } else {
+        localStorage.removeItem('active_order_id');
+      }
+    } catch (err) {
+      console.error('Failed to rehydrate order');
+    }
+  };
 
   const handleLogin = async (phoneToUse: string) => {
     setLoggingIn(true);
@@ -184,6 +203,7 @@ export default function DigitalMenu() {
         }))
       });
       setActiveOrder(data.data);
+      localStorage.setItem('active_order_id', data.data.id);
       clearCart();
     } catch (error) {
       alert("Failed to place order. Please try again or call staff.");
@@ -300,7 +320,10 @@ export default function DigitalMenu() {
                       <p className="text-lg font-black tracking-tight">{activeOrder.status === 'confirmed' ? 'Chef is cooking...' : activeOrder.status.toUpperCase()}</p>
                    </div>
                 </div>
-                <Button variant="ghost" className="h-12 w-12 rounded-xl bg-white/5 text-white/40 hover:text-white" onClick={() => setActiveOrder(null)}>
+                <Button variant="ghost" className="h-12 w-12 rounded-xl bg-white/5 text-white/40 hover:text-white" onClick={() => {
+                   setActiveOrder(null);
+                   localStorage.removeItem('active_order_id');
+                }}>
                    <X className="h-5 w-5" />
                 </Button>
              </div>

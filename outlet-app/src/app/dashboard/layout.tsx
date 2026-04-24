@@ -32,14 +32,24 @@ export default function DashboardLayout({
       <main className="flex-1 flex flex-col min-w-0">
         <header className="md:hidden sticky top-0 flex items-center justify-between p-4 bg-card/80 backdrop-blur-md border-b border-border shadow-sm z-30">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-primary rounded-xl flex items-center justify-center shadow-lg shadow-primary/20">
-              <span className="text-primary-foreground font-black text-lg">A</span>
+            <Button variant="ghost" size="icon" onClick={() => setIsMobileOpen(true)} className="h-10 w-10 rounded-xl hover:bg-secondary">
+              <Menu className="h-6 w-6 text-foreground" />
+            </Button>
+            <div className="flex items-center gap-2">
+              <div className="h-8 w-8 bg-primary rounded-lg flex items-center justify-center shadow-lg shadow-primary/20">
+                <span className="text-primary-foreground font-black text-sm">A</span>
+              </div>
+              <span className="font-black text-foreground tracking-tighter uppercase text-sm">Adruva</span>
             </div>
-            <span className="font-black text-foreground tracking-tighter uppercase">Adruva</span>
           </div>
-          <Button variant="ghost" size="icon" onClick={() => setIsMobileOpen(true)} className="h-12 w-12 rounded-xl hover:bg-secondary">
-            <Menu className="h-6 w-6 text-foreground" />
-          </Button>
+          <div className="flex items-center gap-2">
+             <Button variant="ghost" size="icon" className="h-10 w-10 rounded-xl hover:bg-secondary">
+               <Search className="h-5 w-5 text-muted-foreground" />
+             </Button>
+             <div className="h-10 w-10 rounded-xl bg-secondary flex items-center justify-center border border-border">
+                <User className="h-5 w-5 text-foreground" />
+             </div>
+          </div>
         </header>
 
         {/* Global Desktop Header */}

@@ -264,12 +264,29 @@ export async function getPublicMenu(req: Request, res: Response) {
 
   const itemsRes = await db.query(
     `SELECT 
-       id, category_id, name, description, photo_url,
-       base_price_paise, food_type, is_featured,
-       preparation_time_minutes
-     FROM menu_items
-     WHERE outlet_id = $1 AND is_available = true
-     ORDER BY sort_order ASC`,
+       m.id, m.category_id, m.name, m.description, m.photo_url,
+       m.base_price_paise, m.food_type, m.is_featured,
+       m.preparation_time_minutes,
+       COALESCE(
+         (SELECT json_agg(v.*) FROM menu_item_variants v WHERE v.menu_item_id = m.id), 
+         '[]'::json
+       ) as variants,
+       COALESCE(
+         (SELECT json_agg(
+           json_build_object(
+             'id', mg.id,
+             'name', mg.name,
+             'is_required', mg.is_required,
+             'min_select', mg.min_select,
+             'max_select', mg.max_select,
+             'modifiers', COALESCE((SELECT json_agg(mod.*) FROM modifiers mod WHERE mod.group_id = mg.id), '[]'::json)
+           )
+         ) FROM modifier_groups mg WHERE mg.menu_item_id = m.id),
+         '[]'::json
+       ) as modifier_groups
+     FROM menu_items m
+     WHERE m.outlet_id = $1 AND m.is_available = true
+     ORDER BY m.sort_order ASC`,
     [outlet_id]
   );
 

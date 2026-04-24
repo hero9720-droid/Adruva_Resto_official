@@ -21,10 +21,14 @@ export async function createRecipe(req: Request, res: Response) {
 
     // 3. Add new ingredients
     for (const ing of ingredients) {
+      // Get unit from ingredient registry
+      const ingRes = await client.query('SELECT unit FROM ingredients WHERE id = $1', [ing.ingredient_id]);
+      const unit = ingRes.rows[0]?.unit || 'PCS';
+
       await client.query(
-        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity)
-         VALUES ($1, $2, $3)`,
-        [recipe_id, ing.ingredient_id, ing.quantity]
+        `INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, outlet_id, unit)
+         VALUES ($1, $2, $3, $4, $5)`,
+        [recipe_id, ing.ingredient_id, ing.quantity, outlet_id, unit]
       );
     }
 

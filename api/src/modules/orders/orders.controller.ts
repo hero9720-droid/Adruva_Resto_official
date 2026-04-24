@@ -2,7 +2,7 @@ import { Request, Response } from 'express';
 import { withOutletContext } from '../../lib/db';
 import { getNextOrderNumber } from '../../lib/counters';
 import { deductInventory } from '../../lib/inventory';
-import { emitToKitchen, emitToBilling } from '../../websocket';
+import { emitToKitchen, emitToBilling, emitToOutlet } from '../../websocket';
 import { AppError } from '../../lib/errors';
 import { checkPlanLimit } from '../../lib/planLimits';
 
@@ -23,8 +23,7 @@ export async function createOrder(req: Request, res: Response) {
     created_by: staff_id
   });
 
-  emitToKitchen(outlet_id, 'order:new', result);
-  emitToBilling(outlet_id, 'order:update', result);
+  emitToOutlet(outlet_id, 'order:new', result);
 
   res.status(201).json({ success: true, data: result });
 }
@@ -40,15 +39,15 @@ export async function createPublicOrder(req: Request, res: Response) {
   await checkPlanLimit(outlet_id, 'max_orders_per_month');
 
   const result = await processOrderCreation(outlet_id, {
-    order_type: 'dine_in',
+    order_type: 'qr',
+    source: 'qr',
     table_id,
     notes,
     items,
     created_by: 'system_guest'
   });
 
-  emitToKitchen(outlet_id, 'order:new', result);
-  emitToBilling(outlet_id, 'order:update', result);
+  emitToOutlet(outlet_id, 'order:new', result);
 
   res.status(201).json({ success: true, data: result });
 }
@@ -62,11 +61,11 @@ async function processOrderCreation(outlet_id: string, data: any) {
     const orderRes = await client.query(
       `INSERT INTO orders (
         outlet_id, order_number, order_type, session_id, table_id, 
-        room_id, customer_id, waiter_id, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed') RETURNING *`,
+        room_id, customer_id, waiter_id, notes, status, source
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', $10) RETURNING *`,
       [
         outlet_id, order_number, data.order_type, data.session_id, data.table_id, 
-        data.room_id, data.customer_id, data.waiter_id, data.notes
+        data.room_id, data.customer_id, data.waiter_id, data.notes, data.source || 'pos'
       ]
     );
     const order = orderRes.rows[0];
@@ -204,6 +203,35 @@ export async function updateItemStatus(req: Request, res: Response) {
   if (status === 'ready') {
     emitToBilling(outlet_id, 'item:ready', result);
   }
+
+  res.json({ success: true, data: result });
+}
+
+export async function getPublicOrder(req: Request, res: Response) {
+  const { id } = req.params;
+  const { outlet_id } = req.query;
+
+  if (!outlet_id) throw new AppError(400, 'Outlet ID is required', 'BAD_REQUEST');
+
+  const result = await withOutletContext(outlet_id as string, async (client) => {
+    const res = await client.query(
+      `SELECT o.*, 
+        (SELECT json_agg(json_build_object(
+          'id', oi.id,
+          'menu_item_name', mi.name,
+          'quantity', oi.quantity,
+          'status', oi.status,
+          'total_paise', oi.total_paise
+        )) FROM order_items oi 
+         JOIN menu_items mi ON mi.id = oi.menu_item_id
+         WHERE oi.order_id = o.id) as items
+      FROM orders o 
+      WHERE o.id = $1 AND o.outlet_id = $2`,
+      [id, outlet_id]
+    );
+    if (res.rowCount === 0) throw new AppError(404, 'Order not found', 'NOT_FOUND');
+    return res.rows[0];
+  });
 
   res.json({ success: true, data: result });
 }

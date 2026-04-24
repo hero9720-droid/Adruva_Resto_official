@@ -290,7 +290,7 @@ export default function InventoryPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="stock" className="flex-1 flex flex-col overflow-hidden">
+      <Tabs defaultValue="stock" className="flex-1 flex flex-col">
         <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
           <TabsTrigger value="stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Stock Registry</TabsTrigger>
           <TabsTrigger value="low-stock" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-red-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-red-500/20 text-slate-500 hover:text-red-500 transition-all border-none whitespace-nowrap">Stock Alerts ({lowStockItems.length})</TabsTrigger>
@@ -400,7 +400,7 @@ export default function InventoryPage() {
 
           <TabsContent value="recipes" className="mt-0 space-y-6">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-              <div className="bg-card shadow-soft rounded-[2.5rem] p-8 flex flex-col h-[700px] border border-border">
+              <div className="bg-card shadow-soft rounded-[2.5rem] p-8 flex flex-col min-h-[500px] lg:h-[700px] border border-border">
                 <h2 className="text-2xl font-black text-foreground mb-8 uppercase tracking-tighter">1. Select Menu Item</h2>
                 <div className="flex-1 space-y-3 overflow-y-auto pr-4 no-scrollbar">
                   {menuItems?.map((item: any) => (
@@ -430,7 +430,7 @@ export default function InventoryPage() {
                 </div>
               </div>
 
-              <div className="bg-card shadow-soft rounded-[2.5rem] p-8 flex flex-col h-[700px] border border-border">
+              <div className="bg-card shadow-soft rounded-[2.5rem] p-8 flex flex-col min-h-[500px] lg:h-[700px] border border-border">
                 <div className="flex justify-between items-center mb-8">
                    <h2 className="text-2xl font-black text-foreground uppercase tracking-tighter">2. Recipe Composition</h2>
                    <Button 

@@ -26,7 +26,7 @@ export async function createRoom(req: Request, res: Response) {
     const r = await client.query(
       `INSERT INTO rooms (outlet_id, name, floor, capacity, status)
        VALUES ($1, $2, $3, $4, 'available') RETURNING *`,
-      [outlet_id, name, floor, capacity || 2]
+      [outlet_id, name, Number(floor) || 1, Number(capacity) || 2]
     );
     return r.rows[0];
   });

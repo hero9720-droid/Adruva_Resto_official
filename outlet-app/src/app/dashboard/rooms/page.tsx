@@ -97,14 +97,7 @@ export default function RoomsPage() {
                 </div>
               </div>
               
-              <Dialog>
-                <DialogTrigger asChild>
-                  <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none w-full sm:w-auto">
-                    <Plus className="h-5 w-5 mr-2" /> ADD ROOM
-                  </Button>
-                </DialogTrigger>
-                <AddRoomDialog />
-              </Dialog>
+               <AddRoomDialog />
            </div>
       </div>
 
@@ -277,6 +270,7 @@ export default function RoomsPage() {
 function AddRoomDialog() {
   const createRoom = useCreateRoom();
   const { toast } = useToast();
+  const [isOpen, setIsOpen] = useState(false);
   const [form, setForm] = useState({
     name: '',
     type: 'Standard',
@@ -291,13 +285,20 @@ function AddRoomDialog() {
       await createRoom.mutateAsync(form);
       toast({ title: "Room Created", description: `Room ${form.name} added to inventory.` });
       setForm({ name: '', type: 'Standard', capacity: 2, floor: 1, status: 'available' });
+      setIsOpen(false);
     } catch (e) {
       toast({ variant: "destructive", title: "Failed to create room" });
     }
   };
 
   return (
-     <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-card shadow-soft font-sans">
+    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+      <DialogTrigger asChild>
+        <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none w-full sm:w-auto">
+          <Plus className="h-5 w-5 mr-2" /> ADD ROOM
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-md rounded-[2.5rem] border-none p-10 bg-card shadow-soft font-sans">
       <DialogHeader>
         <DialogTitle className="text-3xl font-black text-foreground tracking-tighter uppercase">New Room</DialogTitle>
       </DialogHeader>
@@ -342,5 +343,6 @@ function AddRoomDialog() {
         </Button>
       </DialogFooter>
     </DialogContent>
-  );
+  </Dialog>
+);
 }
