@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Sidebar from '@/components/dashboard/Sidebar';
 import GlobalHeader from '@/components/dashboard/GlobalHeader';
-import { Menu, X } from 'lucide-react';
+import { Menu, X, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 export default function DashboardLayout({
