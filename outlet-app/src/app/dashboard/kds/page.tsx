@@ -16,6 +16,7 @@ import api from '@/lib/api';
 import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 
 export default function KDSPage() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -47,12 +48,24 @@ export default function KDSPage() {
       socket.on('order:update', (updatedOrder: any) => {
         setOrders(prev => prev.map(o => o.id === updatedOrder.id ? updatedOrder : o));
       });
+      socket.on('order:item_update', ({ order_id, item_id, status }: any) => {
+        setOrders(prev => prev.map(o => {
+          if (o.id === order_id) {
+            return {
+              ...o,
+              items: o.items.map((i: any) => i.id === item_id ? { ...i, status } : i)
+            };
+          }
+          return o;
+        }));
+      });
     }
 
     return () => {
       if (socket) {
         socket.off('order:new');
         socket.off('order:update');
+        socket.off('order:item_update');
       }
     };
   }, [socket]);
@@ -116,7 +129,9 @@ export default function KDSPage() {
   };
 
   const getTimeDiff = (timestamp: string) => {
+    if (!timestamp) return 0;
     const start = new Date(timestamp);
+    if (isNaN(start.getTime())) return 0;
     const now = new Date();
     const diff = Math.floor((now.getTime() - start.getTime()) / 60000);
     return diff;

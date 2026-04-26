@@ -8,13 +8,13 @@ import { logger } from '../../lib/logger';
 
 export async function createCategory(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
-  const { name, parent_id, icon, sort_order } = req.body;
+  const { name, parent_id, icon, sort_order, tax_slab_id } = req.body;
 
   const result = await withOutletContext(outlet_id, async (client) => {
     const res = await client.query(
-      `INSERT INTO menu_categories (outlet_id, name, parent_id, icon, sort_order)
-       VALUES ($1, $2, $3, $4, $5) RETURNING *`,
-      [outlet_id, name, parent_id, icon, sort_order]
+      `INSERT INTO menu_categories (outlet_id, name, parent_id, icon, sort_order, tax_slab_id)
+       VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
+      [outlet_id, name, parent_id, icon, sort_order, tax_slab_id ?? null]
     );
     return res.rows[0];
   });
@@ -43,7 +43,7 @@ export async function getCategories(req: Request, res: Response) {
 export async function updateCategory(req: Request, res: Response) {
   const { id } = req.params;
   const outlet_id = req.user.outlet_id;
-  const { name, icon, sort_order, parent_id } = req.body;
+  const { name, icon, sort_order, parent_id, tax_slab_id } = req.body;
 
   const result = await withOutletContext(outlet_id, async (client) => {
     const rows = await client.query(
@@ -51,10 +51,11 @@ export async function updateCategory(req: Request, res: Response) {
        SET name = COALESCE($1, name),
            icon = COALESCE($2, icon),
            sort_order = COALESCE($3, sort_order),
-           parent_id = $4
-       WHERE id = $5
+           parent_id = $4,
+           tax_slab_id = COALESCE($5, tax_slab_id)
+       WHERE id = $6
        RETURNING *`,
-      [name, icon, sort_order, parent_id ?? null, id]
+      [name, icon, sort_order, parent_id ?? null, tax_slab_id ?? null, id]
     );
     if (rows.rowCount === 0) throw new AppError(404, 'Category not found', 'NOT_FOUND');
     return rows.rows[0];
@@ -125,7 +126,7 @@ export async function createMenuItem(req: Request, res: Response) {
   const { 
     category_id, name, description, photo_url, base_price_paise, 
     cost_price_paise, food_type, is_available, is_featured, 
-    preparation_time_minutes, sort_order 
+    preparation_time_minutes, sort_order, tax_slab_id 
   } = req.body;
 
   const result = await withOutletContext(outlet_id, async (client) => {
@@ -133,12 +134,12 @@ export async function createMenuItem(req: Request, res: Response) {
       `INSERT INTO menu_items (
         outlet_id, category_id, name, description, photo_url, base_price_paise, 
         cost_price_paise, food_type, is_available, is_featured, 
-        preparation_time_minutes, sort_order
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) RETURNING *`,
+        preparation_time_minutes, sort_order, tax_slab_id
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13) RETURNING *`,
       [
         outlet_id, category_id, name, description, photo_url, base_price_paise, 
         cost_price_paise, food_type, is_available, is_featured, 
-        preparation_time_minutes, sort_order
+        preparation_time_minutes, sort_order, tax_slab_id ?? null
       ]
     );
     return res.rows[0];
@@ -321,5 +322,83 @@ export async function getPublicMenu(req: Request, res: Response) {
       categories: categories.filter((c: Record<string, any>) => c.items.length > 0),
     }
   });
+}
+
+// --- GLOBAL CHAIN SYNC ---
+
+export async function syncMenuToOutlets(req: Request, res: Response) {
+  const { source_outlet_id, target_outlet_ids } = req.body;
+  const chain_id = req.user.chain_id;
+
+  if (!source_outlet_id || !target_outlet_ids || target_outlet_ids.length === 0) {
+    throw new AppError(400, 'Source and targets are required', 'INVALID_INPUT');
+  }
+
+  // 1. Fetch Source Menu (Categories + Items)
+  const sourceMenu = await db.query(`
+    SELECT c.name as cat_name, c.icon as cat_icon, c.sort_order as cat_order,
+           m.*
+    FROM menu_categories c
+    JOIN menu_items m ON m.category_id = c.id
+    WHERE c.outlet_id = $1 AND c.is_active = true
+  `, [source_outlet_id]);
+
+  if (sourceMenu.rowCount === 0) {
+    throw new AppError(400, 'Source menu is empty', 'SOURCE_EMPTY');
+  }
+
+  // 2. Perform Sync for each target
+  for (const targetId of target_outlet_ids) {
+    const client = await db.connect();
+    try {
+      await client.query('BEGIN');
+
+      // Map of source category name to target category ID
+      const catMap: Record<string, string> = {};
+
+      for (const row of sourceMenu.rows) {
+        // A. Ensure Category exists at target
+        if (!catMap[row.cat_name]) {
+          const catRes = await client.query(
+            `INSERT INTO menu_categories (outlet_id, name, icon, sort_order)
+             VALUES ($1, $2, $3, $4)
+             ON CONFLICT (outlet_id, name) DO UPDATE SET icon = EXCLUDED.icon
+             RETURNING id`,
+            [targetId, row.cat_name, row.cat_icon, row.cat_order]
+          );
+          catMap[row.cat_name] = catRes.rows[0].id;
+        }
+
+        // B. Upsert Item
+        await client.query(
+          `INSERT INTO menu_items (
+            outlet_id, category_id, name, description, photo_url, base_price_paise, 
+            food_type, is_available, is_featured, preparation_time_minutes, sort_order
+          ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+          ON CONFLICT (outlet_id, name) DO UPDATE SET
+            base_price_paise = EXCLUDED.base_price_paise,
+            description = EXCLUDED.description,
+            photo_url = EXCLUDED.photo_url,
+            category_id = EXCLUDED.category_id,
+            is_available = EXCLUDED.is_available
+          `,
+          [
+            targetId, catMap[row.cat_name], row.name, row.description, row.photo_url, 
+            row.base_price_paise, row.food_type, row.is_available, row.is_featured, 
+            row.preparation_time_minutes, row.sort_order
+          ]
+        );
+      }
+
+      await client.query('COMMIT');
+    } catch (err) {
+      await client.query('ROLLBACK');
+      logger.error(`Sync failed for outlet ${targetId}`, err);
+    } finally {
+      client.release();
+    }
+  }
+
+  res.json({ success: true, message: `Menu synced to ${target_outlet_ids.length} outlets.` });
 }
 

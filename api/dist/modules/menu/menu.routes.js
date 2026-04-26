@@ -66,4 +66,6 @@ router.post('/items/variants', (0, rbac_1.requireRole)(['outlet_manager']), (0, 
 router.post('/items/modifier-groups', (0, rbac_1.requireRole)(['outlet_manager']), (0, validate_1.validateBody)(menu_schema_1.modifierGroupSchema.extend({ menu_item_id: zod_1.z.string().uuid() })), ModifiersController.addModifierGroup);
 // Uploads — proxy through backend to avoid R2 CORS issues
 router.post('/upload', (0, rbac_1.requireRole)(['outlet_manager', 'cashier']), UploadController.uploadMiddleware, UploadController.uploadMenuPhoto);
+// Global Chain Sync
+router.post('/sync', (0, rbac_1.requireRole)(['chain_owner']), MenuController.syncMenuToOutlets);
 exports.default = router;

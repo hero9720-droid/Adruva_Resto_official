@@ -50,5 +50,12 @@ router.get('/movements', InventoryController.getMovements);
 router.post('/movements', (0, rbac_1.requireRole)(['outlet_manager', 'kitchen']), InventoryController.recordMovement);
 // Suppliers
 router.get('/suppliers', InventoryController.getSuppliers);
+router.get('/suppliers/performance', InventoryController.getSupplierPerformance);
 router.post('/suppliers', (0, rbac_1.requireRole)(['outlet_manager']), InventoryController.createSupplier);
+router.patch('/suppliers/:id', (0, rbac_1.requireRole)(['outlet_manager']), InventoryController.updateSupplier);
+router.delete('/suppliers/:id', (0, rbac_1.requireRole)(['outlet_manager']), InventoryController.deleteSupplier);
+// Stock Transfers
+router.get('/transfers', InventoryController.getTransfers);
+router.post('/transfers', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), InventoryController.initiateTransfer);
+router.patch('/transfers/:id/status', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), InventoryController.completeTransfer);
 exports.default = router;

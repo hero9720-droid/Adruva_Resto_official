@@ -4,7 +4,10 @@ exports.getCustomers = getCustomers;
 exports.createOrUpdateCustomer = createOrUpdateCustomer;
 exports.getCustomerByPhone = getCustomerByPhone;
 exports.earnLoyaltyPoints = earnLoyaltyPoints;
+exports.redeemLoyaltyPoints = redeemLoyaltyPoints;
 exports.getCustomerHistory = getCustomerHistory;
+exports.processReferral = processReferral;
+exports.getSocialProof = getSocialProof;
 const db_1 = require("../../lib/db");
 const errors_1 = require("../../lib/errors");
 const db_2 = require("../../lib/db");
@@ -57,8 +60,10 @@ async function earnLoyaltyPoints(req, res) {
         const billRes = await client.query('SELECT total_paise FROM bills WHERE id = $1', [bill_id]);
         if ((billRes.rowCount ?? 0) === 0)
             throw new errors_1.AppError(404, 'Bill not found', 'NOT_FOUND');
-        // 1 point per ₹100 spent (10000 paise)
-        const points = Math.floor(billRes.rows[0].total_paise / 10000);
+        // Fetch chain-wide loyalty earning rate (default 1pt / ₹100)
+        const chainRes = await db_2.db.query('SELECT loyalty_config FROM chains WHERE id = $1', [chain_id]);
+        const earnRate = chainRes.rows[0]?.loyalty_config?.earn_rate_paise || 10000;
+        const points = Math.floor(billRes.rows[0].total_paise / earnRate);
         if (points > 0) {
             // Update customer points (chain-level)
             await db_2.db.query(`UPDATE customers
@@ -76,12 +81,56 @@ async function earnLoyaltyPoints(req, res) {
     });
     res.json({ success: true, data: result });
 }
+async function redeemLoyaltyPoints(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const chain_id = req.user.chain_id;
+    const { customer_id, points, bill_id } = req.body;
+    if (!points || points <= 0)
+        throw new errors_1.AppError(400, 'Invalid points to redeem', 'BAD_REQUEST');
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        // 1. Fetch chain config and customer points
+        const chainRes = await db_2.db.query('SELECT loyalty_config FROM chains WHERE id = $1', [chain_id]);
+        const config = chainRes.rows[0]?.loyalty_config || { points_to_paise: 100, max_redemption_percent: 50 };
+        const customerRes = await db_2.db.query('SELECT loyalty_points FROM customers WHERE id = $1', [customer_id]);
+        if ((customerRes.rowCount ?? 0) === 0)
+            throw new errors_1.AppError(404, 'Customer not found', 'NOT_FOUND');
+        if (customerRes.rows[0].loyalty_points < points) {
+            throw new errors_1.AppError(400, 'Insufficient loyalty points', 'INSUFFICIENT_POINTS');
+        }
+        // 2. Calculate point value
+        const discount_paise = points * config.points_to_paise;
+        // 3. Enforce Max Redemption Limit if bill provided
+        if (bill_id) {
+            const billRes = await client.query('SELECT total_paise FROM bills WHERE id = $1', [bill_id]);
+            const billTotal = billRes.rows[0]?.total_paise || 0;
+            const maxAllowedDiscount = (billTotal * config.max_redemption_percent) / 100;
+            if (discount_paise > maxAllowedDiscount) {
+                throw new errors_1.AppError(400, `Max redemption exceeded. You can only use points for up to ${config.max_redemption_percent}% of the bill.`, 'REDEMPTION_LIMIT');
+            }
+            // Deduct points
+            await db_2.db.query(`UPDATE customers SET loyalty_points = loyalty_points - $1, updated_at = NOW() WHERE id = $2`, [points, customer_id]);
+            // Apply discount to bill
+            await client.query('UPDATE bills SET total_paise = total_paise - $1, updated_at = NOW() WHERE id = $2', [discount_paise, bill_id]);
+            // Record redemption
+            await client.query(`INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, bill_id, type, points)
+          VALUES ($1, $2, $3, $4, 'redeem', $5)`, [customer_id, chain_id, outlet_id, bill_id, points]);
+        }
+        return { points_redeemed: points, discount_applied: discount_paise };
+    });
+    res.json({ success: true, data: result });
+}
 async function getCustomerHistory(req, res) {
     const { id } = req.params;
     const chain_id = req.user.chain_id;
     const customer = await db_2.db.query('SELECT * FROM customers WHERE id = $1 AND chain_id = $2', [id, chain_id]);
     if ((customer.rowCount ?? 0) === 0)
         throw new errors_1.AppError(404, 'Customer not found', 'NOT_FOUND');
+    const bills = await db_2.db.query(`SELECT b.*,
+       (SELECT json_agg(oi.*) FROM order_items oi WHERE oi.order_id = b.order_id) as items
+     FROM bills b
+     WHERE b.customer_id = $1
+     ORDER BY b.created_at DESC
+     LIMIT 20`, [id]);
     const transactions = await db_2.db.query(`SELECT lt.*, o.name as outlet_name
      FROM loyalty_transactions lt
      LEFT JOIN outlets o ON o.id = lt.outlet_id
@@ -93,6 +142,43 @@ async function getCustomerHistory(req, res) {
         data: {
             customer: customer.rows[0],
             transactions: transactions.rows,
+            bills: bills.rows,
         }
     });
+}
+async function processReferral(req, res) {
+    const { customer_id, referral_code } = req.body;
+    const chain_id = req.user.chain_id;
+    const result = await db_2.db.query('SELECT id FROM customers WHERE referral_code = $1 AND chain_id = $2', [referral_code, chain_id]);
+    if ((result.rowCount ?? 0) > 0) {
+        const referrer_id = result.rows[0].id;
+        if (referrer_id === customer_id)
+            throw new errors_1.AppError(400, 'Cannot refer yourself', 'BAD_REQUEST');
+        await db_2.db.query('UPDATE customers SET referred_by = $1 WHERE id = $2 AND referred_by IS NULL', [referrer_id, customer_id]);
+    }
+    res.json({ success: true, message: 'Referral processed' });
+}
+async function getSocialProof(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        // 1. Get Top Rated (from feedback)
+        const topRated = await client.query(`
+      SELECT f.comment, f.rating_food, f.created_at, c.name as customer_name
+      FROM customer_feedback f
+      LEFT JOIN customers c ON c.id = f.customer_id
+      WHERE f.outlet_id = $1 AND f.rating_food >= 4
+      ORDER BY f.created_at DESC LIMIT 5
+    `, [outlet_id]);
+        // 2. Get Bestselling Items (from order_items)
+        const bestsellers = await client.query(`
+      SELECT mi.id, mi.name, COUNT(oi.id) as sales_count
+      FROM order_items oi
+      JOIN menu_items mi ON mi.id = oi.menu_item_id
+      WHERE oi.outlet_id = $1
+      GROUP BY mi.id, mi.name
+      ORDER BY sales_count DESC LIMIT 5
+    `, [outlet_id]);
+        return { topRated: topRated.rows, bestsellers: bestsellers.rows };
+    });
+    res.json({ success: true, data: result });
 }

@@ -4,6 +4,7 @@ import { getNextBillNumber } from '../../lib/counters';
 import { emitToBilling } from '../../websocket';
 import { AppError } from '../../lib/errors';
 import { awardLoyaltyPoints } from '../../lib/loyalty';
+import { logAudit } from '../../lib/audit';
 
 export async function getBillsList(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
@@ -55,32 +56,64 @@ export async function generateBill(req: Request, res: Response) {
       // 1. Next bill number
       const bill_number = await getNextBillNumber(client, outlet_id);
 
-      // 2. Subtotal from order items
+      // 2. Fetch order items and their effective tax slabs to calculate dynamic tax
       const itemsRes = await client.query(
-        `SELECT COALESCE(SUM(total_paise), 0)::bigint AS subtotal FROM order_items WHERE order_id = $1`,
+        `SELECT oi.total_paise, 
+                COALESCE(ts_item.cgst_percent, ts_cat.cgst_percent, 0) as cgst_p,
+                COALESCE(ts_item.sgst_percent, ts_cat.sgst_percent, 0) as sgst_p,
+                COALESCE(ts_item.igst_percent, ts_cat.igst_percent, 0) as igst_p,
+                COALESCE(ts_item.vat_percent, ts_cat.vat_percent, 0) as vat_p
+         FROM order_items oi
+         JOIN menu_items mi ON oi.menu_item_id = mi.id
+         LEFT JOIN tax_slabs ts_item ON mi.tax_slab_id = ts_item.id
+         LEFT JOIN menu_categories mc ON mi.category_id = mc.id
+         LEFT JOIN tax_slabs ts_cat ON mc.tax_slab_id = ts_cat.id
+         WHERE oi.order_id = $1`,
         [order_id]
       );
-      const subtotal = Number(itemsRes.rows[0].subtotal);
       
+      let subtotal = 0;
+      let total_cgst = 0;
+      let total_sgst = 0;
+      let total_igst = 0;
+      let total_vat = 0;
+
+      for (const item of itemsRes.rows) {
+        const itemTotal = Number(item.total_paise);
+        subtotal += itemTotal;
+        
+        total_cgst += Math.round(itemTotal * (Number(item.cgst_p) / 100));
+        total_sgst += Math.round(itemTotal * (Number(item.sgst_p) / 100));
+        total_igst += Math.round(itemTotal * (Number(item.igst_p) / 100));
+        total_vat += Math.round(itemTotal * (Number(item.vat_p) / 100));
+      }
+
       const d_paise = Number(discount_paise || 0);
       const sc_paise = Number(service_charge_paise || 0);
-      const g5 = Number(gst_5_paise || 0);
-      const g12 = Number(gst_12_paise || 0);
-      const g18 = Number(gst_18_paise || 0);
-      const total_paise = subtotal + sc_paise + g5 + g12 + g18 - d_paise;
+      
+      const tax_split = {
+        cgst: total_cgst,
+        sgst: total_sgst,
+        igst: total_igst,
+        vat: total_vat
+      };
+      const tax_total_paise = total_cgst + total_sgst + total_igst + total_vat;
+      
+      // We calculate total price including the new dynamic tax system
+      const total_paise = Math.max(0, subtotal + sc_paise + tax_total_paise - d_paise);
 
       // 3. Create bill
       const billRes = await client.query(
         `INSERT INTO bills (
            outlet_id, bill_number, order_id, subtotal_paise, discount_paise,
            discount_type, coupon_code, service_charge_paise,
-           gst_5_paise, gst_12_paise, gst_18_paise,
+           tax_total_paise, tax_split,
            total_paise, customer_id, created_by, status
-         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,'open') RETURNING *`,
+         ) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,'open') RETURNING *`,
         [
           outlet_id, bill_number, order_id, subtotal, d_paise,
           discount_type ?? null, coupon_code ?? null, sc_paise,
-          g5, g12, g18,
+          tax_total_paise, tax_split,
           total_paise, customer_id ?? null, staff_id
         ]
       );
@@ -91,6 +124,20 @@ export async function generateBill(req: Request, res: Response) {
         'UPDATE orders SET status = $1 WHERE id = $2',
         ['served', order_id]
       );
+
+      // Audit Log
+      await logAudit({
+        outlet_id,
+        actor_id: staff_id,
+        actor_name: req.user.name || 'Staff',
+        actor_type: 'staff',
+        action: 'BILL_GENERATED',
+        resource_type: 'bill',
+        resource_id: bill.id,
+        new_value: { total_paise, order_id },
+        ip_address: req.ip,
+        user_agent: req.get('user-agent')
+      }, client);
 
       return bill;
     });
@@ -156,6 +203,20 @@ export async function recordPayment(req: Request, res: Response) {
         }
       }
 
+      // Audit Log
+      await logAudit({
+        outlet_id,
+        actor_id: req.user.staff_id,
+        actor_name: req.user.name || 'Staff',
+        actor_type: 'staff',
+        action: 'PAYMENT_RECORDED',
+        resource_type: 'payment',
+        resource_id: paymentRes.rows[0].id,
+        new_value: { bill_id, amount_paise, payment_method },
+        ip_address: req.ip,
+        user_agent: req.get('user-agent')
+      }, client);
+
       return paymentRes.rows[0];
     });
 
@@ -198,6 +259,21 @@ export async function splitBill(req: Request, res: Response) {
       );
       createdSplits.push(splitRes.rows[0]);
     }
+
+    // Audit Log
+    await logAudit({
+      outlet_id,
+      actor_id: req.user.staff_id,
+      actor_name: req.user.name || 'Staff',
+      actor_type: 'staff',
+      action: 'BILL_SPLIT',
+      resource_type: 'bill',
+      resource_id: id,
+      new_value: { splits },
+      ip_address: req.ip,
+      user_agent: req.get('user-agent')
+    }, client);
+
     return createdSplits;
   });
 
@@ -244,6 +320,38 @@ export async function getBillDetails(req: Request, res: Response) {
       orders:   ordersRes.rows,
       payments: paymentsRes.rows,
       splits:   splitsRes.rows,
+    };
+  });
+
+  res.json({ success: true, data: result });
+}
+
+export async function getInvoice(req: Request, res: Response) {
+  const { id } = req.params;
+  const outlet_id = req.user.outlet_id;
+
+  const result = await withOutletContext(outlet_id, async (client) => {
+    const billRes = await client.query(`
+      SELECT b.*, o.name as outlet_name, o.address as outlet_address, o.phone as outlet_phone, o.gstin as outlet_gstin
+      FROM bills b 
+      JOIN outlets o ON o.id = b.outlet_id
+      WHERE b.id = $1
+    `, [id]);
+    
+    if (billRes.rowCount === 0) throw new AppError(404, 'Bill not found', 'NOT_FOUND');
+    const bill = billRes.rows[0];
+
+    const itemsRes = await client.query(
+      `SELECT oi.*, m.name as item_name 
+       FROM order_items oi 
+       JOIN menu_items m ON m.id = oi.menu_item_id
+       WHERE oi.order_id = $1`,
+      [bill.order_id]
+    );
+
+    return {
+      bill,
+      items: itemsRes.rows,
     };
   });
 

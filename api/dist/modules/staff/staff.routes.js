@@ -47,13 +47,20 @@ router.get('/list', StaffController.getStaff);
 router.post('/create', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.createStaff);
 // Attendance
 router.get('/attendance', StaffController.getAttendance);
+router.get('/current-status', StaffController.getAttendanceStatus);
 router.post('/clock-in', StaffController.clockIn);
 router.post('/clock-out', StaffController.clockOut);
 // Weekly Schedule
 router.get('/schedule', StaffController.getSchedule);
 // Payroll
 router.get('/payroll', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.getPayrollSummary);
-// Shift Management (alias to clock-in/out for POS)
+// Shift Management
+router.get('/shifts/summary', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), StaffController.getShiftSummary);
 router.post('/shifts/start', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), StaffController.startShift);
 router.post('/shifts/end', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), StaffController.endShift);
+// Performance & Analytics
+router.get('/performance', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.getStaffPerformanceMetrics);
+// Shift Verification
+router.get('/shifts/unverified', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.getShiftsToVerify);
+router.post('/shifts/verify', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.verifyShift);
 exports.default = router;

@@ -7,6 +7,7 @@ exports.categorySchema = zod_1.z.object({
     parent_id: zod_1.z.string().uuid().optional().nullable(),
     icon: zod_1.z.string().optional().nullable(),
     sort_order: zod_1.z.number().int().default(0),
+    tax_slab_id: zod_1.z.string().uuid().optional().nullable(),
 });
 exports.menuItemSchema = zod_1.z.object({
     category_id: zod_1.z.string().uuid().optional().nullable(),
@@ -20,6 +21,7 @@ exports.menuItemSchema = zod_1.z.object({
     is_featured: zod_1.z.boolean().default(false),
     preparation_time_minutes: zod_1.z.number().int().min(0).default(15),
     sort_order: zod_1.z.number().int().default(0),
+    tax_slab_id: zod_1.z.string().uuid().optional().nullable(),
 });
 exports.variantSchema = zod_1.z.object({
     name: zod_1.z.string().min(1).max(100),

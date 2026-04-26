@@ -74,4 +74,10 @@ router.post(
   UploadController.uploadMenuPhoto
 );
 
+// Global Chain Sync
+router.post('/sync',
+  requireRole(['chain_owner']),
+  MenuController.syncMenuToOutlets
+);
+
 export default router;

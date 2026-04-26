@@ -10,7 +10,9 @@ import {
   History,
   TrendingUp,
   Wallet,
-  Loader2
+  Loader2,
+  ShieldCheck,
+  Layout
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -35,7 +37,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useStaffList, useAttendance, useShift, useCreateStaff, useCurrentStatus } from '@/hooks/useStaff';
+import { useStaffList, useAttendance, useShift, useCreateStaff, useCurrentStatus, useShiftSummary } from '@/hooks/useStaff';
 import { useToast } from '@/hooks/use-toast';
 
 export default function StaffPage() {
@@ -49,6 +51,7 @@ export default function StaffPage() {
   const { clockIn, clockOut } = useAttendance();
   const { startShift, endShift } = useShift();
   const { data: currentStatus } = useCurrentStatus();
+  const { data: shiftSummary } = useShiftSummary();
   const createStaff = useCreateStaff();
   const { toast } = useToast();
 
@@ -133,6 +136,7 @@ export default function StaffPage() {
             <UserPlus className="h-5 w-5 mr-3" />
             Add Staff
           </Button>
+          <TabAccessModal />
 
           {/* Add Staff Dialog */}
           <Dialog open={addStaffOpen} onOpenChange={setAddStaffOpen}>
@@ -275,34 +279,67 @@ export default function StaffPage() {
                     </DialogTitle>
                   </DialogHeader>
                       <div className="space-y-6 py-6">
+                         {isShiftActive && (
+                           <div className="p-6 bg-emerald-500/5 border border-emerald-500/10 rounded-2xl space-y-4">
+                              <div className="flex justify-between items-center">
+                                 <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Expected Cash</p>
+                                 <p className="text-2xl font-black text-emerald-600">₹{(shiftSummary?.cash_in_hand_paise / 100 || 0).toLocaleString()}</p>
+                              </div>
+                              <div className="h-px bg-emerald-500/10" />
+                              <div className="grid grid-cols-2 gap-4">
+                                 <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Shift Sales</p>
+                                    <p className="text-sm font-black text-foreground">₹{(shiftSummary?.total_sales_paise / 100 || 0).toLocaleString()}</p>
+                                 </div>
+                                 <div>
+                                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Total Orders</p>
+                                    <p className="text-sm font-black text-foreground">{shiftSummary?.total_orders || 0}</p>
+                                 </div>
+                              </div>
+                           </div>
+                         )}
                          <div className="space-y-3">
-                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">{isShiftActive ? "Closing Cash (in Register)" : "Opening Cash (Float)"}</Label>
-                            <Input 
-                              type="number" 
-                              placeholder="Enter amount in ₹" 
-                              value={shiftAmount}
-                              onChange={e => setShiftAmount(e.target.value)}
-                              className="h-14 rounded-2xl bg-secondary border-border focus:border-primary font-black text-lg text-foreground" 
-                            />
+                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">{isShiftActive ? "Actual Cash in Drawer" : "Opening Cash (Float)"}</Label>
+                            <div className="relative">
+                               <span className="absolute left-5 top-1/2 -translate-y-1/2 text-lg font-black text-slate-400">₹</span>
+                               <Input 
+                                 type="number" 
+                                 placeholder="0.00" 
+                                 value={shiftAmount}
+                                 onChange={e => setShiftAmount(e.target.value)}
+                                 className="h-16 pl-10 rounded-2xl bg-secondary border-border focus:border-primary font-black text-2xl text-foreground" 
+                               />
+                            </div>
+                            {isShiftActive && shiftAmount && (
+                              <p className={cn(
+                                "text-xs font-bold px-2",
+                                (Number(shiftAmount) * 100) >= shiftSummary?.cash_in_hand_paise ? "text-emerald-500" : "text-red-500"
+                              )}>
+                                Difference: ₹{((Number(shiftAmount) * 100 - (shiftSummary?.cash_in_hand_paise || 0)) / 100).toFixed(2)}
+                              </p>
+                            )}
                          </div>
                          <div className="space-y-3">
-                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Notes</Label>
+                            <Label className="text-xs font-black uppercase tracking-widest text-slate-500">Remarks / Discrepancy Notes</Label>
                             <Input 
-                              placeholder="Any remarks..." 
+                              placeholder="e.g. Extra 50rs for change..." 
                               value={shiftNotes}
                               onChange={e => setShiftNotes(e.target.value)}
-                              className="h-14 rounded-2xl bg-secondary border-border focus:border-primary text-foreground" 
+                              className="h-14 rounded-2xl bg-secondary border-border focus:border-primary text-foreground font-medium" 
                             />
                          </div>
                       </div>
                       <DialogFooter className="gap-3 sm:gap-0 mt-4">
                         <Button variant="ghost" className="h-14 rounded-2xl font-black text-slate-500 hover:bg-secondary hover:text-foreground">CANCEL</Button>
                         <Button 
-                          className="h-14 px-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-2xl font-black shadow-glow border-none" 
+                          className={cn(
+                            "h-14 px-8 rounded-2xl font-black shadow-glow border-none",
+                            isShiftActive ? "bg-red-500 text-white hover:bg-red-600" : "bg-primary text-primary-foreground hover:bg-primary/90"
+                          )} 
                           onClick={handleShiftToggle}
                           disabled={startShift.isPending || endShift.isPending}
                         >
-                          {isShiftActive ? "CLOSE SHIFT" : "OPEN SHIFT"}
+                          {startShift.isPending || endShift.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : isShiftActive ? "CONFIRM & CLOSE" : "OPEN REGISTER"}
                         </Button>
                       </DialogFooter>
                 </DialogContent>
@@ -441,16 +478,77 @@ export default function StaffPage() {
               </h2>
            </div>
            <div className="p-8 space-y-6">
-               <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-secondary/30 rounded-[2.5rem] border-2 border-dashed border-border">
-                  <Wallet className="h-12 w-12 text-primary/40 mb-4" />
-                  <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em]">Real-time totals will appear here once shift is active.</p>
-               </div>
-              <Button variant="outline" className="w-full h-14 rounded-2xl font-black uppercase tracking-widest border-border text-slate-400" disabled>
-                View Full Report
-              </Button>
+                {!isShiftActive ? (
+                   <div className="flex flex-col items-center justify-center text-center py-12 px-4 bg-secondary/30 rounded-[2.5rem] border-2 border-dashed border-border">
+                      <Wallet className="h-12 w-12 text-primary/40 mb-4" />
+                      <p className="text-slate-500 font-black text-[10px] uppercase tracking-[0.2em]">Open a shift to see live register status.</p>
+                   </div>
+                ) : (
+                   <div className="space-y-6">
+                      <div className="grid grid-cols-2 gap-4">
+                         <div className="p-4 bg-secondary rounded-2xl">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Sales</p>
+                            <p className="text-xl font-black text-foreground">₹{(shiftSummary?.total_sales_paise / 100 || 0).toLocaleString()}</p>
+                         </div>
+                         <div className="p-4 bg-secondary rounded-2xl">
+                            <p className="text-[10px] font-black text-slate-500 uppercase tracking-widest mb-1">Orders</p>
+                            <p className="text-xl font-black text-foreground">{shiftSummary?.total_orders || 0}</p>
+                         </div>
+                      </div>
+                      <div className="p-6 bg-primary/5 border border-primary/10 rounded-2xl">
+                         <p className="text-[10px] font-black text-primary uppercase tracking-widest mb-1">Cash in Register</p>
+                         <p className="text-3xl font-black text-primary">₹{(shiftSummary?.cash_in_hand_paise / 100 || 0).toLocaleString()}</p>
+                      </div>
+                   </div>
+                )}
+               <Button 
+                variant="outline" 
+                className="w-full h-14 rounded-2xl font-black uppercase tracking-widest border-border text-slate-500 hover:bg-secondary hover:text-foreground"
+                disabled={!isShiftActive}
+               >
+                 View Full Report
+               </Button>
            </div>
         </div>
       </div>
     </div>
+  );
+}
+function TabAccessModal() {
+  const permissions = [
+    { role: 'Manager', tabs: ['POS', 'Bills', 'Staff', 'Inventory', 'Analytics', 'Compliance', 'Settings'] },
+    { role: 'Cashier', tabs: ['POS', 'Bills', 'Inventory'] },
+    { role: 'Waiter', tabs: ['POS (View)', 'Menu'] },
+    { role: 'Chef', tabs: ['KDS', 'Menu', 'Inventory'] },
+    { role: 'Inventory Mgr', tabs: ['Inventory', 'Recipes', 'Expenses'] },
+  ];
+
+  return (
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline" className="h-14 px-8 rounded-2xl border-border text-slate-500 hover:bg-secondary font-black tracking-widest uppercase">
+          <ShieldCheck className="h-5 w-5 mr-3" />
+          Access Matrix
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-4xl rounded-[3rem] p-10 bg-card border-none shadow-2xl">
+        <DialogHeader>
+          <DialogTitle className="text-4xl font-black uppercase tracking-tighter mb-4">RBAC Access Matrix</DialogTitle>
+          <p className="text-slate-500 font-bold mb-8">Role-Based Access Control configuration as per Hospitality OS PRD (Page 3).</p>
+        </DialogHeader>
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 overflow-y-auto max-h-[60vh] no-scrollbar pr-2">
+           {permissions.map((p) => (
+             <div key={p.role} className="bg-secondary/50 p-8 rounded-[2.5rem] border border-border">
+                <h4 className="text-xl font-black text-foreground mb-6 uppercase tracking-tight">{p.role}</h4>
+                <div className="flex flex-wrap gap-2">
+                   {p.tabs.map(t => (
+                     <Badge key={t} className="bg-card text-primary border-border font-black text-[9px] px-3 py-1.5 rounded-lg uppercase tracking-widest">{t}</Badge>
+                   ))}
+                </div>
+             </div>
+           ))}
+        </div>
+      </DialogContent>
+    </Dialog>
   );
 }

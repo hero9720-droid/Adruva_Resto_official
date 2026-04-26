@@ -27,6 +27,11 @@ router.post('/:id/split',
   BillingController.splitBill
 );
 
+router.get('/:id/invoice',
+  requireRole(['cashier', 'outlet_manager', 'waiter']),
+  BillingController.getInvoice
+);
+
 router.get('/:id', 
   requireRole(['cashier', 'outlet_manager', 'waiter']), 
   BillingController.getBillDetails

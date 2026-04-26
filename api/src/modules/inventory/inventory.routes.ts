@@ -26,6 +26,7 @@ router.post('/movements',
 
 // Suppliers
 router.get('/suppliers',   InventoryController.getSuppliers);
+router.get('/suppliers/performance', InventoryController.getSupplierPerformance);
 router.post('/suppliers',
   requireRole(['outlet_manager']),
   InventoryController.createSupplier
@@ -37,6 +38,17 @@ router.patch('/suppliers/:id',
 router.delete('/suppliers/:id',
   requireRole(['outlet_manager']),
   InventoryController.deleteSupplier
+);
+
+// Stock Transfers
+router.get('/transfers', InventoryController.getTransfers);
+router.post('/transfers', 
+  requireRole(['outlet_manager', 'chain_owner']), 
+  InventoryController.initiateTransfer
+);
+router.patch('/transfers/:id/status', 
+  requireRole(['outlet_manager', 'chain_owner']), 
+  InventoryController.completeTransfer
 );
 
 export default router;

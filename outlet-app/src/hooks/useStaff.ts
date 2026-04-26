@@ -5,7 +5,8 @@ export function useStaffList(mode?: string) {
   return useQuery({
     queryKey: ['staff', mode],
     queryFn: async () => {
-      const { data } = await api.get('/staff/list', { params: mode ? { mode } : undefined });
+      const url = mode === 'payroll' ? '/staff/payroll' : '/staff/list';
+      const { data } = await api.get(url);
       return data.data;
     },
   });
@@ -154,5 +155,15 @@ export function useCurrentStatus() {
       return data.data; // { isClockedIn: boolean, isShiftActive: boolean }
     },
     refetchInterval: 30000, // every 30s
+  });
+}
+export function useShiftSummary() {
+  return useQuery({
+    queryKey: ['staff', 'shift-summary'],
+    queryFn: async () => {
+      const { data } = await api.get('/staff/shifts/summary');
+      return data.data;
+    },
+    refetchInterval: 60000, // every minute
   });
 }

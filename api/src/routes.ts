@@ -18,6 +18,27 @@ import superadminMgmtRoutes from './modules/superadmin/management/superadmin.rou
 import chainMgmtRoutes from './modules/chain/management/chain.routes';
 import recipeRoutes from './modules/recipes/recipe.routes';
 import roomRoutes from './modules/rooms/rooms.routes';
+import feedbackRoutes from './modules/feedback/feedback.routes';
+import maintenanceRoutes from './modules/maintenance/maintenance.routes';
+import marketingRoutes from './modules/marketing/marketing.routes';
+import trainingRoutes from './modules/training/training.routes';
+import pricingRoutes from './modules/pricing/pricing.routes';
+import deliveryRoutes from './modules/delivery/delivery.routes';
+import financeRoutes from './modules/finance/finance.routes';
+import payrollRoutes from './modules/payroll/payroll.routes';
+import forecastRoutes from './modules/forecast/forecast.routes';
+import operationsRoutes from './modules/operations/operations.routes';
+import referralRoutes from './modules/marketing/referral.routes';
+import supplierRoutes from './modules/inventory/suppliers.routes';
+import complianceRoutes from './modules/compliance/compliance.routes';
+import tipRoutes from './modules/payroll/tips.routes';
+import platformRoutes from './modules/integrations/platforms.routes';
+import menuAIRoutes from './modules/menu/menu.ai.routes';
+import brandRoutes from './modules/brand/brand.routes';
+import geoRoutes from './modules/marketing/geo.routes';
+import pestRoutes from './modules/compliance/pest.routes';
+import publicQrRoutes from './modules/public/qr.routes';
+import searchRoutes from './modules/search/search.routes';
 
 const router = Router();
 
@@ -72,5 +93,28 @@ router.use('/rooms', roomRoutes);
 router.use('/superadmin/mgmt', superadminMgmtRoutes);
 router.use('/chain/mgmt', chainMgmtRoutes);
 router.use('/recipes', recipeRoutes);
+router.use('/feedback', feedbackRoutes);
+router.use('/maintenance', maintenanceRoutes);
+router.use('/marketing', marketingRoutes);
+router.use('/training', trainingRoutes);
+router.use('/pricing', pricingRoutes);
+router.use('/delivery', deliveryRoutes);
+router.use('/finance', financeRoutes);
+router.use('/payroll', payrollRoutes);
+router.use('/forecast', forecastRoutes);
+router.use('/operations', operationsRoutes);
+router.use('/marketing/referrals', referralRoutes);
+router.use('/inventory/suppliers', supplierRoutes);
+router.use('/compliance', complianceRoutes);
+router.use('/payroll/tips', tipRoutes);
+router.use('/integrations/platforms', platformRoutes);
+router.use('/menu/ai', menuAIRoutes);
+router.use('/brand', brandRoutes);
+router.use('/marketing/geo', geoRoutes);
+router.use('/compliance/pest', pestRoutes);
+router.use('/search', searchRoutes);
+
+// Public Routes (No Auth)
+router.use('/qr', publicQrRoutes);
 
 export default router;

@@ -172,3 +172,28 @@ export async function suspendChain(req: Request, res: Response) {
   
   res.json({ success: true, message: 'Chain suspended' });
 }
+
+export async function getGlobalAuditLogs(req: Request, res: Response) {
+  const result = await db.query(`
+    SELECT al.*, o.name as outlet_name
+    FROM audit_logs al
+    LEFT JOIN outlets o ON o.id = al.outlet_id
+    ORDER BY al.created_at DESC
+    LIMIT 50
+  `);
+  res.json({ success: true, data: result.rows });
+}
+
+export async function getRevenueTrends(req: Request, res: Response) {
+  const result = await db.query(`
+    SELECT 
+      DATE(created_at) as date,
+      SUM(amount_paise) as total_paise
+    FROM payment_transactions
+    WHERE status = 'captured'
+    GROUP BY DATE(created_at)
+    ORDER BY DATE(created_at) DESC
+    LIMIT 14
+  `);
+  res.json({ success: true, data: result.rows });
+}

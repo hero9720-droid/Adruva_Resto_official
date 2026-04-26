@@ -41,8 +41,9 @@ const auth_1 = require("../../middleware/auth");
 const subscription_1 = require("../../middleware/subscription");
 const rbac_1 = require("../../middleware/rbac");
 const router = (0, express_1.Router)();
-// Public route for Customer QR App
+// Public routes for Customer QR App
 router.post('/public', OrdersController.createPublicOrder);
+router.get('/public/:id', OrdersController.getPublicOrder);
 router.use(auth_1.verifyToken);
 router.use(subscription_1.requireActiveSubscription);
 router.post('/', (0, rbac_1.requireRole)(['cashier', 'waiter', 'outlet_manager']), (0, validate_1.validateBody)(orders_schema_1.createOrderSchema), OrdersController.createOrder);

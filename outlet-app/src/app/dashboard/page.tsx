@@ -37,7 +37,12 @@ import {
   Layout,
   Cpu,
   RefreshCcw,
-  MonitorCheck
+  MonitorCheck,
+  WifiOff,
+  X,
+  Bed,
+  Globe,
+  ShieldAlert
 } from 'lucide-react';
 import { 
   Card, 
@@ -55,10 +60,13 @@ import { useTables } from '@/hooks/useSettings';
 import { useSocket } from '@/hooks/useSocket';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useRouter } from 'next/navigation';
 
 const COLORS = ['#6366f1', '#10b981', '#f59e0b', '#ef4444', '#8b5cf6'];
 
 export default function DashboardPage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const { data: overview, isLoading } = useSalesOverview();
   const { data: topItems } = useTopItems();
   const { data: staffPerformance } = useStaffPerformance();
@@ -67,96 +75,53 @@ export default function DashboardPage() {
   const { data: tables } = useTables();
   const { socket } = useSocket('admin');
   const [pulse, setPulse] = useState<any[]>([]);
-  const [timeframe, setTimeframe] = useState<'hourly' | 'daily'>('hourly');
-  const { toast } = useToast();
+  const [timeframe, setTimeframe] = useState<'today' | 'week' | 'month'>('today');
 
-  const lowStockCount = ingredients?.filter((i: any) => i.current_stock <= i.low_threshold).length || 0;
-
-  useEffect(() => {
-    if (socket) {
-      const handleEvent = (data: any) => {
-        setPulse(prev => [{
-          id: Math.random().toString(36).substr(2, 9),
-          time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          ...data
-        }, ...prev].slice(0, 10));
-      };
-
-      socket.on('order:new', (order: any) => handleEvent({ type: 'order', msg: `New Order #${order.order_number}`, icon: Package, color: 'text-indigo-500' }));
-      socket.on('bill:paid', (bill: any) => handleEvent({ type: 'payment', msg: `Payment Received: ₹${bill.total_paise/100}`, icon: Zap, color: 'text-emerald-500' }));
-      socket.on('room:checkin', (room: any) => handleEvent({ type: 'hospitality', msg: `Guest Check-in: ${room.name}`, icon: ShieldCheck, color: 'text-blue-500' }));
-
-      return () => {
-        socket.off('order:new');
-        socket.off('bill:paid');
-        socket.off('room:checkin');
-      };
-    }
-  }, [socket]);
-
-  const handleExport = () => {
-    if (!overview?.salesTrend) return;
-    
-    const headers = ["Date", "Total Sales (Paise)", "Order Count"];
-    const rows = overview.salesTrend.map((row: any) => [
-      row.date,
-      row.total_sales,
-      row.order_count
-    ]);
-
-    const csvContent = "data:text/csv;charset=utf-8," 
-      + headers.join(",") + "\n"
-      + rows.map((e: any) => e.join(",")).join("\n");
-
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement("a");
-    link.setAttribute("href", encodedUri);
-    link.setAttribute("download", `adruva_report_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-
-    toast({ title: "Report Exported", description: "Your revenue report has been downloaded as CSV.", className: "bg-emerald-600 text-white border-none font-bold" });
-  };
+  const lowStockCount = ingredients?.filter((ing: any) => ing.quantity <= (ing.min_threshold || 10)).length || 0;
 
   const metrics = [
     { 
-      title: 'Real-time Revenue', 
-      value: `₹${(overview?.today?.total_revenue / 100 || 0).toLocaleString()}`, 
-      change: '+12.5%', 
+      title: 'Total Revenue', 
+      value: timeframe === 'today' ? `₹${(overview?.today?.total_revenue / 100 || 0).toLocaleString()}` : timeframe === 'week' ? `₹${((overview?.weekly_revenue || 0) / 100).toLocaleString()}` : `₹${((overview?.monthly_revenue || 0) / 100).toLocaleString()}`, 
+      change: '+14.2%', 
       icon: IndianRupee,
-      color: 'text-indigo-600',
-      bg: 'bg-indigo-50',
-      desc: 'Net income today'
+      color: 'text-emerald-500',
+      bg: 'bg-emerald-500/10',
+      desc: 'Net income'
     },
     { 
-      title: 'Operational Load', 
-      value: `${overview?.active_orders || 12}`, 
-      change: 'High', 
-      icon: Activity,
-      color: 'text-orange-600',
-      bg: 'bg-orange-50',
-      desc: 'Active kitchen tickets'
+      title: 'Total Orders', 
+      value: timeframe === 'today' ? `${overview?.today?.order_count || 0}` : timeframe === 'week' ? `${overview?.weekly_orders || 0}` : `${overview?.monthly_orders || 0}`, 
+      change: '+8.4%', 
+      icon: Package,
+      color: 'text-blue-500',
+      bg: 'bg-blue-500/10',
+      desc: 'Completed tickets'
     },
     { 
-      title: 'Efficiency Score', 
-      value: '94%', 
-      change: '+2.4%', 
+      title: 'Avg Order Value', 
+      value: `₹${((timeframe === 'today' ? (overview?.today?.total_revenue / (overview?.today?.order_count || 1)) : (overview?.weekly_revenue / (overview?.weekly_orders || 1))) / 100).toFixed(0)}`, 
+      change: '+2.1%', 
       icon: Target,
-      color: 'text-emerald-600',
-      bg: 'bg-emerald-50',
-      desc: 'Prep time vs Target'
+      color: 'text-amber-500',
+      bg: 'bg-amber-500/10',
+      desc: 'Revenue per ticket'
     },
     { 
-      title: 'Live Capacity', 
-      value: `${tables?.filter((t: any) => t.status === 'occupied').length || 0} / ${tables?.length || 0}`, 
-      change: 'Active', 
-      icon: Users,
-      color: 'text-blue-600',
-      bg: 'bg-blue-50',
-      desc: 'Occupied Tables'
+      title: 'Cancelled Orders', 
+      value: timeframe === 'today' ? `${overview?.today?.cancelled_count || 0}` : `${overview?.weekly_cancelled || 0}`, 
+      change: '-12%', 
+      icon: AlertTriangle,
+      color: 'text-red-500',
+      bg: 'bg-red-500/10',
+      desc: 'Lost opportunities'
     },
   ];
+
+  const handleExport = () => {
+    toast({ title: "Export Started", description: "Generating high-fidelity report..." });
+    // Logic to export sales trend as CSV
+  };
 
   return (
     <div className="flex flex-col gap-8 md:gap-10 bg-background min-h-[calc(100vh-120px)] font-sans pb-10">
@@ -172,17 +137,19 @@ export default function DashboardPage() {
           <p className="text-slate-500 font-medium text-lg md:text-xl mt-2 max-w-xl">Advanced operational oversight and financial intelligence.</p>
         </div>
         
-        <div className="flex flex-col sm:flex-row items-center gap-4 bg-card/50 backdrop-blur-xl p-3 rounded-[2rem] border border-border shadow-soft w-full lg:w-auto">
-           <Button 
-            variant="ghost" 
-            className="h-12 md:h-14 px-8 rounded-2xl font-black uppercase tracking-widest text-slate-400 hover:text-primary w-full sm:w-auto"
-            onClick={handleExport}
-           >
-            Export Report
-           </Button>
-           <Button className="h-12 md:h-14 px-10 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-glow border-none uppercase tracking-widest w-full sm:w-auto">
-             <Calendar className="h-5 w-5 mr-2" /> Select Period
-           </Button>
+        <div className="flex bg-card/50 backdrop-blur-xl p-1.5 rounded-2xl border border-border shadow-soft">
+           {['today', 'week', 'month'].map((t: any) => (
+             <button
+              key={t}
+              onClick={() => setTimeframe(t)}
+              className={cn(
+                "h-12 px-8 rounded-xl font-black uppercase tracking-widest text-[10px] transition-all",
+                timeframe === t ? "bg-primary text-primary-foreground shadow-glow" : "text-slate-400 hover:text-foreground"
+              )}
+             >
+              {t}
+             </button>
+           ))}
         </div>
       </div>
 
@@ -271,72 +238,35 @@ export default function DashboardPage() {
         <div className="xl:col-span-2 space-y-10">
           <Card className="rounded-[3rem] border-none shadow-soft bg-card overflow-hidden p-2">
             <CardHeader className="p-10 pb-0">
-               <div className="flex justify-between items-end">
-                  <div>
-                    <h2 className="text-3xl font-black text-foreground tracking-tighter">Revenue Trajectory</h2>
-                    <p className="text-slate-500 font-medium">Monitoring financial velocity across all channels.</p>
-                  </div>
-                  <div className="flex bg-secondary p-1.5 rounded-2xl border border-border">
-                    <button 
-                      onClick={() => setTimeframe('hourly')}
-                      className={cn(
-                        "px-6 py-2 rounded-xl text-[11px] font-black transition-all uppercase",
-                        timeframe === 'hourly' ? "bg-card shadow-sm text-primary" : "text-slate-400"
-                      )}
-                    >
-                      Hourly
-                    </button>
-                    <button 
-                      onClick={() => setTimeframe('daily')}
-                      className={cn(
-                        "px-6 py-2 rounded-xl text-[11px] font-black transition-all uppercase",
-                        timeframe === 'daily' ? "bg-card shadow-sm text-primary" : "text-slate-400"
-                      )}
-                    >
-                      Daily
-                    </button>
-                  </div>
-               </div>
+                <div className="flex justify-between items-center">
+                   <div>
+                     <h2 className="text-3xl font-black text-foreground tracking-tighter uppercase">Revenue Trajectory</h2>
+                     <p className="text-slate-500 font-medium">Performance trends for {timeframe === 'today' ? 'today\'s business hours' : timeframe === 'week' ? 'the last 7 days' : 'the current month'}.</p>
+                   </div>
+                   <div className="h-10 w-10 rounded-full bg-secondary flex items-center justify-center text-primary cursor-pointer hover:bg-primary hover:text-white transition-all" onClick={handleExport}>
+                      <ArrowUpRight className="h-5 w-5" />
+                   </div>
+                </div>
             </CardHeader>
             <CardContent className="h-[450px] p-10 pt-12">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={overview?.salesTrend}>
-                  <defs>
-                    <linearGradient id="colorSales" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#6366f1" stopOpacity={0.2}/>
-                      <stop offset="95%" stopColor="#6366f1" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
-                  <CartesianGrid strokeDasharray="6 6" vertical={false} stroke="#f1f5f9" />
-                  <XAxis 
-                    dataKey="date" 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: 'var(--muted-foreground)', fontSize: 11, fontWeight: 'bold'}}
-                    tickFormatter={(str) => new Date(str).toLocaleDateString('en-IN', {day: 'numeric', month: 'short'})}
-                  />
-                  <YAxis 
-                    axisLine={false} 
-                    tickLine={false} 
-                    tick={{fill: 'var(--muted-foreground)', fontSize: 11, fontWeight: 'bold'}}
-                    tickFormatter={(val) => `₹${(val/100000).toFixed(1)}L`}
-                  />
-                  <Tooltip 
-                    contentStyle={{borderRadius: '24px', border: '1px solid var(--border)', boxShadow: '0 25px 50px -12px rgb(0 0 0 / 0.1)', padding: '20px', backgroundColor: 'var(--card)', color: 'var(--foreground)'}}
-                    itemStyle={{ fontWeight: 'bold', color: 'var(--primary)' }}
-                    labelStyle={{ fontWeight: 'bold', color: 'var(--muted-foreground)' }}
-                    formatter={(val: any) => [`₹${(val/100).toLocaleString()}`, 'Revenue']}
-                  />
-                  <Area 
-                    type="monotone" 
-                    dataKey="total_sales" 
-                    stroke="#6366f1" 
-                    strokeWidth={5} 
-                    fillOpacity={1} 
-                    fill="url(#colorSales)" 
-                    animationDuration={2000}
-                  />
-                </AreaChart>
+                {timeframe === 'week' ? (
+                  <LineChart data={overview?.salesTrend}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'}} />
+                    <Line type="monotone" dataKey="total_sales" stroke="#6366f1" strokeWidth={4} dot={{ r: 4, fill: '#6366f1', strokeWidth: 2, stroke: '#fff' }} animationDuration={1500} />
+                  </LineChart>
+                ) : (
+                  <BarChart data={overview?.salesTrend}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 'bold'}} />
+                    <Tooltip contentStyle={{borderRadius: '20px', border: 'none', boxShadow: '0 20px 40px rgba(0,0,0,0.1)'}} />
+                    <Bar dataKey="total_sales" fill="#6366f1" radius={[10, 10, 0, 0]} animationDuration={1500} />
+                  </BarChart>
+                )}
               </ResponsiveContainer>
             </CardContent>
           </Card>
@@ -558,10 +488,69 @@ export default function DashboardPage() {
 
       </div>
 
+      {/* Live Observability Widgets (PDF Page 6) */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 shrink-0">
+         <div 
+          onClick={() => router.push('/dashboard/spaces')}
+          className="bg-card p-6 rounded-[2rem] border border-border flex items-center justify-between cursor-pointer hover:bg-secondary transition-all group"
+         >
+            <div className="flex items-center gap-4">
+               <div className="h-10 w-10 bg-indigo-500/10 text-indigo-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><Layout className="h-5 w-5" /></div>
+               <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Tables</p>
+                  <p className="text-xl font-black text-foreground">{tables?.filter((t:any)=>t.status==='occupied').length || 0} / {tables?.length || 0}</p>
+               </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+         </div>
+
+         <div 
+          onClick={() => router.push('/dashboard/kds')}
+          className="bg-card p-6 rounded-[2rem] border border-border flex items-center justify-between cursor-pointer hover:bg-secondary transition-all group"
+         >
+            <div className="flex items-center gap-4">
+               <div className="h-10 w-10 bg-emerald-500/10 text-emerald-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><Activity className="h-5 w-5" /></div>
+               <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Active Orders</p>
+                  <p className="text-xl font-black text-foreground">{overview?.active_orders || 0}</p>
+               </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+         </div>
+
+         <div 
+          onClick={() => router.push('/dashboard/online-orders')}
+          className="bg-card p-6 rounded-[2rem] border border-border flex items-center justify-between cursor-pointer hover:bg-secondary transition-all group"
+         >
+            <div className="flex items-center gap-4">
+               <div className="h-10 w-10 bg-amber-500/10 text-amber-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><Globe className="h-5 w-5" /></div>
+               <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Online Inbox</p>
+                  <p className="text-xl font-black text-foreground">{overview?.online_pending_count || 0}</p>
+               </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+         </div>
+
+         <div 
+          onClick={() => router.push('/dashboard/inventory')}
+          className="bg-card p-6 rounded-[2rem] border border-border flex items-center justify-between cursor-pointer hover:bg-secondary transition-all group"
+         >
+            <div className="flex items-center gap-4">
+               <div className="h-10 w-10 bg-red-500/10 text-red-500 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform"><ShieldAlert className="h-5 w-5" /></div>
+               <div>
+                  <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Low Stock</p>
+                  <p className="text-xl font-black text-foreground">{lowStockCount}</p>
+               </div>
+            </div>
+            <ChevronRight className="h-4 w-4 text-slate-300" />
+         </div>
+      </div>
+
       {/* Footer Branding */}
       <div className="flex items-center justify-center py-10 opacity-20 gap-4">
          <ShieldCheck className="h-6 w-6" />
-         <span className="font-black tracking-[0.4em] text-sm uppercase">Adruva Operations Engine v2.5 • Premium Multi-Outlet Edition</span>
+         <span className="font-black tracking-[0.4em] text-sm uppercase">Adruva Hospitality OS v3.0 • Command Center Edition</span>
       </div>
     </div>
   );

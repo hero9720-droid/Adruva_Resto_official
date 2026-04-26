@@ -40,6 +40,7 @@ export default function DigitalMenu() {
   const [loading, setLoading] = useState(true);
   const [ordering, setOrdering] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const [customer, setCustomer] = useState<any>(null);
   const [phone, setPhone] = useState('');
@@ -284,10 +285,14 @@ export default function DigitalMenu() {
                 <Badge className="mb-4 bg-primary text-primary-foreground border-none font-black uppercase tracking-widest px-4 py-1.5 text-[10px] shadow-glow">LIVE KITCHEN</Badge>
                 <h1 className="text-5xl font-black tracking-tighter leading-tight">{menu?.outlet?.name}</h1>
              </div>
-             {tableId && (
+             {typeof window !== 'undefined' && localStorage.getItem('adruva_customer_session') && (
                 <div className="bg-white/10 backdrop-blur-md px-6 py-4 rounded-[2rem] border border-white/10 shadow-2xl text-center">
-                   <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-0.5">Table</p>
-                   <p className="text-3xl font-black leading-none tracking-tighter">#{tableId}</p>
+                   <p className="text-[10px] font-black text-white/50 uppercase tracking-widest mb-0.5">
+                     {JSON.parse(localStorage.getItem('adruva_customer_session') || '{}').type === 'table' ? 'Table' : 'Room'}
+                   </p>
+                   <p className="text-3xl font-black leading-none tracking-tighter">
+                     {JSON.parse(localStorage.getItem('adruva_customer_session') || '{}').space_name}
+                   </p>
                 </div>
              )}
           </div>

@@ -1,6 +1,6 @@
 import { PoolClient } from 'pg';
 import { logger } from './logger';
-import { emitToAdmin } from '../websocket';
+import { emitToOutlet } from '../websocket';
 
 /**
  * Deducts inventory based on a menu item's recipe.
@@ -33,6 +33,7 @@ export async function deductInventory(client: PoolClient, outlet_id: string, men
         outlet_id, ingredient_id, type, quantity, reason, reference_id, created_by
       ) VALUES ($1, $2, 'kitchen_use', $3, 'Order deduction', $4, $5)`,
       [outlet_id, row.ingredient_id, totalDeduction, menu_item_id, staff_id]
+    );
 
     // 4. Check for low stock alert
     const stockCheck = await client.query(
@@ -41,7 +42,7 @@ export async function deductInventory(client: PoolClient, outlet_id: string, men
     );
     const ingredient = stockCheck.rows[0];
     if (ingredient && ingredient.current_stock <= ingredient.low_threshold) {
-       emitToAdmin(outlet_id, 'inventory:low_stock', {
+       emitToOutlet(outlet_id, 'inventory:low_stock', {
           name: ingredient.name,
           current: ingredient.current_stock,
           threshold: ingredient.low_threshold

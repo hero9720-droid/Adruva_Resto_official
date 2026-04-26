@@ -50,17 +50,23 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Label } from '@/components/ui/label';
+import { useRecipe } from '@/hooks/useInventory';
+import { useEffect } from 'react';
 
 export default function InventoryPage() {
-  const { data: ingredients, isLoading: itemsLoading } = useIngredients();
+  const { toast } = useToast();
+  const { data: ingredients } = useIngredients();
   const { data: suppliers } = useSuppliers();
-  const { data: menuItems } = useMenuItems();
   const { data: movements } = useMovements();
+  const { data: menuItems } = useMenuItems();
   const [selectedMenuItem, setSelectedMenuItem] = useState<string | null>(null);
   const [recipeIngredients, setRecipeIngredients] = useState<any[]>([]);
-  const { toast } = useToast();
-  
-  const createIngredient = useCreateIngredient();
+  const [searchQuery, setSearchQuery] = useState('');
+  const [activeCategory, setActiveCategory] = useState<string>('all');
+
+  const { data: recipeData } = useRecipe(selectedMenuItem);
+  const recordMovement = useRecordMovement();
+
   const [isAddOpen, setIsAddOpen] = useState(false);
   const [newIngredient, setNewIngredient] = useState({
     name: '',
@@ -81,9 +87,29 @@ export default function InventoryPage() {
     gstin: ''
   });
 
+  const createIngredient = useCreateIngredient();
   const createSupplier = useCreateSupplier();
   const updateSupplier = useUpdateSupplier();
   const deleteSupplier = useDeleteSupplier();
+
+  useEffect(() => {
+    if (recipeData) {
+      setRecipeIngredients(recipeData.map((r: any) => ({
+        ingredient_id: r.ingredient_id,
+        quantity: r.quantity
+      })));
+    } else {
+      setRecipeIngredients([]);
+    }
+  }, [recipeData]);
+
+  const [adjustingItem, setAdjustingItem] = useState<any>(null);
+  const [adjustmentForm, setAdjustmentForm] = useState({
+    quantity: 0,
+    type: 'purchase', // purchase, waste, correction
+    supplier_id: '',
+    total_cost_paise: 0
+  });
 
   const openSupplierDialog = (supplier?: any) => {
     if (supplier) {
@@ -132,6 +158,24 @@ export default function InventoryPage() {
       toast({ title: 'Supplier Deleted' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Delete Failed' });
+    }
+  };
+
+  const handleAdjustStock = async () => {
+    if (!adjustingItem) return;
+    try {
+      await recordMovement.mutateAsync({
+        ingredient_id: adjustingItem.id,
+        type: adjustmentForm.type,
+        quantity: adjustmentForm.quantity,
+        supplier_id: adjustmentForm.supplier_id || null,
+        total_cost_paise: adjustmentForm.total_cost_paise || 0,
+        notes: `Manual adjustment: ${adjustmentForm.type}`
+      });
+      setAdjustingItem(null);
+      toast({ title: "Stock Adjusted", description: `${adjustingItem.name} levels updated.` });
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Adjustment failed' });
     }
   };
 
@@ -301,11 +345,26 @@ export default function InventoryPage() {
 
         <div className="flex-1">
           <TabsContent value="stock" className="space-y-6 mt-0">
-            <div className="flex gap-4">
+            <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">
                 <Search className="absolute left-6 top-1/2 -translate-y-1/2 h-6 w-6 text-slate-400" />
-                <Input placeholder="Search ingredients..." className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-card text-foreground placeholder:text-slate-500" />
+                <Input 
+                  placeholder="Search ingredients..." 
+                  className="pl-16 h-16 rounded-[2rem] border-none shadow-soft font-black text-lg bg-card text-foreground placeholder:text-slate-500" 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                />
               </div>
+              <select 
+                className="h-16 px-8 rounded-[2rem] bg-card border-none shadow-soft font-black text-xs uppercase tracking-widest text-slate-500 outline-none cursor-pointer hover:bg-secondary transition-all"
+                value={activeCategory}
+                onChange={(e) => setActiveCategory(e.target.value)}
+              >
+                <option value="all">All Categories</option>
+                {Array.from(new Set(ingredients?.map((i: any) => i.category).filter(Boolean) || [])).map((cat: any) => (
+                  <option key={cat} value={cat}>{cat}</option>
+                ))}
+              </select>
             </div>
 
             <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border">
@@ -320,7 +379,12 @@ export default function InventoryPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {ingredients?.map((item: any) => (
+                  {ingredients?.filter((item: any) => {
+                    const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                         item.category?.toLowerCase().includes(searchQuery.toLowerCase());
+                    const matchesCategory = activeCategory === 'all' || item.category === activeCategory;
+                    return matchesSearch && matchesCategory;
+                  }).map((item: any) => (
                     <TableRow key={item.id} className="border-border hover:bg-secondary/50 transition-colors">
                       <TableCell className="px-8 py-6 pl-12">
                          <div className="flex flex-col">
@@ -351,7 +415,16 @@ export default function InventoryPage() {
                       </TableCell>
                       <TableCell className="font-black text-foreground text-lg">₹{(item.avg_cost_paise / 100).toFixed(2)}</TableCell>
                       <TableCell className="px-8 py-6 text-right pr-12">
-                         <Button variant="ghost" className="h-12 px-6 rounded-2xl font-black text-primary hover:bg-secondary uppercase tracking-widest text-[10px]">Adjust</Button>
+                         <Button 
+                          variant="ghost" 
+                          onClick={() => {
+                            setAdjustingItem(item);
+                            setAdjustmentForm({ quantity: 0, type: 'purchase', supplier_id: '', total_cost_paise: 0 });
+                          }}
+                          className="h-12 px-6 rounded-2xl font-black text-primary hover:bg-secondary uppercase tracking-widest text-[10px]"
+                         >
+                           Adjust
+                         </Button>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -516,7 +589,10 @@ export default function InventoryPage() {
                    </TableRow>
                  </TableHeader>
                  <TableBody>
-                   {movements?.map((m: any) => (
+                   {movements?.filter((m: any) => 
+                      m.ingredient_name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                      m.type?.toLowerCase().includes(searchQuery.toLowerCase())
+                    ).map((m: any) => (
                      <TableRow key={m.id} className="border-border hover:bg-secondary/50 transition-colors">
                        <TableCell className="px-8 py-6 pl-12 font-bold text-slate-500 text-xs">
                          {new Date(m.created_at).toLocaleString()}
@@ -606,6 +682,75 @@ export default function InventoryPage() {
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Stock Adjustment Dialog */}
+      <Dialog open={!!adjustingItem} onOpenChange={(open) => !open && setAdjustingItem(null)}>
+        <DialogContent className="bg-card rounded-[2.5rem] border-border shadow-2xl p-10 max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="text-3xl font-black text-foreground tracking-tighter uppercase">
+              Adjust Stock: {adjustingItem?.name}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-6 py-6">
+             <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Type</Label>
+                  <select 
+                    className="w-full h-14 rounded-2xl bg-secondary border-none font-bold text-foreground px-4 outline-none"
+                    value={adjustmentForm.type}
+                    onChange={(e) => setAdjustmentForm({...adjustmentForm, type: e.target.value})}
+                  >
+                    <option value="purchase">Purchase (Add)</option>
+                    <option value="waste">Waste (Deduct)</option>
+                    <option value="correction">Correction</option>
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Quantity ({adjustingItem?.unit})</Label>
+                  <Input 
+                    type="number"
+                    value={adjustmentForm.quantity}
+                    onChange={(e) => setAdjustmentForm({...adjustmentForm, quantity: Number(e.target.value)})}
+                    className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                  />
+                </div>
+             </div>
+
+             {adjustmentForm.type === 'purchase' && (
+               <>
+                 <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Supplier</Label>
+                   <select 
+                     className="w-full h-14 rounded-2xl bg-secondary border-none font-bold text-foreground px-4 outline-none"
+                     value={adjustmentForm.supplier_id}
+                     onChange={(e) => setAdjustmentForm({...adjustmentForm, supplier_id: e.target.value})}
+                   >
+                     <option value="">Select Supplier (Optional)</option>
+                     {suppliers?.map((s: any) => <option key={s.id} value={s.id}>{s.name}</option>)}
+                   </select>
+                 </div>
+                 <div className="space-y-2">
+                   <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-2">Total Cost (₹)</Label>
+                   <Input 
+                     type="number"
+                     placeholder="0.00"
+                     onChange={(e) => setAdjustmentForm({...adjustmentForm, total_cost_paise: Math.round(Number(e.target.value) * 100)})}
+                     className="h-14 rounded-2xl bg-secondary border-none font-bold text-foreground"
+                   />
+                 </div>
+               </>
+             )}
+          </div>
+          <DialogFooter>
+             <Button 
+              onClick={handleAdjustStock}
+              className="w-full h-16 rounded-2xl bg-primary text-primary-foreground font-black uppercase tracking-widest border-none shadow-glow"
+             >
+               Confirm Adjustment
+             </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Supplier CRUD Dialog */}
       <Dialog open={isSupplierDialogOpen} onOpenChange={setIsSupplierDialogOpen}>

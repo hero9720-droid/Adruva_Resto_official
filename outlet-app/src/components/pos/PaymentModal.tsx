@@ -25,6 +25,8 @@ import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { printer } from '@/lib/printer';
+import { useOutletProfile } from '@/hooks/useSettings';
 
 export default function PaymentModal({ 
   open, 
@@ -77,15 +79,31 @@ export default function PaymentModal({
   const handleRedeem = async () => {
     if (!customer || customer.loyalty_points < 100) return;
     try {
-      const pointsToRedeem = Math.min(customer.loyalty_points, Math.floor((bill.total_paise - loyaltyDiscount) / 10));
-      const discountRupees = pointsToRedeem / 10;
-      setLoyaltyDiscount(prev => prev + (discountRupees * 100));
+      setProcessing(true);
+      // 1 point = ₹1 (100 paise)
+      const pointsToRedeem = Math.min(
+        customer.loyalty_points, 
+        Math.floor((bill.total_paise - loyaltyDiscount) / 100)
+      );
+      
+      await api.post('/customers/redeem', {
+        customer_id: customer.id,
+        points: pointsToRedeem,
+        bill_id: bill.id
+      });
+
+      const discountPaise = pointsToRedeem * 100;
+      setLoyaltyDiscount(prev => prev + discountPaise);
       setCustomer({ ...customer, loyalty_points: customer.loyalty_points - pointsToRedeem });
-      toast({ title: "Points Redeemed", description: `₹${discountRupees} discount applied.` });
+      toast({ title: "Points Redeemed", description: `₹${pointsToRedeem} discount applied and saved.` });
     } catch (error) {
       toast({ variant: "destructive", title: "Redemption failed" });
+    } finally {
+      setProcessing(false);
     }
   };
+
+  const { data: outlet } = useOutletProfile();
 
   const handlePayment = async () => {
     if (!method) return;
@@ -103,11 +121,18 @@ export default function PaymentModal({
         amount_paise: actualAmount
       });
 
+      // Handle Final Success
       if (splitCount > 1 && currentSplitIndex < splitCount - 1) {
         toast({ title: `Part ${currentSplitIndex + 1} Settled`, description: `Remaining: ₹${((amountToSplit - (amountPerSplit * (currentSplitIndex + 1))) / 100).toLocaleString()}` });
         setCurrentSplitIndex(prev => prev + 1);
         setMethod(null);
       } else {
+        // Enqueue Bill Print
+        if (outlet) {
+          toast({ title: "Printing Receipt...", description: "Please wait while we spool the bill." });
+          printer.enqueue('bill', { bill, outlet });
+        }
+
         toast({ title: "Payment Recorded", description: "Table is now available." });
         onSuccess();
         onOpenChange(false);

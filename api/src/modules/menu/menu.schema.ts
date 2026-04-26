@@ -5,6 +5,7 @@ export const categorySchema = z.object({
   parent_id: z.string().uuid().optional().nullable(),
   icon: z.string().optional().nullable(),
   sort_order: z.number().int().default(0),
+  tax_slab_id: z.string().uuid().optional().nullable(),
 });
 
 export const menuItemSchema = z.object({
@@ -19,6 +20,7 @@ export const menuItemSchema = z.object({
   is_featured: z.boolean().default(false),
   preparation_time_minutes: z.number().int().min(0).default(15),
   sort_order: z.number().int().default(0),
+  tax_slab_id: z.string().uuid().optional().nullable(),
 });
 
 export const variantSchema = z.object({

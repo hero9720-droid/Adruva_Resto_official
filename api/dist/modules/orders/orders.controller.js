@@ -5,6 +5,7 @@ exports.createPublicOrder = createPublicOrder;
 exports.getOrders = getOrders;
 exports.updateOrderStatus = updateOrderStatus;
 exports.updateItemStatus = updateItemStatus;
+exports.getPublicOrder = getPublicOrder;
 const db_1 = require("../../lib/db");
 const counters_1 = require("../../lib/counters");
 const inventory_1 = require("../../lib/inventory");
@@ -22,8 +23,7 @@ async function createOrder(req, res) {
         customer_id, waiter_id: waiter_id || staff_id, notes, items,
         created_by: staff_id
     });
-    (0, websocket_1.emitToKitchen)(outlet_id, 'order:new', result);
-    (0, websocket_1.emitToBilling)(outlet_id, 'order:update', result);
+    (0, websocket_1.emitToOutlet)(outlet_id, 'order:new', result);
     res.status(201).json({ success: true, data: result });
 }
 async function createPublicOrder(req, res) {
@@ -33,14 +33,14 @@ async function createPublicOrder(req, res) {
     // Enforce SaaS plan limits
     await (0, planLimits_1.checkPlanLimit)(outlet_id, 'max_orders_per_month');
     const result = await processOrderCreation(outlet_id, {
-        order_type: 'dine_in',
+        order_type: 'qr',
+        source: 'qr',
         table_id,
         notes,
         items,
         created_by: 'system_guest'
     });
-    (0, websocket_1.emitToKitchen)(outlet_id, 'order:new', result);
-    (0, websocket_1.emitToBilling)(outlet_id, 'order:update', result);
+    (0, websocket_1.emitToOutlet)(outlet_id, 'order:new', result);
     res.status(201).json({ success: true, data: result });
 }
 async function processOrderCreation(outlet_id, data) {
@@ -50,10 +50,10 @@ async function processOrderCreation(outlet_id, data) {
         // 2. Create parent order
         const orderRes = await client.query(`INSERT INTO orders (
         outlet_id, order_number, order_type, session_id, table_id, 
-        room_id, customer_id, waiter_id, notes, status
-      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed') RETURNING *`, [
+        room_id, customer_id, waiter_id, notes, status, source
+      ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 'confirmed', $10) RETURNING *`, [
             outlet_id, order_number, data.order_type, data.session_id, data.table_id,
-            data.room_id, data.customer_id, data.waiter_id, data.notes
+            data.room_id, data.customer_id, data.waiter_id, data.notes, data.source || 'pos'
         ]);
         const order = orderRes.rows[0];
         // 3. Create order items and handle inventory
@@ -74,9 +74,13 @@ async function processOrderCreation(outlet_id, data) {
                 item.quantity, price, itemTotal,
                 JSON.stringify(item.modifiers_json || {}), item.notes
             ]);
-            // Add menu item name for the WebSocket payload
-            const miNameRes = await client.query("SELECT name FROM menu_items WHERE id = $1", [item.menu_item_id]);
-            createdItems.push({ ...itemRes.rows[0], menu_item_name: miNameRes.rows[0]?.name });
+            // Add menu item name and station for the WebSocket payload
+            const miInfoRes = await client.query("SELECT name, station FROM menu_items WHERE id = $1", [item.menu_item_id]);
+            createdItems.push({
+                ...itemRes.rows[0],
+                menu_item_name: miInfoRes.rows[0]?.name,
+                station: miInfoRes.rows[0]?.station || 'kitchen'
+            });
             // Deduct inventory
             await (0, inventory_1.deductInventory)(client, outlet_id, item.menu_item_id, item.quantity, data.created_by);
         }
@@ -89,7 +93,7 @@ async function processOrderCreation(outlet_id, data) {
 }
 async function getOrders(req, res) {
     const outlet_id = req.user.outlet_id;
-    const { status, order_type } = req.query;
+    const { status, order_type, source } = req.query;
     const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
         let query = `
       SELECT o.*, t.name as table_name,
@@ -97,13 +101,16 @@ async function getOrders(req, res) {
           'id', oi.id,
           'menu_item_id', oi.menu_item_id,
           'menu_item_name', mi.name,
+          'category_name', c.name,
           'quantity', oi.quantity,
           'status', oi.status,
           'notes', oi.notes,
           'unit_price_paise', oi.unit_price_paise,
-          'total_paise', oi.total_paise
+          'total_paise', oi.total_paise,
+          'station', mi.station
         )) FROM order_items oi 
          JOIN menu_items mi ON mi.id = oi.menu_item_id
+         LEFT JOIN menu_categories c ON c.id = mi.category_id
          WHERE oi.order_id = o.id) as items
       FROM orders o 
       LEFT JOIN tables t ON t.id = o.table_id
@@ -121,6 +128,10 @@ async function getOrders(req, res) {
         if (req.query.table_id) {
             params.push(req.query.table_id);
             query += ` AND o.table_id = $${params.length}`;
+        }
+        if (source) {
+            params.push(source);
+            query += ` AND o.source = $${params.length}`;
         }
         query += ' ORDER BY o.created_at DESC LIMIT 50';
         const res = await client.query(query, params);
@@ -151,9 +162,39 @@ async function updateItemStatus(req, res) {
             throw new errors_1.AppError(404, 'Order item not found', 'NOT_FOUND');
         return res.rows[0];
     });
-    // If item is ready, notify cashier
+    // Notify all outlet screens (KDS, POS) about the item status change
+    (0, websocket_1.emitToOutlet)(outlet_id, 'order:item_update', {
+        order_id: result.order_id,
+        item_id: result.id,
+        status: result.status
+    });
+    // If item is ready, notify cashier specifically
     if (status === 'ready') {
         (0, websocket_1.emitToBilling)(outlet_id, 'item:ready', result);
     }
+    res.json({ success: true, data: result });
+}
+async function getPublicOrder(req, res) {
+    const { id } = req.params;
+    const { outlet_id } = req.query;
+    if (!outlet_id)
+        throw new errors_1.AppError(400, 'Outlet ID is required', 'BAD_REQUEST');
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        const res = await client.query(`SELECT o.*, 
+        (SELECT json_agg(json_build_object(
+          'id', oi.id,
+          'menu_item_name', mi.name,
+          'quantity', oi.quantity,
+          'status', oi.status,
+          'total_paise', oi.total_paise
+        )) FROM order_items oi 
+         JOIN menu_items mi ON mi.id = oi.menu_item_id
+         WHERE oi.order_id = o.id) as items
+      FROM orders o 
+      WHERE o.id = $1 AND o.outlet_id = $2`, [id, outlet_id]);
+        if (res.rowCount === 0)
+            throw new errors_1.AppError(404, 'Order not found', 'NOT_FOUND');
+        return res.rows[0];
+    });
     res.json({ success: true, data: result });
 }

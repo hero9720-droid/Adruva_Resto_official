@@ -1,0 +1,18 @@
+﻿next.config.ts(5,3): error TS2353: Object literal may only specify known properties, and 'eslint' does not exist in type 'NextConfig'.
+src/app/dashboard/loyalty/page.tsx(18,24): error TS2307: Cannot find module '@/components/ui/slider' or its corresponding type declarations.
+src/app/dashboard/loyalty/page.tsx(168,38): error TS7031: Binding element 'val' implicitly has an 'any' type.
+src/app/dashboard/marketing/assets/page.tsx(35,58): error TS2307: Cannot find module '@/components/ui/tabs' or its corresponding type declarations.
+src/app/dashboard/marketing/assets/page.tsx(145,23): error TS2304: Cannot find name 'Search'.
+src/app/dashboard/marketing/geo/page.tsx(223,19): error TS2607: JSX element class does not support attributes because it does not have a 'props' property.
+src/app/dashboard/marketing/geo/page.tsx(223,20): error TS2786: 'History' cannot be used as a JSX component.
+  Its type '{ new (): History; prototype: History; }' is not a valid JSX element type.
+    Type '{ new (): History; prototype: History; }' is not assignable to type 'new (props: any, context: any) => Component<any, any, any>'.
+      Type 'History' is missing the following properties from type 'Component<any, any, any>': context, setState, forceUpdate, render, props
+src/app/dashboard/marketing/menu-ai/page.tsx(138,52): error TS2322: Type 'Dispatch<SetStateAction<string>>' is not assignable to type '(value: string | null, eventDetails: SelectRootChangeEventDetails) => void'.
+  Types of parameters 'value' and 'value' are incompatible.
+    Type 'string | null' is not assignable to type 'SetStateAction<string>'.
+      Type 'null' is not assignable to type 'SetStateAction<string>'.
+src/app/dashboard/marketing/referrals/page.tsx(191,82): error TS2322: Type '{ value: number; className: string; indicatorClassName: string; }' is not assignable to type 'IntrinsicAttributes & ProgressRootProps'.
+  Property 'indicatorClassName' does not exist on type 'IntrinsicAttributes & ProgressRootProps'.
+src/app/dashboard/marketing/referrals/page.tsx(199,82): error TS2322: Type '{ value: number; className: string; indicatorClassName: string; }' is not assignable to type 'IntrinsicAttributes & ProgressRootProps'.
+  Property 'indicatorClassName' does not exist on type 'IntrinsicAttributes & ProgressRootProps'.

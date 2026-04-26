@@ -1,295 +1,337 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { 
-  Calendar as CalendarIcon, 
+  CalendarDays, 
   Users, 
   Clock, 
+  MapPin, 
   Plus, 
   Search, 
-  MapPin, 
+  Filter, 
+  MoreVertical, 
   CheckCircle2, 
-  XCircle,
-  MoreVertical,
+  XCircle, 
+  UserPlus, 
+  Mail, 
+  Phone,
+  LayoutGrid,
+  List,
   ChevronLeft,
   ChevronRight,
-  UserCheck,
-  Star
+  MonitorCheck,
+  Zap,
+  Globe,
+  Camera,
+  Map as GoogleMap
 } from 'lucide-react';
-import { 
-  Card, 
-  CardContent, 
-  CardHeader, 
-  CardTitle,
-  CardDescription
-} from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { cn } from '@/lib/utils';
-import { useReservations, useUpdateReservationStatus, useCreateReservation } from '@/hooks/useReservations';
+import { 
+  Dialog, 
+  DialogContent, 
+  DialogHeader, 
+  DialogTitle, 
+  DialogDescription,
+  DialogFooter
+} from '@/components/ui/dialog';
+import { 
+  DropdownMenu, 
+  DropdownMenuContent, 
+  DropdownMenuItem, 
+  DropdownMenuTrigger 
+} from '@/components/ui/dropdown-menu';
+import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
+import { cn } from '@/lib/utils';
+import { format, addDays, subDays, startOfToday } from 'date-fns';
 
-export default function ReservationsPage() {
-  const [selectedDate, setSelectedDate] = useState(new Date().toISOString().split('T')[0]);
-  const [isBookingOpen, setIsBookingOpen] = useState(false);
-  const [bookingForm, setBookingForm] = useState({
+export default function GlobalReservationHub() {
+  const [reservations, setReservations] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [view, setView] = useState<'list' | 'grid'>('list');
+  const [selectedDate, setSelectedDate] = useState(startOfToday());
+  const [showBookingModal, setShowBookingModal] = useState(false);
+  
+  const [newBooking, setNewBooking] = useState({
     customer_name: '',
     phone: '',
+    email: '',
     party_size: 2,
-    reservation_at: '',
-    notes: ''
+    reservation_at: format(new Date(), "yyyy-MM-dd'T'HH:mm"),
+    notes: '',
+    source: 'walk_in'
   });
-  const { data: reservations, isLoading } = useReservations(selectedDate);
-  const updateStatus = useUpdateReservationStatus();
-  const createReservation = useCreateReservation();
+
   const { toast } = useToast();
 
-  const handleStatusUpdate = async (id: string, status: string) => {
+  const fetchReservations = async () => {
+    const outletId = localStorage.getItem('last_outlet_id');
     try {
-      await updateStatus.mutateAsync({ id, status });
-      toast({ title: "Status Updated", description: `Reservation is now ${status}.` });
-    } catch (error) {
-      toast({ variant: "destructive", title: "Update failed" });
+      const res = await api.get(`/reservations/${outletId}?date=${format(selectedDate, 'yyyy-MM-dd')}`);
+      setReservations(res.data.data);
+    } catch (err) {
+      console.error('Failed to fetch reservations');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handlePrevDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() - 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
-  };
+  useEffect(() => {
+    fetchReservations();
+  }, [selectedDate]);
 
-  const handleNextDay = () => {
-    const d = new Date(selectedDate);
-    d.setDate(d.getDate() + 1);
-    setSelectedDate(d.toISOString().split('T')[0]);
-  };
-
-  const handleCreateBooking = async () => {
-    if (!bookingForm.customer_name || !bookingForm.reservation_at) {
-      toast({ variant: "destructive", title: "Missing fields" });
-      return;
-    }
+  const handleBookingSubmit = async () => {
+    const outletId = localStorage.getItem('last_outlet_id');
     try {
-      await createReservation.mutateAsync(bookingForm);
-      toast({ title: "Booking Created", description: "Successfully added." });
-      setIsBookingOpen(false);
-      setBookingForm({ customer_name: '', phone: '', party_size: 2, reservation_at: '', notes: '' });
-    } catch (error) {
+      await api.post(`/reservations/${outletId}`, newBooking);
+      toast({ title: "Booking Confirmed", description: `Table reserved for ${newBooking.customer_name}.` });
+      setShowBookingModal(false);
+      fetchReservations();
+    } catch (err) {
       toast({ variant: "destructive", title: "Booking failed" });
     }
   };
 
+  const handleStatusUpdate = async (id: string, status: string) => {
+    try {
+      await api.patch(`/reservations/${id}/status`, { status });
+      toast({ title: `Status Updated`, description: `Reservation marked as ${status}.` });
+      fetchReservations();
+    } catch (err) {
+      console.error('Update failed');
+    }
+  };
+
+  if (loading) return <div className="h-screen flex items-center justify-center font-black uppercase tracking-widest text-primary animate-pulse">Synchronizing Global Bookings...</div>;
+
   return (
-    <div className="space-y-6 h-[calc(100vh-120px)] overflow-y-auto no-scrollbar bg-background -m-8 p-8 font-sans">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground uppercase">Table Reservations</h1>
-          <p className="text-slate-500 font-medium text-lg mt-1">Manage guest bookings and floor availability.</p>
+    <div className="space-y-10 animate-in fade-in duration-1000">
+      {/* Hub Header */}
+      <div className="flex justify-between items-end bg-[#1b1b24] p-12 rounded-[3.5rem] shadow-2xl relative overflow-hidden group">
+        <div className="absolute inset-0 bg-primary/5 opacity-20" />
+        <div className="absolute top-0 right-0 h-96 w-96 bg-primary/10 rounded-full blur-[120px] -translate-y-20 translate-x-20 group-hover:bg-primary/20 transition-all duration-700" />
+        <div className="relative z-10">
+          <div className="flex items-center gap-4 mb-4">
+             <CalendarDays className="h-6 w-6 text-primary" />
+             <span className="text-[10px] font-black uppercase tracking-[0.4em] text-primary">Global Reservation Hub</span>
+          </div>
+          <h1 className="text-7xl font-black tracking-tighter text-white uppercase leading-none">
+             Seat <br />
+             <span className="text-primary">Intelligence</span>
+          </h1>
+          <p className="text-white/40 font-bold text-lg mt-8 ml-1 tracking-wide max-w-xl">
+             Centralize bookings from Google, Instagram, and Walk-ins. Optimize table turnover and manage guest arrivals with real-time seat assignment.
+          </p>
         </div>
-        <Dialog open={isBookingOpen} onOpenChange={setIsBookingOpen}>
-          <DialogTrigger asChild>
-            <Button className="h-14 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black shadow-lg shadow-primary/30 tracking-widest uppercase transition-all active:scale-[0.98] border-none">
-              <Plus className="h-4 w-4 mr-2" />
-              New Booking
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px] rounded-3xl">
-            <DialogHeader>
-              <DialogTitle className="font-black uppercase text-xl">New Booking</DialogTitle>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-slate-500">Guest Name</label>
-                <Input 
-                  value={bookingForm.customer_name}
-                  onChange={e => setBookingForm({...bookingForm, customer_name: e.target.value})}
-                  className="rounded-xl bg-card border-border h-12"
-                  placeholder="John Doe"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-slate-500">Phone</label>
-                  <Input 
-                    value={bookingForm.phone}
-                    onChange={e => setBookingForm({...bookingForm, phone: e.target.value})}
-                    className="rounded-xl bg-card border-border h-12"
-                    placeholder="+91..."
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold uppercase text-slate-500">Party Size</label>
-                  <Input 
-                    type="number" min="1"
-                    value={bookingForm.party_size}
-                    onChange={e => setBookingForm({...bookingForm, party_size: parseInt(e.target.value) || 1})}
-                    className="rounded-xl bg-card border-border h-12"
-                  />
-                </div>
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-slate-500">Date & Time</label>
-                <Input 
-                  type="datetime-local"
-                  value={bookingForm.reservation_at}
-                  onChange={e => setBookingForm({...bookingForm, reservation_at: e.target.value})}
-                  className="rounded-xl bg-card border-border h-12"
-                />
-              </div>
-              <div className="space-y-2">
-                <label className="text-xs font-bold uppercase text-slate-500">Notes (Optional)</label>
-                <Input 
-                  value={bookingForm.notes}
-                  onChange={e => setBookingForm({...bookingForm, notes: e.target.value})}
-                  className="rounded-xl bg-card border-border h-12"
-                  placeholder="Anniversary, corner table..."
-                />
-              </div>
-            </div>
-            <Button onClick={handleCreateBooking} disabled={createReservation.isPending} className="w-full h-14 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black uppercase tracking-widest">
-              {createReservation.isPending ? 'CREATING...' : 'CONFIRM BOOKING'}
-            </Button>
-          </DialogContent>
-        </Dialog>
+        <div className="flex gap-4 relative z-10">
+           <Button 
+             onClick={() => setShowBookingModal(true)}
+             className="bg-primary text-white rounded-2xl h-16 px-10 font-black uppercase tracking-widest text-[11px] shadow-glow flex items-center gap-3"
+           >
+              <UserPlus className="h-5 w-5" /> Reserve Table
+           </Button>
+        </div>
       </div>
 
-      <div className="flex items-center justify-between bg-card p-4 rounded-2xl border border-border shadow-soft">
+      {/* Control Bar */}
+      <div className="flex flex-col md:flex-row justify-between items-center bg-card p-6 rounded-[2.5rem] border border-border shadow-soft gap-6">
          <div className="flex items-center gap-4">
-            <Button variant="outline" size="icon" onClick={handlePrevDay} className="border-border hover:bg-secondary"><ChevronLeft className="h-4 w-4" /></Button>
-            <div className="flex items-center gap-2 font-black text-foreground">
-               <CalendarIcon className="h-4 w-4 text-primary" />
-               {new Date(selectedDate).toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })}
+            <Button variant="ghost" onClick={() => setSelectedDate(subDays(selectedDate, 1))} className="h-12 w-12 rounded-xl border border-border p-0"><ChevronLeft className="h-5 w-5" /></Button>
+            <div className="text-center px-6">
+               <p className="text-[10px] font-black text-primary uppercase tracking-[0.2em] mb-1">Target Date</p>
+               <p className="text-xl font-black text-foreground tracking-tighter uppercase">{format(selectedDate, 'EEEE, MMM do')}</p>
             </div>
-            <Button variant="outline" size="icon" onClick={handleNextDay} className="border-border hover:bg-secondary"><ChevronRight className="h-4 w-4" /></Button>
+            <Button variant="ghost" onClick={() => setSelectedDate(addDays(selectedDate, 1))} className="h-12 w-12 rounded-xl border border-border p-0"><ChevronRight className="h-5 w-5" /></Button>
          </div>
-         <div className="flex gap-2">
-            <Badge variant="outline" className="bg-secondary border-border text-slate-500">Total: {reservations?.length || 0}</Badge>
-            <Badge variant="outline" className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20">Arrived: {reservations?.filter((r: any) => r.status === 'arrived').length}</Badge>
+
+         <div className="flex items-center gap-4">
+            <div className="bg-secondary p-1 rounded-xl flex gap-1">
+               <Button 
+                variant={view === 'list' ? 'default' : 'ghost'} 
+                onClick={() => setView('list')}
+                className={cn("h-10 px-4 rounded-lg font-black uppercase text-[9px] tracking-widest", view === 'list' && "bg-primary text-white")}
+               >
+                  <List className="h-4 w-4 mr-2" /> List
+               </Button>
+               <Button 
+                variant={view === 'grid' ? 'default' : 'ghost'} 
+                onClick={() => setView('grid')}
+                className={cn("h-10 px-4 rounded-lg font-black uppercase text-[9px] tracking-widest", view === 'grid' && "bg-primary text-white")}
+               >
+                  <LayoutGrid className="h-4 w-4 mr-2" /> Grid
+               </Button>
+            </div>
+            <div className="h-12 w-[1px] bg-border mx-2" />
+            <div className="flex gap-2">
+               <Badge className="bg-emerald-500/10 text-emerald-500 border-none px-4 py-2 rounded-xl font-black text-[10px] uppercase">
+                  {reservations.filter(r => r.status === 'confirmed').length} Confirmed
+               </Badge>
+               <Badge className="bg-blue-500/10 text-blue-500 border-none px-4 py-2 rounded-xl font-black text-[10px] uppercase">
+                  {reservations.filter(r => r.status === 'arrived').length} Arrived
+               </Badge>
+            </div>
          </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2 space-y-4">
-            {isLoading ? (
-              <div className="h-64 flex items-center justify-center text-slate-400 font-black uppercase tracking-widest animate-pulse">Syncing Registry...</div>
-            ) : reservations?.length === 0 ? (
-              <div className="h-64 border-2 border-dashed border-border rounded-3xl flex flex-col items-center justify-center text-slate-400 gap-3 bg-card/50">
-                 <CalendarIcon className="h-12 w-12 opacity-10" />
-                 <p className="font-black uppercase tracking-widest text-xs">No reservations found</p>
-                 <Button variant="link" className="text-primary font-black uppercase tracking-widest text-[10px]">Create the first one</Button>
+      {/* Timeline View */}
+      <div className="space-y-6">
+         {reservations.length === 0 ? (
+           <div className="py-40 text-center space-y-4 bg-secondary/20 rounded-[3rem] border-2 border-dashed border-border">
+              <div className="h-20 w-20 bg-secondary rounded-full mx-auto flex items-center justify-center text-slate-300">
+                 <CalendarDays className="h-10 w-10" />
               </div>
-           ) : (
-              reservations.map((res: any) => (
-                <Card key={res.id} className={`border-border bg-card hover:shadow-glow-sm transition-all group rounded-[2rem] overflow-hidden ${res.status === 'cancelled' ? 'opacity-50' : ''}`}>
-                   <CardContent className="p-0">
-                      <div className="flex items-stretch min-h-[100px]">
-                         <div className="w-24 bg-secondary flex flex-col items-center justify-center border-r border-border p-4">
-                            <span className="text-[10px] text-slate-400 font-black uppercase tracking-widest mb-1">Time</span>
-                            <span className="text-xl font-black text-foreground leading-none">
-                               {new Date(res.reservation_at).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: false })}
-                            </span>
+              <div>
+                 <p className="text-xl font-black text-foreground uppercase tracking-tighter">Quiet Day Ahead</p>
+                 <p className="text-sm font-bold text-slate-500">No bookings found for this date. Go ahead and add some manually!</p>
+              </div>
+           </div>
+         ) : (
+           <div className="grid grid-cols-1 gap-6">
+              {reservations.map((res) => (
+                <Card key={res.id} className="border border-border bg-card shadow-soft rounded-[3rem] overflow-hidden hover:border-primary transition-all group">
+                   <CardContent className="p-8 flex items-center justify-between">
+                      <div className="flex items-center gap-10">
+                         <div className="text-center w-24">
+                            <p className="text-2xl font-black text-foreground tracking-tighter">{format(new Date(res.reservation_at), 'HH:mm')}</p>
+                            <p className="text-[10px] font-black text-primary uppercase tracking-widest mt-1">Arrival</p>
                          </div>
-                         <div className="flex-1 p-5 flex items-center justify-between">
-                            <div className="space-y-1.5">
-                               <div className="flex items-center gap-3">
-                                  <h3 className="font-black text-lg text-foreground">{res.customer_name}</h3>
-                                  <Badge className={cn(
-                                     "rounded-lg font-black text-[10px] border-none px-2",
-                                     res.status === 'confirmed' ? 'bg-primary text-primary-foreground' :
-                                     res.status === 'seated' ? 'bg-emerald-500 text-white' :
-                                     res.status === 'arrived' ? 'bg-amber-500 text-white' :
-                                     'bg-secondary text-slate-600'
-                                  )}>
-                                     {res.status.toUpperCase()}
-                                  </Badge>
-                               </div>
-                               <div className="flex items-center gap-4 text-xs font-bold text-slate-500">
-                                  <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-primary/60" /> {res.party_size} Guests</span>
-                                  <span className="flex items-center gap-1.5">
-                                     <MapPin className="h-3.5 w-3.5 text-amber-500/60" /> 
-                                     {res.table_name ? `Table ${res.table_name}` : <span className="text-amber-500 underline underline-offset-4 cursor-pointer">Assign Table</span>}
-                                  </span>
-                                  {res.phone && <span className="text-slate-300 font-medium">| {res.phone}</span>}
-                               </div>
+                         <div className="h-16 w-[1px] bg-border" />
+                         <div>
+                            <div className="flex items-center gap-3 mb-2">
+                               <p className="text-3xl font-black text-foreground tracking-tighter uppercase">{res.customer_name}</p>
+                               <Badge className={cn(
+                                 "border-none font-black text-[8px] uppercase tracking-widest px-3 py-1 rounded-lg",
+                                 res.source === 'google' ? "bg-red-500/10 text-red-500" : res.source === 'meta' ? "bg-blue-500/10 text-blue-500" : "bg-slate-500/10 text-slate-500"
+                               )}>
+                                  {res.source === 'google' && <GoogleMap className="h-3 w-3 mr-1 inline" />}
+                                  {res.source === 'meta' && <Camera className="h-3 w-3 mr-1 inline" />}
+                                  {res.source === 'web' && <Globe className="h-3 w-3 mr-1 inline" />}
+                                  {res.source}
+                               </Badge>
                             </div>
-                            <div className="flex items-center gap-2">
-                              {res.status === 'pending' && (
-                                <Button size="sm" className="bg-indigo-600 font-black text-xs" onClick={() => handleStatusUpdate(res.id, 'confirmed')}>
-                                   CONFIRM
-                                </Button>
-                              )}
-                              {res.status === 'confirmed' && (
-                                <Button size="sm" variant="outline" className="text-amber-600 border-amber-200 hover:bg-amber-50 font-black text-xs" onClick={() => handleStatusUpdate(res.id, 'arrived')}>
-                                   <UserCheck className="h-3.5 w-3.5 mr-1.5" /> ARRIVED
-                                </Button>
-                              )}
-                              {res.status === 'arrived' && (
-                                <Button size="sm" className="bg-green-600 hover:bg-green-700 font-black text-xs" onClick={() => handleStatusUpdate(res.id, 'seated')}>
-                                   SEAT GUEST
-                                </Button>
-                              )}
-                              <Button variant="ghost" size="icon" className="text-slate-300 group-hover:text-slate-600"><MoreVertical className="h-4 w-4" /></Button>
-                           </div>
-                        </div>
-                     </div>
-                  </CardContent>
-               </Card>
-             ))
-           )}
-        </div>
-
-         <div className="space-y-6">
-            <Card className="border-border bg-card rounded-[2rem] overflow-hidden shadow-soft">
-               <CardHeader className="border-b border-border bg-secondary/30">
-                  <CardTitle className="text-lg font-black tracking-tighter uppercase text-foreground">Quick Summary</CardTitle>
-               </CardHeader>
-               <CardContent className="space-y-4 p-6">
-                  <div className="flex items-center justify-between p-4 bg-secondary rounded-2xl">
-                     <div className="flex items-center gap-3">
-                        <Clock className="h-5 w-5 text-primary" />
-                        <span className="text-sm font-bold text-foreground">Next Arrival</span>
-                     </div>
-                     <span className="font-black text-foreground">19:30</span>
-                  </div>
-                  <div className="space-y-2">
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Seated Guests</span>
-                        <span className="font-black text-foreground">14</span>
-                     </div>
-                     <div className="flex justify-between text-sm">
-                        <span className="text-slate-500 font-medium">Upcoming (2h)</span>
-                        <span className="font-black text-primary">4 Bookings</span>
-                     </div>
-                  </div>
-               </CardContent>
-            </Card>
-
-            <Card className="border-primary/20 bg-primary/5 overflow-hidden relative rounded-[2rem]">
-               <div className="absolute top-0 right-0 p-2"><Star className="h-12 w-12 text-primary/10 fill-current" /></div>
-               <CardHeader className="relative z-10">
-                  <CardTitle className="text-sm uppercase font-black text-primary tracking-wider">VIP Note</CardTitle>
-               </CardHeader>
-               <CardContent className="relative z-10">
-                  <p className="text-xs text-foreground/80 leading-relaxed italic font-medium">
-                     "Mr. Sharma is celebrating his anniversary. Prefers a corner table with candlelight if possible."
-                  </p>
-                  <div className="flex items-center gap-2 mt-4">
-                     <div className="h-6 w-px bg-primary/20" />
-                     <p className="text-[10px] text-primary/60 font-bold uppercase">Linked to Guest ID: 9872</p>
-                  </div>
-               </CardContent>
-            </Card>
-        </div>
+                            <div className="flex items-center gap-4 text-[11px] font-bold text-slate-500">
+                               <span className="flex items-center gap-1.5"><Users className="h-3.5 w-3.5 text-primary" /> {res.party_size} Pax</span>
+                               <span className="flex items-center gap-1.5 text-foreground"><MapPin className="h-3.5 w-3.5 text-primary" /> {res.table_name || 'Unassigned'}</span>
+                               <span className="flex items-center gap-1.5"><Phone className="h-3.5 w-3.5" /> {res.phone}</span>
+                            </div>
+                         </div>
+                      </div>
+                      
+                      <div className="flex items-center gap-4">
+                         {res.status === 'confirmed' && (
+                           <Button 
+                             onClick={() => handleStatusUpdate(res.id, 'arrived')}
+                             className="bg-emerald-500 text-white rounded-2xl h-14 px-8 font-black uppercase tracking-widest text-[9px] shadow-lg shadow-emerald-500/20 gap-2"
+                           >
+                              <Zap className="h-4 w-4" /> Guest Arrived
+                           </Button>
+                         )}
+                         <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                               <Button variant="ghost" className="h-14 w-14 rounded-2xl border border-border p-0"><MoreVertical className="h-5 w-5" /></Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end" className="w-56 rounded-2xl p-2 border-border shadow-2xl">
+                               <DropdownMenuItem onClick={() => handleStatusUpdate(res.id, 'no_show')} className="rounded-xl font-bold gap-3 p-3 text-red-500"><XCircle className="h-4 w-4" /> Mark No-show</DropdownMenuItem>
+                               <DropdownMenuItem className="rounded-xl font-bold gap-3 p-3"><Zap className="h-4 w-4" /> Change Table</DropdownMenuItem>
+                               <DropdownMenuItem className="rounded-xl font-bold gap-3 p-3"><Mail className="h-4 w-4" /> Send Reminder</DropdownMenuItem>
+                            </DropdownMenuContent>
+                         </DropdownMenu>
+                      </div>
+                   </CardContent>
+                </Card>
+              ))}
+           </div>
+         )}
       </div>
+
+      {/* Booking Dialog */}
+      <Dialog open={showBookingModal} onOpenChange={setShowBookingModal}>
+         <DialogContent className="max-w-4xl rounded-[4rem] p-0 border-none bg-card shadow-2xl overflow-hidden">
+            <div className="flex flex-col md:flex-row h-full">
+               <div className="flex-1 p-12 space-y-8">
+                  <div>
+                     <h2 className="text-4xl font-black uppercase tracking-tighter">Manual Booking</h2>
+                     <p className="font-bold text-slate-500">Reserve a table for phone or walk-in customers.</p>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Guest Name</label>
+                        <Input 
+                          placeholder="Full Name"
+                          value={newBooking.customer_name}
+                          onChange={(e) => setNewBooking({...newBooking, customer_name: e.target.value})}
+                          className="h-16 rounded-2xl border-2 bg-secondary/30 font-bold px-6"
+                        />
+                     </div>
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Phone Number</label>
+                        <Input 
+                          placeholder="+91 00000 00000"
+                          value={newBooking.phone}
+                          onChange={(e) => setNewBooking({...newBooking, phone: e.target.value})}
+                          className="h-16 rounded-2xl border-2 bg-secondary/30 font-bold px-6"
+                        />
+                     </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-6">
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Party Size</label>
+                        <Input 
+                          type="number"
+                          value={newBooking.party_size}
+                          onChange={(e) => setNewBooking({...newBooking, party_size: Number(e.target.value)})}
+                          className="h-16 rounded-2xl border-2 bg-secondary/30 font-bold px-6"
+                        />
+                     </div>
+                     <div className="space-y-3">
+                        <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Date & Time</label>
+                        <Input 
+                          type="datetime-local"
+                          value={newBooking.reservation_at}
+                          onChange={(e) => setNewBooking({...newBooking, reservation_at: e.target.value})}
+                          className="h-16 rounded-2xl border-2 bg-secondary/30 font-bold px-6"
+                        />
+                     </div>
+                  </div>
+
+                  <div className="space-y-3">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Special Notes</label>
+                     <Input 
+                       placeholder="e.g. Birthday celebration, window seat..."
+                       value={newBooking.notes}
+                       onChange={(e) => setNewBooking({...newBooking, notes: e.target.value})}
+                       className="h-16 rounded-2xl border-2 bg-secondary/30 font-bold px-6"
+                     />
+                  </div>
+               </div>
+
+               <div className="w-full md:w-[350px] bg-[#1b1b24] p-12 flex flex-col justify-between">
+                  <div className="space-y-8">
+                     <div className="h-20 w-20 bg-primary/10 rounded-[2.25rem] flex items-center justify-center text-primary shadow-glow">
+                        <MonitorCheck className="h-10 w-10" />
+                     </div>
+                     <h3 className="text-3xl font-black text-white uppercase tracking-tighter">Availability Sync</h3>
+                     <p className="text-white/40 font-bold leading-relaxed">The system will automatically suggest the best table based on the party size and buffer times.</p>
+                  </div>
+
+                  <div className="space-y-4">
+                     <Button 
+                      onClick={handleBookingSubmit}
+                      className="w-full bg-primary text-white h-16 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-glow flex items-center gap-3"
+                     >
+                        Confirm Booking
+                     </Button>
+                     <Button variant="ghost" onClick={() => setShowBookingModal(false)} className="w-full text-white/40 h-14 font-black uppercase tracking-widest text-[10px]">Cancel</Button>
+                  </div>
+               </div>
+            </div>
+         </DialogContent>
+      </Dialog>
     </div>
   );
 }

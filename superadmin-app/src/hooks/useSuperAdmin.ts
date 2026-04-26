@@ -81,3 +81,24 @@ export function useSuspendChain() {
     }
   });
 }
+
+export function useGlobalAuditLogs() {
+  return useQuery({
+    queryKey: ['global_audit_logs'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/audit-logs');
+      return data.data;
+    },
+    refetchInterval: 10000 // Every 10 seconds
+  });
+}
+
+export function useRevenueTrends() {
+  return useQuery({
+    queryKey: ['revenue_trends'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/revenue-trends');
+      return data.data;
+    }
+  });
+}

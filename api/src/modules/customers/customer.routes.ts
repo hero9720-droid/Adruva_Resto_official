@@ -13,7 +13,9 @@ router.use(requireActiveSubscription);
 router.get('/', CustomerController.getCustomers);
 router.post('/', CustomerController.createOrUpdateCustomer);
 router.get('/phone/:phone', CustomerController.getCustomerByPhone);
-router.get('/:id/history', CustomerController.getCustomerHistory);
+router.get('/:id/history', verifyToken, CustomerController.getCustomerHistory);
+router.post('/referral/apply', CustomerController.processReferral);
+router.get('/social-proof/:outletId', CustomerController.getSocialProof);
 router.post('/loyalty/earn', CustomerController.earnLoyaltyPoints);
 router.post('/loyalty/redeem', CustomerController.redeemLoyaltyPoints);
 

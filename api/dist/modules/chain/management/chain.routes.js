@@ -50,4 +50,8 @@ router.get('/master-menu/categories', MasterMenuController.getMasterCategories);
 router.post('/master-menu/categories', MasterMenuController.createMasterCategory);
 router.get('/master-menu/items', MasterMenuController.getMasterMenuItems);
 router.post('/master-menu/items', MasterMenuController.createMasterMenuItem);
+// Advanced Analytics & Settings
+router.get('/pnl-analysis', ChainController.getChainPnLAnalysis);
+router.patch('/settings', ChainController.updateChainSettings);
+router.get('/details', ChainController.getChainDetails);
 exports.default = router;

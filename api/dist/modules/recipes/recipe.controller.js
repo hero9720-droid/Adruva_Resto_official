@@ -16,8 +16,11 @@ async function createRecipe(req, res) {
         await client.query('DELETE FROM recipe_ingredients WHERE recipe_id = $1', [recipe_id]);
         // 3. Add new ingredients
         for (const ing of ingredients) {
-            await client.query(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity)
-         VALUES ($1, $2, $3)`, [recipe_id, ing.ingredient_id, ing.quantity]);
+            // Get unit from ingredient registry
+            const ingRes = await client.query('SELECT unit FROM ingredients WHERE id = $1', [ing.ingredient_id]);
+            const unit = ingRes.rows[0]?.unit || 'PCS';
+            await client.query(`INSERT INTO recipe_ingredients (recipe_id, ingredient_id, quantity, outlet_id, unit)
+         VALUES ($1, $2, $3, $4, $5)`, [recipe_id, ing.ingredient_id, ing.quantity, outlet_id, unit]);
         }
         return { recipe_id, menu_item_id, ingredients_count: ingredients.length };
     });

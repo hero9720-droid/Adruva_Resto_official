@@ -10,6 +10,8 @@ exports.onboardChain = onboardChain;
 exports.listPlans = listPlans;
 exports.createPlan = createPlan;
 exports.suspendChain = suspendChain;
+exports.getGlobalAuditLogs = getGlobalAuditLogs;
+exports.getRevenueTrends = getRevenueTrends;
 const bcrypt_1 = __importDefault(require("bcrypt"));
 const db_1 = require("../../../lib/db");
 const redis_1 = require("../../../lib/redis");
@@ -141,4 +143,27 @@ async function suspendChain(req, res) {
     // subscriptions table has status column
     await db_1.db.query(`UPDATE subscriptions SET status = 'suspended' WHERE outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)`, [id]);
     res.json({ success: true, message: 'Chain suspended' });
+}
+async function getGlobalAuditLogs(req, res) {
+    const result = await db_1.db.query(`
+    SELECT al.*, o.name as outlet_name
+    FROM audit_logs al
+    LEFT JOIN outlets o ON o.id = al.outlet_id
+    ORDER BY al.created_at DESC
+    LIMIT 50
+  `);
+    res.json({ success: true, data: result.rows });
+}
+async function getRevenueTrends(req, res) {
+    const result = await db_1.db.query(`
+    SELECT 
+      DATE(created_at) as date,
+      SUM(amount_paise) as total_paise
+    FROM payment_transactions
+    WHERE status = 'captured'
+    GROUP BY DATE(created_at)
+    ORDER BY DATE(created_at) DESC
+    LIMIT 14
+  `);
+    res.json({ success: true, data: result.rows });
 }

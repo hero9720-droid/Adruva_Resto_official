@@ -28,40 +28,48 @@ import {
   CircleCheck,
   ShieldAlert
 } from 'lucide-react';
+import { useCurrentStatus } from '@/hooks/useStaff';
 import { clearToken } from '@/lib/api';
 import { useState, useEffect } from 'react';
 
 const navGroups = [
   {
-    label: 'Operations',
+    label: 'Service',
     items: [
-      { name: 'Dashboard',    href: '/dashboard',              icon: LayoutDashboard },
-      { name: 'POS',          href: '/dashboard/pos',          icon: UtensilsCrossed },
-      { name: 'KDS',          href: '/dashboard/kds',          icon: MonitorCheck },
-      { name: 'Waiter App',   href: '/dashboard/waiter',       icon: Smartphone },
-      { name: 'Online Orders',href: '/dashboard/online-orders',icon: Globe },
-      { name: 'Bills',        href: '/dashboard/bills',        icon: ReceiptText },
-      { name: 'Reservations', href: '/dashboard/reservations', icon: CalendarClock },
-      { name: 'Rooms',        href: '/dashboard/rooms',        icon: Bed },
+      { name: 'Dashboard',    href: '/dashboard',              icon: LayoutDashboard, roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
+      { name: 'POS',          href: '/dashboard/pos',          icon: UtensilsCrossed, roles: ['admin', 'manager', 'outlet_manager', 'cashier', 'waiter', 'captain'] },
+      { name: 'KDS',          href: '/dashboard/kds',          icon: MonitorCheck,    roles: ['admin', 'manager', 'outlet_manager', 'waiter', 'captain', 'chef', 'kitchen_staff'] },
+      { name: 'Bills',        href: '/dashboard/bills',        icon: ReceiptText,     roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
+      { name: 'Feedback',     href: '/dashboard/feedback',     icon: MessageSquare,   roles: ['admin', 'manager', 'outlet_manager'] },
     ],
   },
   {
-    label: 'Management',
+    label: 'Infrastructure',
     items: [
-      { name: 'Menu',         href: '/dashboard/menu',         icon: BookOpen },
-      { name: 'Recipes',      href: '/dashboard/recipes',      icon: ChefHat },
-      { name: 'Inventory',    href: '/dashboard/inventory',    icon: Package },
-      { name: 'Staff',        href: '/dashboard/staff',        icon: Users },
-      { name: 'Customers',    href: '/dashboard/customers',    icon: UserCircle },
-      { name: 'Feedback',     href: '/dashboard/feedback',     icon: MessageSquare },
-      { name: 'Expenses',     href: '/dashboard/expenses',     icon: Wallet },
+      { name: 'Menu',         href: '/dashboard/menu',         icon: BookOpen,        roles: ['admin', 'manager', 'outlet_manager'] },
+      { name: 'Spaces',       href: '/dashboard/spaces',       icon: Bed,             roles: ['admin', 'manager', 'outlet_manager', 'waiter', 'captain'] },
+      { name: 'Reservations', href: '/dashboard/reservations', icon: CalendarClock,    roles: ['admin', 'manager', 'outlet_manager', 'captain'] },
+      { name: 'Staff Hub',    href: '/dashboard/staff',        icon: Users,           roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
     ],
   },
   {
-    label: 'Insights',
+    label: 'Back Office',
     items: [
-      { name: 'Analytics',    href: '/dashboard/analytics',    icon: BarChart3 },
-      { name: 'Settings',     href: '/dashboard/settings',     icon: Settings },
+      { name: 'Inventory',    href: '/dashboard/inventory',    icon: Package,         roles: ['admin', 'manager', 'outlet_manager', 'chef', 'kitchen_staff'] },
+      { name: 'Recipes',      href: '/dashboard/recipes',      icon: ChefHat,         roles: ['admin', 'manager', 'outlet_manager', 'chef'] },
+      { name: 'Expenses',     href: '/dashboard/expenses',     icon: Wallet,          roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
+      { name: 'Payroll',      href: '/dashboard/payroll',      icon: Wallet,          roles: ['admin', 'manager', 'outlet_manager'] },
+      { name: 'Compliance',   href: '/dashboard/compliance',   icon: ShieldAlert,     roles: ['admin', 'manager', 'outlet_manager'] },
+    ],
+  },
+  {
+    label: 'Growth',
+    items: [
+      { name: 'Online Inbox', href: '/dashboard/online-orders',icon: Globe,           roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
+      { name: 'Customers',    href: '/dashboard/customers',    icon: UserCircle,      roles: ['admin', 'manager', 'outlet_manager', 'cashier'] },
+      { name: 'Academy',      href: '/dashboard/training',     icon: CircleCheck,     roles: ['admin', 'manager', 'outlet_manager'] },
+      { name: 'Analytics',    href: '/dashboard/analytics',    icon: BarChart3,       roles: ['admin', 'manager', 'outlet_manager'] },
+      { name: 'Settings',     href: '/dashboard/settings',     icon: Settings,        roles: ['admin', 'manager', 'outlet_manager'] },
     ],
   },
 ];
@@ -69,7 +77,9 @@ const navGroups = [
 export default function Sidebar({ onClose }: { onClose?: () => void }) {
   const pathname = usePathname();
   const router = useRouter();
+  const { data: staffStatus } = useCurrentStatus();
 
+  const userRole = staffStatus?.staff?.role?.toLowerCase() || 'admin'; // Defaulting to admin for now if not set
   const [currentTime, setCurrentTime] = useState(new Date());
 
   useEffect(() => {
@@ -122,59 +132,62 @@ export default function Sidebar({ onClose }: { onClose?: () => void }) {
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto px-4 py-4 space-y-6 no-scrollbar">
-        {navGroups.map((group) => (
-          <div key={group.label}>
-            <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] px-3 mb-2">
-              {group.label}
-            </p>
-            <div className="space-y-0.5">
-              {group.items.map((item) => {
-                const isActive = item.href === '/dashboard' 
-                  ? pathname === item.href 
-                  : (pathname === item.href || pathname.startsWith(item.href + '/'));
-                return (
-                   <Link
-                    key={item.name}
-                    href={item.href}
-                    onClick={() => onClose?.()}
-                    className={cn(
-                      'flex items-center justify-between px-3 py-2.5 text-sm font-bold rounded-xl transition-all group relative overflow-hidden',
-                      isActive
-                        ? 'bg-primary text-primary-foreground shadow-glow border border-primary/20'
-                        : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
-                    )}
-                  >
-                     <div className="flex items-center gap-3 relative z-10">
-                      <item.icon
-                        className={cn(
-                          'h-4 w-4 transition-colors',
-                          isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'
-                        )}
-                      />
-                      {item.name}
-                    </div>
-                    {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary-foreground/50 relative z-10" />}
-                                        {/* Hover Effect Layer */}
-                    {!isActive && (
-                      <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-                    )}
-                  </Link>
-                );
-              })}
+        {navGroups.map((group) => {
+
+          return (
+            <div key={group.label}>
+              <p className="text-[9px] font-black text-slate-500 uppercase tracking-[0.2em] px-3 mb-2">
+                {group.label}
+              </p>
+              <div className="space-y-0.5">
+                {group.items.map((item: any) => {
+                  if (item.roles && !item.roles.includes(userRole)) return null;
+                  const isActive = item.href === '/dashboard' 
+                    ? pathname === item.href 
+                    : (pathname === item.href || pathname.startsWith(item.href + '/'));
+                  return (
+                     <Link
+                      key={item.name}
+                      href={item.href}
+                      onClick={() => onClose?.()}
+                      className={cn(
+                        'flex items-center justify-between px-3 py-2.5 text-sm font-bold rounded-xl transition-all group relative overflow-hidden',
+                        isActive
+                          ? 'bg-primary text-primary-foreground shadow-glow border border-primary/20'
+                          : 'text-muted-foreground hover:bg-secondary hover:text-foreground'
+                      )}
+                    >
+                       <div className="flex items-center gap-3 relative z-10">
+                        <item.icon
+                          className={cn(
+                            'h-4 w-4 transition-colors',
+                            isActive ? 'text-primary-foreground' : 'text-muted-foreground group-hover:text-primary'
+                          )}
+                        />
+                        {item.name}
+                      </div>
+                      {isActive && <ChevronRight className="h-3.5 w-3.5 text-primary-foreground/50 relative z-10" />}
+                      {!isActive && (
+                        <div className="absolute inset-0 bg-gradient-to-r from-primary/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
+                      )}
+                    </Link>
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </nav>
 
       {/* Sign Out */}
        <div className="p-4 border-t border-border space-y-3">
         <div className="flex items-center gap-3 p-2.5 bg-secondary/50 rounded-xl border border-border">
-           <div className="h-9 w-9 bg-primary/20 rounded-lg flex items-center justify-center text-primary">
+           <div className="h-9 w-9 bg-primary/20 rounded-lg flex items-center justify-center text-primary shadow-inner">
               <UserCircle className="h-5 w-5" />
            </div>
            <div className="flex-1 min-w-0">
-              <p className="text-xs font-black text-foreground truncate">ADRUVA ADMIN</p>
-              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">Master Access</p>
+              <p className="text-xs font-black text-foreground truncate uppercase">{staffStatus?.staff?.name || 'ADRUVA ADMIN'}</p>
+              <p className="text-[8px] font-bold text-slate-500 uppercase tracking-widest mt-0.5">{staffStatus?.staff?.role || 'Master Access'}</p>
            </div>
         </div>
         <button

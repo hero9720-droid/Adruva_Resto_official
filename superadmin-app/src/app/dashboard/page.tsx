@@ -36,17 +36,32 @@ import {
   useGlobalMetrics, 
   useSystemHealth, 
   useChains, 
-  useSuspendChain 
+  useSuspendChain,
+  useGlobalAuditLogs,
+  useRevenueTrends
 } from '@/hooks/useSuperAdmin';
 import OnboardChainModal from '@/components/dashboard/OnboardChainModal';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { 
+  LineChart, 
+  Line, 
+  XAxis, 
+  YAxis, 
+  CartesianGrid, 
+  Tooltip, 
+  ResponsiveContainer,
+  AreaChart,
+  Area
+} from 'recharts';
 
 export default function SuperAdminDashboard() {
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
-  const { data: metrics, isLoading: metricsLoading } = useGlobalMetrics();
+  const { data: metrics } = useGlobalMetrics();
   const { data: health } = useSystemHealth();
   const { data: chains } = useChains();
+  const { data: logs } = useGlobalAuditLogs();
+  const { data: trends } = useRevenueTrends();
   const suspendChain = useSuspendChain();
   const { toast } = useToast();
 
@@ -60,8 +75,14 @@ export default function SuperAdminDashboard() {
       }
     }
   };
+
+  const chartData = trends?.map((t: any) => ({
+    date: new Date(t.date).toLocaleDateString(undefined, { day: 'numeric', month: 'short' }),
+    revenue: Number(t.total_paise) / 100
+  })).reverse() || [];
+
   return (
-    <div className="space-y-10 animate-in fade-in duration-700">
+    <div className="space-y-10 animate-in fade-in duration-700 pb-20">
       {/* Header */}
       <div className="flex justify-between items-center bg-card p-10 rounded-[2.5rem] shadow-soft border border-border">
         <div>
@@ -103,7 +124,7 @@ export default function SuperAdminDashboard() {
             <CardContent className="p-10">
               <div className="flex justify-between items-start mb-8">
                 <div className={cn("p-5 rounded-[1.5rem] shadow-inner", stat.bg)}>
-                  <stat.icon className={cn("h-8 w-8", stat.color)} />
+                   <stat.icon className={cn("h-8 w-8", stat.color)} />
                 </div>
                 <Badge className="bg-secondary text-slate-500 border border-border group-hover:bg-primary group-hover:text-primary-foreground transition-all px-4 py-1.5 font-black tracking-widest uppercase text-[10px] rounded-xl">Global</Badge>
               </div>
@@ -112,6 +133,75 @@ export default function SuperAdminDashboard() {
             </CardContent>
           </Card>
         ))}
+      </div>
+
+      {/* Analytics & Logs Row */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Revenue Trends */}
+        <Card className="lg:col-span-2 border border-border bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col p-10">
+           <div className="flex justify-between items-end mb-10">
+              <div>
+                 <h3 className="text-3xl font-black text-foreground tracking-tighter uppercase mb-2">Platform Performance</h3>
+                 <p className="text-slate-500 font-bold text-sm tracking-wide">Daily aggregate revenue trends across all multi-tenant nodes.</p>
+              </div>
+              <div className="text-right">
+                 <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Growth Index</p>
+                 <Badge className="bg-emerald-500/10 text-emerald-500 border-emerald-500/20 font-black px-4 py-1.5">+12.5%</Badge>
+              </div>
+           </div>
+           <div className="h-[400px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                 <AreaChart data={chartData}>
+                    <defs>
+                       <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="5%" stopColor="#2563eb" stopOpacity={0.3}/>
+                          <stop offset="95%" stopColor="#2563eb" stopOpacity={0}/>
+                       </linearGradient>
+                    </defs>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                    <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} dy={10} />
+                    <YAxis axisLine={false} tickLine={false} tick={{fontSize: 10, fontWeight: 'bold', fill: '#94a3b8'}} tickFormatter={(v) => `₹${v/1000}k`} />
+                    <Tooltip 
+                       contentStyle={{ borderRadius: '20px', border: 'none', boxShadow: '0 25px 50px -12px rgba(0,0,0,0.1)', padding: '20px' }}
+                       itemStyle={{ fontWeight: 'black', color: '#2563eb' }}
+                    />
+                    <Area type="monotone" dataKey="revenue" stroke="#2563eb" strokeWidth={4} fillOpacity={1} fill="url(#colorRevenue)" />
+                 </AreaChart>
+              </ResponsiveContainer>
+           </div>
+        </Card>
+
+        {/* Global Audit Feed */}
+        <Card className="border border-border bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col">
+           <CardHeader className="p-10 pb-6 border-b border-border bg-secondary/10">
+              <CardTitle className="text-2xl font-black text-foreground flex items-center gap-4 tracking-tighter uppercase">
+                 <div className="p-3 bg-card border border-border rounded-2xl shadow-glow">
+                    <Activity className="h-6 w-6 text-primary" />
+                 </div>
+                 Operations Stream
+              </CardTitle>
+           </CardHeader>
+           <CardContent className="p-0 flex-1 overflow-y-auto max-h-[500px] no-scrollbar">
+              <div className="divide-y divide-border">
+                 {logs?.map((log: any) => (
+                   <div key={log.id} className="p-6 hover:bg-secondary/30 transition-all group">
+                      <div className="flex justify-between items-start mb-2">
+                         <span className="text-[9px] font-black text-primary uppercase tracking-[0.2em]">{log.event_type}</span>
+                         <span className="text-[9px] font-bold text-slate-400">{new Date(log.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+                      </div>
+                      <p className="text-sm font-bold text-foreground leading-snug mb-2 group-hover:text-primary transition-colors">{log.details}</p>
+                      <div className="flex items-center gap-2">
+                         <Badge variant="outline" className="text-[8px] font-black uppercase tracking-widest border-border text-slate-500 py-0.5">{log.outlet_name || 'Global'}</Badge>
+                         <span className="text-[8px] font-bold text-slate-400 uppercase tracking-widest">by {log.actor_name}</span>
+                      </div>
+                   </div>
+                 ))}
+                 {(!logs || logs.length === 0) && (
+                   <div className="p-20 text-center text-slate-400 font-bold uppercase tracking-widest text-xs">Waiting for events...</div>
+                 )}
+              </div>
+           </CardContent>
+        </Card>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">

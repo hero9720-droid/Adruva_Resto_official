@@ -36,3 +36,13 @@ export function useUpsertCustomer() {
     },
   });
 }
+
+export function useTopCustomers() {
+  return useQuery({
+    queryKey: ['customers', 'top'],
+    queryFn: async () => {
+      const { data } = await api.get('/customers/top-guests');
+      return data.data;
+    },
+  });
+}

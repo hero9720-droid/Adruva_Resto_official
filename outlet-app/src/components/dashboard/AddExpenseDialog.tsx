@@ -25,6 +25,7 @@ import {
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
+import { useCreateExpense } from '@/hooks/useExpenses';
 
 interface AddExpenseProps {
   open: boolean;
@@ -36,6 +37,16 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
   const [receiptUrl, setReceiptUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
+  const createExpense = useCreateExpense();
+
+  const [form, setForm] = useState({
+    amount: '',
+    category: '',
+    description: '',
+    payment_method: 'cash',
+    vendor: '',
+    expense_date: new Date().toISOString().split('T')[0]
+  });
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -48,6 +59,39 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
       setUploading(false);
       toast({ title: "Receipt Captured", description: "Image attached to expense log." });
     }, 1500);
+  };
+
+  const handleSubmit = async () => {
+    if (!form.amount || !form.category) {
+      toast({ variant: 'destructive', title: 'Missing Information', description: 'Please fill all required fields.' });
+      return;
+    }
+
+    try {
+      await createExpense.mutateAsync({
+        amount_paise: Math.round(parseFloat(form.amount) * 100),
+        category_name: form.category,
+        description: form.description || form.category,
+        payment_method: form.payment_method,
+        expense_date: form.expense_date,
+        receipt_url: receiptUrl 
+      });
+
+      toast({ title: "Expense Recorded", description: "Ledger updated successfully." });
+      onClose();
+      // Reset form
+      setForm({
+        amount: '',
+        category: '',
+        description: '',
+        payment_method: 'cash',
+        vendor: '',
+        expense_date: new Date().toISOString().split('T')[0]
+      });
+      setReceiptUrl(null);
+    } catch (err) {
+      toast({ variant: 'destructive', title: 'Recording Failed' });
+    }
   };
 
   return (
@@ -63,7 +107,7 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
                 <div className="h-12 w-12 bg-indigo-50 rounded-2xl flex items-center justify-center text-indigo-600">
                    <FileText className="h-6 w-6" />
                 </div>
-                <DialogTitle className="text-4xl font-black text-slate-900 tracking-tighter">Record Expense</DialogTitle>
+                <DialogTitle className="text-4xl font-black text-slate-900 tracking-tighter uppercase leading-none">Record Expense</DialogTitle>
              </div>
              <p className="text-slate-500 font-medium">Log your operational costs with digital receipt proof.</p>
           </DialogHeader>
@@ -74,32 +118,43 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Expense Amount *</Label>
                    <div className="relative">
                       <IndianRupee className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                      <Input placeholder="0.00" className="h-14 pl-12 rounded-2xl border-none bg-slate-50 text-xl font-black text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600/20" />
+                      <Input 
+                        placeholder="0.00" 
+                        type="number"
+                        value={form.amount}
+                        onChange={(e) => setForm({...form, amount: e.target.value})}
+                        className="h-14 pl-12 rounded-2xl border-none bg-slate-50 text-xl font-black text-slate-900 focus-visible:ring-2 focus-visible:ring-indigo-600/20" 
+                      />
                    </div>
                 </div>
 
                 <div className="space-y-2">
                    <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Category</Label>
-                   <Select>
+                   <Select onValueChange={(val: string) => setForm({...form, category: val})}>
                       <SelectTrigger className="h-14 rounded-2xl border-none bg-slate-50 font-bold text-slate-900">
                          <SelectValue placeholder="Select Category" />
                       </SelectTrigger>
                       <SelectContent className="rounded-2xl border-none shadow-xl">
-                         <SelectItem value="raw_materials">🥩 Raw Materials</SelectItem>
-                         <SelectItem value="electricity">⚡ Utilities (Electricity)</SelectItem>
-                         <SelectItem value="rent">🏢 Rent / Lease</SelectItem>
-                         <SelectItem value="repairs">🛠️ Maintenance & Repairs</SelectItem>
-                         <SelectItem value="marketing">📣 Marketing / Ads</SelectItem>
-                         <SelectItem value="salary">💰 Staff Salary Advance</SelectItem>
+                         <SelectItem value="Raw Materials">🥩 Raw Materials</SelectItem>
+                         <SelectItem value="Utilities">⚡ Utilities</SelectItem>
+                         <SelectItem value="Rent">🏢 Rent / Lease</SelectItem>
+                         <SelectItem value="Maintenance">🛠️ Maintenance</SelectItem>
+                         <SelectItem value="Marketing">📣 Marketing</SelectItem>
+                         <SelectItem value="Staff Salary">💰 Staff Salary</SelectItem>
                       </SelectContent>
                    </Select>
                 </div>
 
                 <div className="space-y-2">
-                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Vendor / Supplier</Label>
+                   <Label className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Description</Label>
                    <div className="relative">
-                      <Store className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
-                      <Input placeholder="Enter supplier name" className="h-14 pl-12 rounded-2xl border-none bg-slate-50 font-bold text-slate-900" />
+                      <Tag className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
+                      <Input 
+                        placeholder="e.g. Monthly milk supply" 
+                        value={form.description}
+                        onChange={(e) => setForm({...form, description: e.target.value})}
+                        className="h-14 pl-12 rounded-2xl border-none bg-slate-50 font-bold text-slate-900" 
+                      />
                    </div>
                 </div>
              </div>
@@ -156,8 +211,12 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
 
           <DialogFooter className="mt-10 gap-4">
              <Button variant="ghost" className="h-16 flex-1 rounded-2xl font-black text-slate-400 uppercase" onClick={onClose}>Cancel</Button>
-             <Button className="h-16 flex-[2] rounded-2xl bg-indigo-600 text-white font-black shadow-glow border-none uppercase tracking-widest">
-                Save & Record <CheckCircle2 className="h-5 w-5 ml-2" />
+             <Button 
+               onClick={handleSubmit}
+               disabled={createExpense.isPending}
+               className="h-16 flex-[2] rounded-2xl bg-indigo-600 text-white font-black shadow-glow border-none uppercase tracking-widest"
+             >
+                {createExpense.isPending ? 'Recording...' : 'Save & Record'} <CheckCircle2 className="h-5 w-5 ml-2" />
              </Button>
           </DialogFooter>
         </div>
@@ -165,3 +224,4 @@ export default function AddExpenseDialog({ open, onClose }: AddExpenseProps) {
     </Dialog>
   );
 }
+

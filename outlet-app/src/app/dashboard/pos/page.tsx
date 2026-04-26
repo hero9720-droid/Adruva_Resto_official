@@ -23,7 +23,9 @@ import {
   AlertCircle,
   Printer as PrinterIcon,
   WifiOff,
-  X
+  X,
+  Bed,
+  Zap
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -81,7 +83,20 @@ export default function POSPage() {
   const [modErrors, setModErrors] = useState<Record<string, string>>({});
   const [isModLoading, setIsModLoading] = useState(false);
   const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [orderType, setOrderType] = useState<'dine_in' | 'walk_in' | 'room_service' | null>(null);
+  const [heldOrders, setHeldOrders] = useState<any[]>([]);
   const [isPlacingOrder, setIsPlacingOrder] = useState(false);
+
+  // Load held orders from local storage
+  useEffect(() => {
+    const saved = localStorage.getItem('adruva_held_orders');
+    if (saved) setHeldOrders(JSON.parse(saved));
+  }, []);
+
+  const saveHeldOrders = (orders: any[]) => {
+    setHeldOrders(orders);
+    localStorage.setItem('adruva_held_orders', JSON.stringify(orders));
+  };
 
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
@@ -184,11 +199,15 @@ export default function POSPage() {
   const { isOnline, queueOrder, pendingCount } = useOfflineSync();
 
   const placeOrder = async () => {
-    if (cart.length === 0 || !selectedTableId) return;
+    if (cart.length === 0) return;
+    if (orderType === 'dine_in' && !selectedTableId) {
+      toast({ variant: "destructive", title: "Select a Table", description: "Dine-in requires a table assignment." });
+      return;
+    }
 
     setIsPlacingOrder(true);
     const orderPayload = {
-      order_type: 'dine_in',
+      order_type: orderType,
       table_id: selectedTableId,
       items: cart.map(item => ({
         menu_item_id: item.id,
@@ -196,7 +215,7 @@ export default function POSPage() {
         unit_price_paise: item.price,
         modifiers_json: item.modifiers,
         notes: item.notes,
-        name: item.name // For printing
+        name: item.name
       }))
     };
 
@@ -205,7 +224,7 @@ export default function POSPage() {
         queueOrder(orderPayload);
         toast({ title: "Offline Order Saved", description: "Order queued and will sync when online." });
       } else {
-        if (activeOrder) {
+        if (activeOrder && orderType === 'dine_in') {
           await api.post(`/orders/${activeOrder.id}/items`, { items: orderPayload.items });
           toast({ title: "Order Updated", description: "Items added to ticket." });
         } else {
@@ -214,27 +233,38 @@ export default function POSPage() {
         }
       }
 
-      // Hardware Printing (KOT)
-      try {
-        const table = tables?.find((t:any) => t.id === selectedTableId);
-        await printer.printKOT({
-          order_number: activeOrder?.order_number || 'NEW',
-          table_name: table?.name || 'N/A',
-          items: orderPayload.items
-        });
-        toast({ title: "KOT Printed", description: "Thermal printer successful." });
-      } catch (printErr) {
-        console.error('Print failed:', printErr);
-        toast({ variant: "destructive", title: "Printer Error", description: "Connect printer via 'Print' button." });
-      }
-
       setCart([]);
+      setOrderType(null);
+      setSelectedTableId(null);
       refetchOrder();
     } catch (error) {
       toast({ variant: "destructive", title: "Order failed" });
     } finally {
       setIsPlacingOrder(false);
     }
+  };
+
+  const holdOrder = () => {
+    if (cart.length === 0) return;
+    const newHold = {
+      id: Math.random().toString(36).substr(2, 9),
+      time: new Date().toLocaleTimeString(),
+      items: [...cart],
+      orderType,
+      selectedTableId
+    };
+    saveHeldOrders([...heldOrders, newHold]);
+    setCart([]);
+    setOrderType(null);
+    setSelectedTableId(null);
+    toast({ title: "Order Held", description: "You can resume this later from the hold queue." });
+  };
+
+  const resumeOrder = (hold: any) => {
+    setCart(hold.items);
+    setOrderType(hold.orderType);
+    setSelectedTableId(hold.selectedTableId);
+    saveHeldOrders(heldOrders.filter(h => h.id !== hold.id));
   };
 
   const handleCheckout = async () => {
@@ -418,13 +448,23 @@ export default function POSPage() {
               {generateBill.isPending ? 'PROCESSING...' : 'PAY NOW'}
             </Button>
           ) : (
-            <Button 
-              className="w-full h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-base transition-colors disabled:opacity-50"
-              disabled={cart.length === 0 || !selectedTableId || isPlacingOrder}
-              onClick={placeOrder}
-            >
-              {isPlacingOrder ? 'SENDING...' : 'SEND TO KITCHEN'}
-            </Button>
+            <div className="flex gap-2">
+              <Button 
+                variant="outline"
+                className="flex-1 h-12 rounded-xl font-bold border-border hover:bg-secondary"
+                disabled={cart.length === 0}
+                onClick={holdOrder}
+              >
+                HOLD
+              </Button>
+              <Button 
+                className="flex-[2] h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl font-bold text-base transition-colors disabled:opacity-50 shadow-glow"
+                disabled={cart.length === 0 || isPlacingOrder}
+                onClick={placeOrder}
+              >
+                {isPlacingOrder ? 'SENDING...' : 'PLACE ORDER'}
+              </Button>
+            </div>
           )}
         </div>
       </div>
@@ -433,7 +473,56 @@ export default function POSPage() {
 
   return (
     <>
-      <div className="flex flex-col lg:flex-row gap-8 w-full pb-24 lg:pb-0">
+      {/* Order Type Selection Overlay (PDF Page 15) */}
+      {!orderType && !activeOrder && (
+        <div className="fixed inset-0 z-[60] bg-background/80 backdrop-blur-xl flex items-center justify-center p-6">
+           <div className="max-w-4xl w-full text-center">
+              <h2 className="text-5xl font-black tracking-tighter text-foreground mb-4 uppercase">New Order Type</h2>
+              <p className="text-slate-500 font-bold text-lg mb-12 uppercase tracking-widest">Select service mode to begin</p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                 {[
+                   { type: 'dine_in', label: 'Dine In', icon: Utensils, color: 'text-indigo-500', bg: 'bg-indigo-500/10' },
+                   { type: 'walk_in', label: 'Walk-in', icon: User, color: 'text-emerald-500', bg: 'bg-emerald-500/10' },
+                   { type: 'room_service', label: 'Room Service', icon: Bed, color: 'text-amber-500', bg: 'bg-amber-500/10' },
+                 ].map((mode) => (
+                   <button 
+                    key={mode.type}
+                    onClick={() => setOrderType(mode.type as any)}
+                    className="group bg-card p-10 rounded-[3rem] border border-border hover:border-primary transition-all flex flex-col items-center gap-6 shadow-soft hover:shadow-2xl"
+                   >
+                      <div className={cn("h-24 w-24 rounded-3xl flex items-center justify-center transition-transform group-hover:scale-110", mode.bg, mode.color)}>
+                         <mode.icon className="h-10 w-10" />
+                      </div>
+                      <span className="text-2xl font-black text-foreground uppercase tracking-tight">{mode.label}</span>
+                   </button>
+                 ))}
+              </div>
+
+              {/* Resume Held Orders Strip */}
+              {heldOrders.length > 0 && (
+                <div className="mt-20 border-t border-border pt-10">
+                   <h3 className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6">Held Orders Queue</h3>
+                   <div className="flex gap-4 overflow-x-auto no-scrollbar justify-center">
+                      {heldOrders.map((h) => (
+                        <button 
+                          key={h.id}
+                          onClick={() => resumeOrder(h)}
+                          className="bg-secondary px-6 py-3 rounded-2xl border border-border flex items-center gap-3 hover:bg-primary hover:text-white transition-all group shrink-0"
+                        >
+                           <ClockIcon className="h-4 w-4" />
+                           <span className="font-bold text-xs uppercase">{h.time} ({h.items.length} items)</span>
+                        </button>
+                      ))}
+                   </div>
+                </div>
+              )}
+           </div>
+        </div>
+      )}
+
+      {/* POS Content */}
+      <div className={cn("flex flex-col lg:flex-row gap-8 w-full pb-24 lg:pb-0", !orderType && !activeOrder && "opacity-20 pointer-events-none")}>
         {/* Left Area: Tables & Menu (Expands down the page naturally) */}
         <div className="flex-1 flex flex-col gap-8 min-w-0">
           
@@ -633,8 +722,8 @@ export default function POSPage() {
       </div>
 
       <PaymentModal 
-        isOpen={isPaymentOpen}
-        onClose={() => setIsPaymentOpen(false)}
+        open={isPaymentOpen}
+        onOpenChange={(open) => { if (!open) setIsPaymentOpen(false); }}
         bill={currentBill}
         onSuccess={() => {
            setIsPaymentOpen(false);

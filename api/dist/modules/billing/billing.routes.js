@@ -46,5 +46,6 @@ router.get('/list', BillingController.getBillsList);
 router.post('/generate', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), BillingController.generateBill);
 router.post('/payments', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), BillingController.recordPayment);
 router.post('/:id/split', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), BillingController.splitBill);
+router.get('/:id/invoice', (0, rbac_1.requireRole)(['cashier', 'outlet_manager', 'waiter']), BillingController.getInvoice);
 router.get('/:id', (0, rbac_1.requireRole)(['cashier', 'outlet_manager', 'waiter']), BillingController.getBillDetails);
 exports.default = router;

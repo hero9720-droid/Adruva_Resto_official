@@ -20,4 +20,7 @@ router.get('/chains', SuperAdminController.listAllChains);
 router.post('/chains/onboard', validateBody(onboardChainSchema), SuperAdminController.onboardChain);
 router.post('/chains/:id/suspend', SuperAdminController.suspendChain);
 
+router.get('/audit-logs', SuperAdminController.getGlobalAuditLogs);
+router.get('/revenue-trends', SuperAdminController.getRevenueTrends);
+
 export default router;

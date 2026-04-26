@@ -199,7 +199,14 @@ export async function updateItemStatus(req: Request, res: Response) {
     return res.rows[0];
   });
 
-  // If item is ready, notify cashier
+  // Notify all outlet screens (KDS, POS) about the item status change
+  emitToOutlet(outlet_id, 'order:item_update', { 
+    order_id: result.order_id, 
+    item_id: result.id, 
+    status: result.status 
+  });
+
+  // If item is ready, notify cashier specifically
   if (status === 'ready') {
     emitToBilling(outlet_id, 'item:ready', result);
   }

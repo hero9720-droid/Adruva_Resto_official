@@ -23,8 +23,28 @@ async function getOutletSettings(req, res) {
 async function updateOutletSettings(req, res) {
     const outlet_id = req.user.outlet_id;
     // Only allow safe fields to be updated
-    const allowed = ['name', 'address', 'phone', 'email', 'gstin', 'tax_rate_percent', 'service_charge_percent', 'currency', 'timezone', 'logo_url'];
-    const updates = Object.fromEntries(Object.entries(req.body).filter(([k]) => allowed.includes(k)));
+    const allowed = [
+        'name', 'address', 'phone', 'email', 'gstin',
+        'tax_rate_percent', 'service_charge_percent',
+        'currency', 'timezone', 'logo_url',
+        'gst_percentage', 'service_charge_percentage' // Added for frontend compatibility
+    ];
+    const body = req.body;
+    // Handle nested settings_tax from frontend if present
+    if (body.settings_tax) {
+        body.tax_rate_percent = body.settings_tax.gst_percentage;
+        body.service_charge_percent = body.settings_tax.service_charge_percentage;
+    }
+    const updates = Object.fromEntries(Object.entries(body).filter(([k]) => allowed.includes(k)));
+    // Map frontend names to DB names
+    if (updates.gst_percentage !== undefined) {
+        updates.tax_rate_percent = updates.gst_percentage;
+        delete updates.gst_percentage;
+    }
+    if (updates.service_charge_percentage !== undefined) {
+        updates.service_charge_percent = updates.service_charge_percentage;
+        delete updates.service_charge_percentage;
+    }
     if (Object.keys(updates).length === 0) {
         return res.status(400).json({ success: false, message: 'No valid fields to update' });
     }

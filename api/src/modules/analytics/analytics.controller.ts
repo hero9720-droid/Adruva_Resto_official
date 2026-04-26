@@ -82,6 +82,7 @@ export async function getSalesOverview(req: Request, res: Response) {
       categoryBreakdown: categoryBreakdown.rows,
       today:             metrics.rows[0],
       weekComparison:    weekComparison.rows[0],
+      active_sessions:   (await client.query("SELECT COUNT(*)::int FROM tables WHERE outlet_id = $1 AND status = 'occupied'", [outlet_id])).rows[0].count,
     };
   });
 

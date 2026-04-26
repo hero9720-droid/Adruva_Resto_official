@@ -49,4 +49,6 @@ router.post('/plans', (0, validate_1.validateBody)(superadmin_schema_1.createPla
 router.get('/chains', SuperAdminController.listAllChains);
 router.post('/chains/onboard', (0, validate_1.validateBody)(superadmin_schema_1.onboardChainSchema), SuperAdminController.onboardChain);
 router.post('/chains/:id/suspend', SuperAdminController.suspendChain);
+router.get('/audit-logs', SuperAdminController.getGlobalAuditLogs);
+router.get('/revenue-trends', SuperAdminController.getRevenueTrends);
 exports.default = router;

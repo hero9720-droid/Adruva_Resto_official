@@ -93,3 +93,15 @@ export function useMovements(ingredientId?: string) {
     },
   });
 }
+
+export function useRecipe(menuItemId: string | null) {
+  return useQuery({
+    queryKey: ['recipe', menuItemId],
+    queryFn: async () => {
+      if (!menuItemId) return null;
+      const { data } = await api.get(`/recipes/${menuItemId}`);
+      return data.data;
+    },
+    enabled: !!menuItemId,
+  });
+}

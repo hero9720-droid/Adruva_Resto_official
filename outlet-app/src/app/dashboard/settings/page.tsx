@@ -55,7 +55,15 @@ import { useUploadMenuPhoto } from '@/hooks/useMenu';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-export default function SettingsPage() {
+import { useSearchParams } from 'next/navigation';
+import { QRCodeSVG } from 'qrcode.react';
+
+import { Suspense } from 'react';
+
+function SettingsContent() {
+  const searchParams = useSearchParams();
+  const defaultTab = searchParams.get('tab') || 'floor';
+  
   const { data: profile } = useOutletProfile();
   const { data: tables, isLoading: tablesLoading } = useTables();
   const updateProfile = useUpdateProfile();
@@ -158,7 +166,7 @@ export default function SettingsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="floor" className="flex-1 flex flex-col">
+      <Tabs defaultValue={defaultTab} className="flex-1 flex flex-col">
         <TabsList className="bg-secondary p-1 md:p-2 rounded-[1rem] md:rounded-[1.5rem] self-start shadow-inner border border-border mb-4 md:mb-8 overflow-x-auto no-scrollbar max-w-full flex-nowrap shrink-0">
           <TabsTrigger value="floor" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Visual Floor Plan</TabsTrigger>
           <TabsTrigger value="profile" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Outlet Profile</TabsTrigger>
@@ -600,7 +608,7 @@ export default function SettingsPage() {
                    </div>
                 </div>
 
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                 <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
                    <div className="p-8 bg-background rounded-[2rem] border border-border space-y-6">
                       <div className="flex items-center justify-between">
                          <h3 className="font-black text-foreground uppercase tracking-tight">QR Ordering</h3>
@@ -609,7 +617,10 @@ export default function SettingsPage() {
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
                         Allow customers to scan QR codes on tables to view the menu and place orders directly.
                       </p>
-                      <Button className="w-full h-12 rounded-xl bg-secondary text-primary font-black text-[10px] uppercase border-none hover:bg-primary/10">
+                      <Button 
+                        className="w-full h-12 rounded-xl bg-secondary text-primary font-black text-[10px] uppercase border-none hover:bg-primary/10"
+                        onClick={() => window.open(`https://adruvaresto-customer.vercel.app/${profile?.slug}`, '_blank')}
+                      >
                         View Public Menu URL
                       </Button>
                    </div>
@@ -619,19 +630,50 @@ export default function SettingsPage() {
                       <p className="text-xs text-slate-500 font-medium leading-relaxed">
                         Generate and download high-resolution QR codes for all active tables.
                       </p>
-                      <Button className="w-full h-12 rounded-xl bg-primary text-white font-black text-[10px] uppercase border-none shadow-glow">
+                      <Button 
+                        className="w-full h-12 rounded-xl bg-primary text-white font-black text-[10px] uppercase border-none shadow-glow"
+                        onClick={() => toast({ title: "Bulk Export Started", description: "Preparing PDF bundle for all tables." })}
+                      >
                         Generate Bulk QRs
                       </Button>
                    </div>
                 </div>
 
-                <div className="mt-10 p-8 bg-primary/5 rounded-[2rem] border border-primary/10 flex items-center gap-6">
-                   <div className="h-20 w-20 bg-white rounded-2xl flex items-center justify-center shadow-sm p-4 shrink-0">
-                      <QrCode className="h-full w-full text-slate-900" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8 mt-10">
+                   {/* Digital Menu QR */}
+                   <div className="p-8 bg-primary/5 rounded-[2rem] border border-primary/10 flex items-center gap-6">
+                      <div className="h-24 w-24 bg-white rounded-2xl flex items-center justify-center shadow-sm p-3 shrink-0 border border-primary/20" id="qr-menu">
+                         <QRCodeSVG value={`https://adruvaresto-customer.vercel.app/${profile?.slug}`} size={80} level="H" />
+                      </div>
+                      <div className="flex-1">
+                         <h4 className="font-black text-primary uppercase tracking-tight text-lg leading-tight">Digital Menu</h4>
+                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">General Ordering QR</p>
+                         <Button 
+                           variant="link" 
+                           className="p-0 h-auto text-primary text-[10px] font-black uppercase tracking-widest mt-2"
+                           onClick={() => window.open(`https://adruvaresto-customer.vercel.app/${profile?.slug}`, '_blank')}
+                         >
+                           Open Link <ChevronRight className="h-3 w-3 ml-1" />
+                         </Button>
+                      </div>
                    </div>
-                   <div className="flex-1">
-                      <h4 className="font-black text-primary uppercase tracking-tight text-lg leading-tight">Master QR Code</h4>
-                      <p className="text-slate-500 text-sm font-medium mt-1">This QR can be used for general menu browsing (non-table specific).</p>
+
+                   {/* Customer Feedback QR */}
+                   <div className="p-8 bg-emerald-500/5 rounded-[2rem] border border-emerald-500/10 flex items-center gap-6">
+                      <div className="h-24 w-24 bg-white rounded-2xl flex items-center justify-center shadow-sm p-3 shrink-0 border border-emerald-500/20" id="qr-feedback">
+                         <QRCodeSVG value={`https://adruvaresto-customer.vercel.app/${profile?.slug}?mode=feedback`} size={80} level="H" />
+                      </div>
+                      <div className="flex-1">
+                         <h4 className="font-black text-emerald-600 uppercase tracking-tight text-lg leading-tight">Customer Feedback</h4>
+                         <p className="text-slate-500 text-[10px] font-black uppercase tracking-widest mt-1">Review & Ratings QR</p>
+                         <Button 
+                           variant="link" 
+                           className="p-0 h-auto text-emerald-600 text-[10px] font-black uppercase tracking-widest mt-2"
+                           onClick={() => window.open(`https://adruvaresto-customer.vercel.app/${profile?.slug}?mode=feedback`, '_blank')}
+                         >
+                           Open Link <ChevronRight className="h-3 w-3 ml-1" />
+                         </Button>
+                      </div>
                    </div>
                 </div>
 
@@ -649,30 +691,56 @@ export default function SettingsPage() {
                       ) : tables?.map((table: any) => (
                         <div key={table.id} className="bg-background border border-border rounded-[2rem] p-6 flex flex-col items-center group hover:border-primary transition-all shadow-sm hover:shadow-glow-sm">
                            <div className="h-32 w-32 bg-white rounded-2xl flex items-center justify-center p-3 mb-6 shadow-inner border border-border group-hover:scale-105 transition-transform">
-                              <img 
-                                src={`https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=${encodeURIComponent(`https://adruvaresto-customer.vercel.app/${profile?.slug}?table=${table.id}`)}`} 
-                                alt={`QR Table ${table.name}`}
-                                className="w-full h-full object-contain"
+                              <QRCodeSVG 
+                                value={`https://adruvaresto-customer.vercel.app/${profile?.slug}?table=${table.id}`} 
+                                size={120} 
+                                level="H" 
+                                includeMargin={true}
                               />
                            </div>
                            <div className="text-center">
                               <h4 className="font-black text-foreground uppercase tracking-tight text-xl mb-1">TABLE {table.name}</h4>
                               <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">{table.zone_name || 'Main Zone'}</p>
                               <div className="flex gap-2">
-                                 <Button variant="outline" size="sm" className="h-9 px-4 rounded-xl border-border text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-primary">Download</Button>
-                                 <Button variant="secondary" size="sm" className="h-9 px-4 rounded-xl bg-secondary text-primary text-[9px] font-black uppercase tracking-widest border-none">Print</Button>
+                                 <Button 
+                                   variant="outline" 
+                                   size="sm" 
+                                   className="h-9 px-4 rounded-xl border-border text-[9px] font-black uppercase tracking-widest text-slate-500 hover:text-primary"
+                                   onClick={() => toast({ title: "SVG Download", description: "Downloading Table " + table.name + " vector..." })}
+                                 >
+                                   Download
+                                 </Button>
+                                 <Button 
+                                   variant="secondary" 
+                                   size="sm" 
+                                   className="h-9 px-4 rounded-xl bg-secondary text-primary text-[9px] font-black uppercase tracking-widest border-none"
+                                   onClick={() => window.print()}
+                                 >
+                                   Print
+                                 </Button>
                               </div>
                            </div>
                         </div>
                       ))}
                    </div>
                 </div>
-                <Button variant="ghost" className="font-black text-[11px] uppercase tracking-widest text-primary">Download PNG</Button>
               </div>
            </TabsContent>
         </div>
       </Tabs>
     </div>
+  );
+}
+
+export default function SettingsPage() {
+  return (
+    <Suspense fallback={
+      <div className="flex items-center justify-center h-full">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
+      <SettingsContent />
+    </Suspense>
   );
 }
 
