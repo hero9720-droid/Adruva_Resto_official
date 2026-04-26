@@ -32,13 +32,13 @@ async function processTipDistribution(req, res) {
        WHERE outlet_id = $1 AND created_at BETWEEN $2 AND $3`, [outlet_id, start_date, end_date]);
         const totalAmount = BigInt(poolRes.rows[0].total || 0);
         if (totalAmount === BigInt(0))
-            throw new errors_1.AppError('No tips found for this period', 400);
+            throw new errors_1.AppError(400, 'No tips found for this period', 'NOT_FOUND');
         // 2. Create the pool
         const pool = await db_1.db.query(`INSERT INTO tip_pools (outlet_id, start_date, end_date, total_amount_paise, status)
        VALUES ($1, $2, $3, $4, 'processed') RETURNING *`, [outlet_id, start_date, end_date, totalAmount.toString()]);
         // 3. Simple distribution logic (equally weighted for now, enhanced by multipliers)
         const staffRes = await db_1.db.query('SELECT id, role FROM staff WHERE outlet_id = $1 AND status = \'active\'', [outlet_id]);
-        const share = totalAmount / BigInt(staffRes.rowCount);
+        const share = totalAmount / BigInt(staffRes.rowCount || 1);
         for (const staff of staffRes.rows) {
             await db_1.db.query(`INSERT INTO tip_distributions (pool_id, staff_id, amount_paise, performance_score)
          VALUES ($1, $2, $3, 1.0)`, [pool.rows[0].id, staff.id, share.toString()]);

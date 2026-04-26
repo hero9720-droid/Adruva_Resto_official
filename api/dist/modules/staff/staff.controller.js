@@ -231,7 +231,11 @@ async function getAttendanceStatus(req, res) {
         const clockCheck = await client.query(`SELECT id FROM attendance WHERE staff_id = $1 AND clock_out IS NULL`, [staff_id]);
         return {
             isClockedIn: (clockCheck.rowCount ?? 0) > 0,
-            isShiftActive: (clockCheck.rowCount ?? 0) > 0
+            isShiftActive: (clockCheck.rowCount ?? 0) > 0,
+            staff: {
+                name: req.user.name,
+                role: req.user.role
+            }
         };
     });
     res.json({ success: true, data: result });

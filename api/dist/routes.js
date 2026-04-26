@@ -43,6 +43,7 @@ const brand_routes_1 = __importDefault(require("./modules/brand/brand.routes"));
 const geo_routes_1 = __importDefault(require("./modules/marketing/geo.routes"));
 const pest_routes_1 = __importDefault(require("./modules/compliance/pest.routes"));
 const qr_routes_1 = __importDefault(require("./modules/public/qr.routes"));
+const search_routes_1 = __importDefault(require("./modules/search/search.routes"));
 const router = (0, express_1.Router)();
 /**
  * @route GET /api/health
@@ -110,6 +111,7 @@ router.use('/menu/ai', menu_ai_routes_1.default);
 router.use('/brand', brand_routes_1.default);
 router.use('/marketing/geo', geo_routes_1.default);
 router.use('/compliance/pest', pest_routes_1.default);
+router.use('/search', search_routes_1.default);
 // Public Routes (No Auth)
 router.use('/qr', qr_routes_1.default);
 exports.default = router;

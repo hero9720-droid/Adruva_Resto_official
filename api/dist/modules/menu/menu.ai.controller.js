@@ -10,7 +10,7 @@ async function generateMenuItemDescription(req, res) {
     // 1. Get item details
     const item = await db_1.db.query('SELECT name, category_id FROM menu_items WHERE id = $1', [item_id]);
     if (item.rowCount === 0)
-        throw new errors_1.AppError('Item not found', 404);
+        throw new errors_1.AppError(404, 'Item not found', 'NOT_FOUND');
     const itemName = item.rows[0].name;
     // 2. Simulated AI Generation (In real-world, call OpenAI/Gemini here)
     let description = '';

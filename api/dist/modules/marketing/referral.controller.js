@@ -29,7 +29,7 @@ async function setupReferralCode(req, res) {
     // Generate a friendly code: NAME+RANDOM
     const customer = await db_1.db.query('SELECT name FROM customers WHERE id = $1', [customer_id]);
     if (customer.rowCount === 0)
-        throw new errors_1.AppError('Customer not found', 404);
+        throw new errors_1.AppError(404, 'Customer not found', 'NOT_FOUND');
     const prefix = customer.rows[0].name.split(' ')[0].toUpperCase().slice(0, 4);
     const code = `${prefix}${Math.floor(1000 + Math.random() * 9000)}`;
     await db_1.db.query('UPDATE customers SET referral_code = $1 WHERE id = $2', [code, customer_id]);

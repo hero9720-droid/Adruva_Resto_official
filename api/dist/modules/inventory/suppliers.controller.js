@@ -26,7 +26,7 @@ async function recordVendorPayment(req, res) {
     try {
         // 1. Get current balance
         const lastEntry = await db_1.db.query('SELECT balance_after_paise FROM supplier_ledgers WHERE supplier_id = $1 ORDER BY created_at DESC LIMIT 1', [supplier_id]);
-        const currentBalance = lastEntry.rowCount > 0 ? BigInt(lastEntry.rows[0].balance_after_paise) : BigInt(0);
+        const currentBalance = (lastEntry.rowCount && lastEntry.rowCount > 0) ? BigInt(lastEntry.rows[0].balance_after_paise) : BigInt(0);
         const newBalance = currentBalance - BigInt(amount_paise);
         // 2. Record DEBIT (Payment)
         const result = await db_1.db.query(`INSERT INTO supplier_ledgers (supplier_id, outlet_id, type, amount_paise, description, balance_after_paise)

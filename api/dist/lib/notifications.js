@@ -5,7 +5,7 @@ exports.sendWhatsAppMessage = sendWhatsAppMessage;
 exports.sendTransactionalWhatsApp = sendTransactionalWhatsApp;
 const resend_1 = require("resend");
 const logger_1 = require("./logger");
-const resend = new resend_1.Resend(process.env.RESEND_API_KEY);
+const resend = new resend_1.Resend(process.env.RESEND_API_KEY || 're_placeholder_key');
 async function sendNegativeReviewAlert(data) {
     const { outletName, ratingFood, ratingService, ratingAmbience, comment, billId, customerPhone, managerEmail } = data;
     logger_1.logger.warn(`Negative review alert triggered for ${outletName}`);

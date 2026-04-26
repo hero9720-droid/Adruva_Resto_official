@@ -79,7 +79,7 @@ async function recordMovement(req, res) {
 }
 async function getSupplierPerformance(req, res) {
     const chain_id = req.user.chain_id;
-    const result = await db.query(`SELECT s.*,
+    const result = await db_1.db.query(`SELECT s.*,
        (SELECT COUNT(*) FROM stock_movements WHERE supplier_id = s.id AND delivery_status = 'late') as late_count,
        (SELECT AVG(delivery_rating) FROM stock_movements WHERE supplier_id = s.id) as avg_rating
      FROM suppliers s
@@ -162,7 +162,7 @@ async function initiateTransfer(req, res) {
     if (from_outlet_id === to_outlet_id) {
         throw new errors_1.AppError(400, 'Source and destination outlets must be different', 'INVALID_TRANSFER');
     }
-    const result = await db.query(`INSERT INTO stock_transfers (chain_id, from_outlet_id, to_outlet_id, ingredient_id, quantity, notes, created_by, status)
+    const result = await db_1.db.query(`INSERT INTO stock_transfers (chain_id, from_outlet_id, to_outlet_id, ingredient_id, quantity, notes, created_by, status)
      VALUES ($1, $2, $3, $4, $5, $6, $7, 'pending') RETURNING *`, [chain_id, from_outlet_id, to_outlet_id, ingredient_id, quantity, notes, staff_id]);
     res.status(201).json({ success: true, data: result.rows[0] });
 }
@@ -183,14 +183,14 @@ async function getTransfers(req, res) {
     ORDER BY st.created_at DESC
   `;
     const params = outlet_id ? [chain_id, outlet_id] : [chain_id];
-    const result = await db.query(query, params);
+    const result = await db_1.db.query(query, params);
     res.json({ success: true, data: result.rows });
 }
 async function completeTransfer(req, res) {
     const { id } = req.params;
     const { status } = req.body; // 'shipped', 'received', 'cancelled'
     const staff_id = req.user.staff_id;
-    const client = await db.connect();
+    const client = await db_1.db.connect();
     try {
         await client.query('BEGIN');
         // 1. Get transfer details

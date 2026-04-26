@@ -26,7 +26,7 @@ async function deductInventory(client, outlet_id, menu_item_id, quantity, staff_
         const stockCheck = await client.query(`SELECT name, current_stock, low_threshold FROM ingredients WHERE id = $1`, [row.ingredient_id]);
         const ingredient = stockCheck.rows[0];
         if (ingredient && ingredient.current_stock <= ingredient.low_threshold) {
-            (0, websocket_1.emitToAdmin)(outlet_id, 'inventory:low_stock', {
+            (0, websocket_1.emitToOutlet)(outlet_id, 'inventory:low_stock', {
                 name: ingredient.name,
                 current: ingredient.current_stock,
                 threshold: ingredient.low_threshold

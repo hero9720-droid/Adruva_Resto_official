@@ -16,7 +16,7 @@ async function createBooking(req, res) {
        WHERE outlet_id = $1 AND capacity >= $2 AND status = 'available'
        AND id NOT IN (SELECT table_id FROM reservations WHERE outlet_id = $1 AND status = 'confirmed' AND table_id IS NOT NULL)
        ORDER BY capacity ASC LIMIT 1`, [outlet_id, party_size]);
-        if (tableRes.rowCount > 0)
+        if (tableRes.rowCount && tableRes.rowCount > 0)
             assignedTableId = tableRes.rows[0].id;
     }
     const result = await db_1.db.query(`INSERT INTO reservations (

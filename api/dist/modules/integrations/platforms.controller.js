@@ -27,7 +27,7 @@ async function syncMenuItemStatus(req, res) {
     const { platform_name, is_available } = req.body;
     const item = await db_1.db.query('SELECT external_sync_status FROM menu_items WHERE id = $1', [item_id]);
     if (item.rowCount === 0)
-        throw new errors_1.AppError('Item not found', 404);
+        throw new errors_1.AppError(404, 'Item not found', 'NOT_FOUND');
     const newStatus = { ...item.rows[0].external_sync_status, [platform_name]: is_available };
     await db_1.db.query('UPDATE menu_items SET external_sync_status = $1 WHERE id = $2', [JSON.stringify(newStatus), item_id]);
     console.log(`[ITEM_SYNC] ${item_id} set to ${is_available ? 'AVAILABLE' : 'OUT_OF_STOCK'} on ${platform_name.toUpperCase()}`);
