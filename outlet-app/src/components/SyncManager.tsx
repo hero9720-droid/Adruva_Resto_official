@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { db } from '@/lib/offline-db';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
-import { Wifi, WifiOff, CloudSync, AlertCircle } from 'lucide-react';
+import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { cn } from '@/lib/utils';
 
@@ -77,7 +77,7 @@ export function SyncManager() {
     <div className="fixed bottom-6 right-6 z-[100] flex items-center gap-3 animate-in fade-in slide-in-from-right-4">
       {pendingCount > 0 && (
         <Badge className="bg-primary text-white h-10 px-4 rounded-xl flex items-center gap-2 border-none shadow-glow">
-          <CloudSync className={cn("h-4 w-4", syncing && "animate-spin")} />
+          <RefreshCw className={cn("h-4 w-4", syncing && "animate-spin")} />
           <span className="font-black uppercase tracking-widest text-[10px]">{pendingCount} PENDING</span>
         </Badge>
       )}
