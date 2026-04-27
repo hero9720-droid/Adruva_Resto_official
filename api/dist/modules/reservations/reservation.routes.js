@@ -46,4 +46,7 @@ router.use(subscription_1.requireActiveSubscription);
 router.get('/', ReservationController.getReservations);
 router.post('/', (0, validate_1.validateBody)(reservation_schema_1.createReservationSchema), ReservationController.createReservation);
 router.patch('/:id/status', (0, validate_1.validateBody)(reservation_schema_1.updateReservationStatusSchema), ReservationController.updateStatus);
+// Smart Reservations
+router.get('/smart/availability', ReservationController.getSmartAvailability);
+router.post('/smart/book', ReservationController.createSmartBooking);
 exports.default = router;

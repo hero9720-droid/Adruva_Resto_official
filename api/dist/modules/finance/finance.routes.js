@@ -39,8 +39,13 @@ const auth_1 = require("../../middleware/auth");
 const rbac_1 = require("../../middleware/rbac");
 const router = (0, express_1.Router)();
 router.use(auth_1.verifyToken);
-router.use((0, rbac_1.requireRole)(['chain_owner', 'billing_admin']));
-router.post('/tax-slabs', FinanceController.createTaxSlab);
-router.get('/tax-slabs', FinanceController.getTaxSlabs);
-router.get('/tax-report', FinanceController.getTaxLiabilityReport);
+// Tax Slab Management
+router.get('/tax-slabs', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager', 'billing_admin']), FinanceController.getTaxSlabs);
+router.post('/tax-slabs', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager']), FinanceController.createTaxSlab);
+// Compliance & Reporting
+router.get('/tax-summary', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager', 'billing_admin']), FinanceController.getTaxSummary);
+router.patch('/compliance-info', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager']), FinanceController.updateComplianceInfo);
+// P&L & Forecasting
+router.get('/pnl/live', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager']), FinanceController.getLivePnL);
+router.get('/projections/cashflow', (0, rbac_1.requireRole)(['chain_owner', 'outlet_manager']), FinanceController.getFinancialProjections);
 exports.default = router;

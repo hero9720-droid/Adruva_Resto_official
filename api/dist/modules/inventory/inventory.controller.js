@@ -1,5 +1,55 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.logWasteImpact = logWasteImpact;
+exports.getSustainabilityReport = getSustainabilityReport;
+exports.getWastageRisks = getWastageRisks;
+exports.getWastageAnalytics = getWastageAnalytics;
+exports.runPredictiveUsage = runPredictiveUsage;
+exports.getAuditTrail = getAuditTrail;
+exports.reconcileInventory = reconcileInventory;
+exports.createRFQ = createRFQ;
+exports.getRFQWithBids = getRFQWithBids;
+exports.submitVendorBid = submitVendorBid;
+exports.getSupplyOverview = getSupplyOverview;
+exports.createProductionBatch = createProductionBatch;
+exports.dispatchBatchIndents = dispatchBatchIndents;
+exports.getProcurementSuggestions = getProcurementSuggestions;
+exports.generateAutoPOs = generateAutoPOs;
+exports.triggerForecast = triggerForecast;
+exports.getPredictions = getPredictions;
 exports.createIngredient = createIngredient;
 exports.getIngredients = getIngredients;
 exports.getLowStockIngredients = getLowStockIngredients;
@@ -16,6 +66,99 @@ exports.completeTransfer = completeTransfer;
 exports.deductStockFromRecipe = deductStockFromRecipe;
 const db_1 = require("../../lib/db");
 const errors_1 = require("../../lib/errors");
+const InventoryAI = __importStar(require("./inventory.ai"));
+const InventoryAIServiceV3 = __importStar(require("./inventory.ai.service"));
+const ProcurementService = __importStar(require("./procurement.service"));
+const SustainabilityService = __importStar(require("./sustainability.service"));
+// --- SUSTAINABILITY & WASTE IMPACT ---
+async function logWasteImpact(req, res) {
+    const result = await SustainabilityService.logWasteWithImpact(req.user.outlet_id, req.body);
+    res.json({ success: true, data: result });
+}
+async function getSustainabilityReport(req, res) {
+    const result = await SustainabilityService.getChainSustainabilityReport(req.user.chain_id);
+    res.json({ success: true, data: result });
+}
+// --- AI CORE V3: WASTAGE & PREDICTION ---
+async function getWastageRisks(req, res) {
+    const risks = await InventoryAIServiceV3.getWastageRiskAlerts(req.user.outlet_id);
+    res.json({ success: true, data: risks });
+}
+async function getWastageAnalytics(req, res) {
+    const stats = await InventoryAIServiceV3.generateWastageAnalytics(req.user.outlet_id);
+    res.json({ success: true, data: stats });
+}
+async function runPredictiveUsage(req, res) {
+    const result = await InventoryAIServiceV3.runPredictiveEngine(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+const SupplyService = __importStar(require("./supply.service"));
+const RFQService = __importStar(require("../procurement/rfq.service"));
+const LedgerService = __importStar(require("./ledger.service"));
+// --- INVENTORY LEDGER & AUDIT ---
+async function getAuditTrail(req, res) {
+    const result = await LedgerService.getAuditTrail(req.params.id);
+    res.json({ success: true, data: result });
+}
+async function reconcileInventory(req, res) {
+    const result = await LedgerService.reconcileStock(req.user.outlet_id, req.user.staff_id, req.body.counts);
+    res.json({ success: true, data: result });
+}
+// --- VENDOR RFQ (REQUEST FOR QUOTE) ---
+async function createRFQ(req, res) {
+    const result = await RFQService.createRFQ(req.user.outlet_id, req.body);
+    res.status(201).json({ success: true, data: result });
+}
+async function getRFQWithBids(req, res) {
+    const result = await RFQService.getRFQDetails(req.params.id);
+    res.json({ success: true, data: result });
+}
+async function submitVendorBid(req, res) {
+    // In a real app, this would use a Supplier JWT
+    const result = await RFQService.submitBid(req.body.supplier_id, req.params.id, req.body);
+    res.json({ success: true, data: result });
+}
+// --- CENTRAL SUPPLY CHAIN ---
+async function getSupplyOverview(req, res) {
+    const result = await SupplyService.getCentralSupplyOverview(req.user.chain_id);
+    res.json({ success: true, data: result });
+}
+async function createProductionBatch(req, res) {
+    const result = await SupplyService.startProduction(req.body.base_kitchen_id, req.body);
+    res.json({ success: true, data: result });
+}
+async function dispatchBatchIndents(req, res) {
+    await SupplyService.dispatchIndents(req.body.batch_id, req.body.indent_ids);
+    res.json({ success: true, message: 'Indents dispatched successfully' });
+}
+// --- PROCUREMENT ---
+async function getProcurementSuggestions(req, res) {
+    const suggestions = await ProcurementService.getProcurementSuggestions(req.user.outlet_id);
+    res.json({ success: true, data: suggestions });
+}
+async function generateAutoPOs(req, res) {
+    const result = await ProcurementService.generateAutoPOs(req.user.outlet_id, req.user.id);
+    res.json({ success: true, data: result });
+}
+// --- AI FORECASTING ---
+async function triggerForecast(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const { date } = req.body;
+    if (date) {
+        await InventoryAI.updateDailyConsumption(outlet_id, date);
+    }
+    else {
+        const today = new Date().toISOString().split('T')[0];
+        await InventoryAI.updateDailyConsumption(outlet_id, today);
+    }
+    await InventoryAI.runForecaster(outlet_id);
+    res.json({ success: true, message: 'Forecast engine ran successfully' });
+}
+async function getPredictions(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const predictions = await InventoryAI.getStockPredictions(outlet_id);
+    res.json({ success: true, data: predictions });
+}
 // --- INGREDIENTS ---
 async function createIngredient(req, res) {
     const outlet_id = req.user.outlet_id;

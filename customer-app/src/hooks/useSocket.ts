@@ -10,11 +10,13 @@ export function useSocket(outletId: string) {
   useEffect(() => {
     if (!outletId) return;
 
+    const token = typeof window !== 'undefined' ? localStorage.getItem('rms_access_token') : null;
     const connectFn = socketIOClient.io ?? socketIOClient.connect ?? socketIOClient.default ?? socketIOClient;
     const socket: AnySocket = connectFn(
       process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
       {
         transports: ['websocket'],
+        auth: token ? { token } : undefined,
       }
     );
 

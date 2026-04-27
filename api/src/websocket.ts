@@ -36,15 +36,35 @@ export async function initWebSocket(httpServer: any) {
 
   io.on('connection', (socket) => {
     const { outlet_id, staff_id, role } = socket.data.user;
-    logger.info(`Staff connected: ${staff_id} to outlet: ${outlet_id}`);
+    logger.info(`Staff connected: ${staff_id} to outlet: ${outlet_id} (Role: ${role})`);
     
-    // All outlet staff join the outlet room
+    // All outlet staff join the base outlet room
     socket.join(`outlet:${outlet_id}`);
     
-    // Role-specific rooms for targeted events
-    if (role === 'kitchen') socket.join(`outlet:${outlet_id}:kitchen`);
-    if (role === 'cashier') socket.join(`outlet:${outlet_id}:billing`);
+    // Automatic joining based on role
+    if (role === 'kitchen' || role === 'outlet_manager' || role === 'admin') {
+      socket.join(`outlet:${outlet_id}:kitchen`);
+    }
+    if (role === 'cashier' || role === 'outlet_manager' || role === 'admin') {
+      socket.join(`outlet:${outlet_id}:billing`);
+    }
     
+    // Support manual room joining from frontend (if needed for specific views)
+    socket.on('join', (room) => {
+      // Staff manual join
+      if (['kitchen', 'billing', 'pos'].includes(room) && role !== 'guest') {
+        const fullRoom = `outlet:${outlet_id}:${room === 'pos' ? 'billing' : room}`;
+        socket.join(fullRoom);
+        logger.info(`Staff ${staff_id} manually joined ${fullRoom}`);
+      }
+      
+      // Guest manual join to specific order
+      if (room.startsWith('order:')) {
+        socket.join(room);
+        logger.info(`Guest/Staff joined ${room}`);
+      }
+    });
+
     // Individual staff room for personal notifications
     socket.join(`staff:${staff_id}`);
   });
@@ -63,6 +83,10 @@ export function emitToKitchen(outlet_id: string, event: string, data: object) {
 
 export function emitToBilling(outlet_id: string, event: string, data: object) {
   if (io) io.to(`outlet:${outlet_id}:billing`).emit(event, data);
+}
+
+export function emitToOrder(order_id: string, event: string, data: object) {
+  if (io) io.to(`order:${order_id}`).emit(event, data);
 }
 
 export function emitToStaff(staff_id: string, event: string, data: object) {

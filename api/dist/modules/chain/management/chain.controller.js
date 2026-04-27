@@ -1,5 +1,42 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getChainSettlements = getChainSettlements;
+exports.runMonthlySettlement = runMonthlySettlement;
+exports.getFranchiseOverview = getFranchiseOverview;
+exports.generateRoyaltyInvoices = generateRoyaltyInvoices;
 exports.getChainMetrics = getChainMetrics;
 exports.listOutlets = listOutlets;
 exports.createOutlet = createOutlet;
@@ -7,8 +44,35 @@ exports.syncMasterMenu = syncMasterMenu;
 exports.getChainPnLAnalysis = getChainPnLAnalysis;
 exports.updateChainSettings = updateChainSettings;
 exports.getChainDetails = getChainDetails;
+exports.getGlobalInventory = getGlobalInventory;
+exports.getChainPerformance = getChainPerformance;
 const db_1 = require("../../../lib/db");
 const errors_1 = require("../../../lib/errors");
+const FranchiseService = __importStar(require("../franchise.service"));
+const SettlementService = __importStar(require("./settlement.service"));
+// --- CENTRALIZED SETTLEMENTS ---
+async function getChainSettlements(req, res) {
+    const { period } = req.query;
+    const targetPeriod = period || new Date().toISOString().substring(0, 7);
+    const result = await SettlementService.getChainSettlementSummary(req.user.chain_id, targetPeriod);
+    res.json({ success: true, data: result });
+}
+async function runMonthlySettlement(req, res) {
+    const { outlet_id, period } = req.body;
+    const result = await SettlementService.calculateMonthlySettlement(outlet_id, period);
+    res.json({ success: true, data: result });
+}
+// --- FRANCHISE & ROYALTY ---
+async function getFranchiseOverview(req, res) {
+    const result = await FranchiseService.getFranchiseOverview(req.user.chain_id);
+    res.json({ success: true, data: result });
+}
+async function generateRoyaltyInvoices(req, res) {
+    const { month } = req.body; // 'YYYY-MM'
+    const targetMonth = month || new Date().toISOString().substring(0, 7);
+    const result = await FranchiseService.generateRoyaltyInvoices(req.user.chain_id, targetMonth);
+    res.json({ success: true, data: result });
+}
 async function getChainMetrics(req, res) {
     const chain_id = req.user.chain_id;
     const result = await db_1.db.query(`
@@ -163,4 +227,37 @@ async function getChainDetails(req, res) {
     const chain_id = req.user.chain_id;
     const result = await db_1.db.query('SELECT * FROM chains WHERE id = $1', [chain_id]);
     res.json({ success: true, data: result.rows[0] });
+}
+async function getGlobalInventory(req, res) {
+    const chain_id = req.user.chain_id;
+    const result = await db_1.db.query(`
+    SELECT 
+      name,
+      unit,
+      SUM(current_stock) as total_stock,
+      SUM(low_threshold) as global_threshold,
+      COUNT(*) FILTER (WHERE current_stock <= low_threshold) as outlets_at_risk,
+      SUM(current_stock * (avg_cost_paise)) as total_value_paise
+    FROM ingredients
+    WHERE outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)
+    GROUP BY name, unit
+    ORDER BY outlets_at_risk DESC, total_stock ASC
+  `, [chain_id]);
+    res.json({ success: true, data: result.rows });
+}
+async function getChainPerformance(req, res) {
+    const chain_id = req.user.chain_id;
+    const result = await db_1.db.query(`
+    SELECT 
+      o.name as outlet_name,
+      COALESCE(SUM(b.total_paise), 0) as total_revenue,
+      COUNT(b.id) as total_orders,
+      COALESCE(AVG(b.total_paise), 0) as avg_order_value
+    FROM outlets o
+    LEFT JOIN bills b ON o.id = b.outlet_id AND b.status = 'paid'
+    WHERE o.chain_id = $1
+    GROUP BY o.name
+    ORDER BY total_revenue DESC
+  `, [chain_id]);
+    res.json({ success: true, data: result.rows });
 }

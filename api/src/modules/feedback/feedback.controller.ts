@@ -3,6 +3,44 @@ import { withOutletContext } from '../../lib/db';
 import { AppError } from '../../lib/errors';
 import { db } from '../../lib/db';
 import { sendNegativeReviewAlert } from '../../lib/notifications';
+import * as ReputationService from './reputation.service';
+import * as SentimentService from './sentiment.service';
+
+// --- SOCIAL REPUTATION & SENTIMENT BRIDGE ---
+
+export async function getReputationFeed(req: Request, res: Response) {
+  const result = await SentimentService.getReputationFeed(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function approveSocialReply(req: Request, res: Response) {
+  const { reply } = req.body;
+  const result = await SentimentService.approveAndSendReply(req.params.id, reply);
+  res.json({ success: true, data: result });
+}
+
+export async function ingestMockSocial(req: Request, res: Response) {
+  await SentimentService.processExternalMention(req.user.outlet_id, req.body);
+  res.json({ success: true, message: 'Mock mention ingested' });
+}
+
+// --- REPUTATION & SENTIMENT ---
+
+export async function getReputationInsights(req: Request, res: Response) {
+  const result = await ReputationService.getReputationInsights(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function analyzeFeedback(req: Request, res: Response) {
+  const result = await ReputationService.analyzeFeedback(req.params.id);
+  res.json({ success: true, data: result });
+}
+
+export async function replyToFeedback(req: Request, res: Response) {
+  const { content } = req.body;
+  await ReputationService.postReply(req.params.id, content);
+  res.json({ success: true, message: 'Reply posted successfully.' });
+}
 
 export async function submitFeedback(req: Request, res: Response) {
   const { outlet_id, bill_id, customer_id, rating_food, rating_service, rating_ambience, comment } = req.body;

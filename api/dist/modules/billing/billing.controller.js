@@ -262,7 +262,7 @@ async function getInvoice(req, res) {
         if (billRes.rowCount === 0)
             throw new errors_1.AppError(404, 'Bill not found', 'NOT_FOUND');
         const bill = billRes.rows[0];
-        const itemsRes = await client.query(`SELECT oi.*, m.name as item_name 
+        const itemsRes = await client.query(`SELECT oi.*, m.name as item_name, m.hsn_code
        FROM order_items oi 
        JOIN menu_items m ON m.id = oi.menu_item_id
        WHERE oi.order_id = $1`, [bill.order_id]);

@@ -29,9 +29,15 @@ export default function FeedbackPage() {
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-      // We'd ideally fetch outlet_id from slug, but for now we assume API handles it or we use a global state
+      const sessionData = JSON.parse(localStorage.getItem('adruva_customer_session') || '{}');
+      const outletId = sessionData.outlet_id;
+
+      if (!outletId) {
+        throw new Error('No outlet session found');
+      }
+
       await api.post('/feedback/submit', {
-        outlet_id: 'd89c9371-8e37-4d90-b2c4-0e4b04c3ae2d', // Placeholder, in real app fetched from slug
+        outlet_id: outletId,
         rating_food: ratings.food,
         rating_service: ratings.service,
         rating_ambience: ratings.ambience,

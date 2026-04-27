@@ -23,6 +23,7 @@ export async function upsertPayrollConfig(req: Request, res: Response) {
 export async function generatePayrollCycle(req: Request, res: Response) {
   const chain_id = req.user.chain_id;
   const { month, year } = req.body;
+  const targetMonth = `${year}-${String(month).padStart(2, '0')}`;
 
   // 1. Create Cycle
   const cycleRes = await db.query(
@@ -32,30 +33,46 @@ export async function generatePayrollCycle(req: Request, res: Response) {
   );
   const cycle = cycleRes.rows[0];
 
-  // 2. Fetch all staff for the chain
+  // 2. Fetch all staff and their attendance hours for the month
   const staff = await db.query(
-    `SELECT s.*, pc.base_salary_paise, pc.hourly_rate_paise, pc.overtime_multiplier 
+    `SELECT 
+       s.id, 
+       s.name,
+       pg.rate_paise,
+       pg.salary_type,
+       COALESCE(SUM(a.hours_worked), 0)::float as total_hours,
+       COALESCE(SUM(adv.amount_paise), 0)::int as total_advances
      FROM staff s
-     LEFT JOIN payroll_configs pc ON pc.staff_id = s.id
-     WHERE s.outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)`,
-    [chain_id]
+     LEFT JOIN pay_grades pg ON pg.id = s.pay_grade_id
+     LEFT JOIN attendance a ON a.staff_id = s.id AND TO_CHAR(a.date, 'YYYY-MM') = $2
+     LEFT JOIN salary_advances adv ON adv.staff_id = s.id AND adv.deduct_month = $2 AND adv.is_deducted = false
+     WHERE s.outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)
+     GROUP BY s.id, pg.id`,
+    [chain_id, targetMonth]
   );
 
   for (const s of staff.rows) {
-    // 3. Calculate Hours from Attendance
-    // Simulated: In production, sum (check_out - check_in) for the month
-    const hoursWorked = 160; 
-    const overtimeHours = 10;
+    let basePaid = 0;
+    
+    if (s.salary_type === 'monthly') {
+      basePaid = s.rate_paise || 0;
+    } else if (s.salary_type === 'hourly') {
+      basePaid = Math.round((s.rate_paise || 0) * s.total_hours);
+    } else if (s.salary_type === 'daily') {
+      // 8h shift assumption
+      basePaid = Math.round((s.rate_paise || 0) * (s.total_hours / 8));
+    }
 
-    const basePaid = s.base_salary_paise || (s.hourly_rate_paise * hoursWorked);
-    const overtimePaid = (s.hourly_rate_paise || 0) * overtimeHours * (s.overtime_multiplier || 1.5);
-    const netPaid = Number(basePaid) + Number(overtimePaid);
+    const netPaid = basePaid - (s.total_advances || 0);
 
     await db.query(
-      `INSERT INTO payslips (cycle_id, staff_id, base_paid_paise, overtime_paid_paise, net_paid_paise)
+      `INSERT INTO payslips (cycle_id, staff_id, base_paid_paise, net_paid_paise, hours_worked)
        VALUES ($1, $2, $3, $4, $5)
-       ON CONFLICT DO NOTHING`,
-      [cycle.id, s.id, basePaid, overtimePaid, netPaid]
+       ON CONFLICT (cycle_id, staff_id) DO UPDATE SET
+         base_paid_paise = EXCLUDED.base_paid_paise,
+         net_paid_paise = EXCLUDED.net_paid_paise,
+         hours_worked = EXCLUDED.hours_worked`,
+      [cycle.id, s.id, basePaid, netPaid, s.total_hours]
     );
   }
 

@@ -1,17 +1,67 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getKDSFeed = getKDSFeed;
+exports.updateKDSItemStatus = updateKDSItemStatus;
+exports.getKDSLoadAnalytics = getKDSLoadAnalytics;
 exports.createOrder = createOrder;
 exports.createPublicOrder = createPublicOrder;
 exports.getOrders = getOrders;
 exports.updateOrderStatus = updateOrderStatus;
 exports.updateItemStatus = updateItemStatus;
 exports.getPublicOrder = getPublicOrder;
+exports.getOrderPerformance = getOrderPerformance;
 const db_1 = require("../../lib/db");
 const counters_1 = require("../../lib/counters");
 const inventory_1 = require("../../lib/inventory");
 const websocket_1 = require("../../websocket");
 const errors_1 = require("../../lib/errors");
 const planLimits_1 = require("../../lib/planLimits");
+const KDSService = __importStar(require("./kds.service"));
+async function getKDSFeed(req, res) {
+    const result = await KDSService.getKDSFeed(req.user.outlet_id, req.query.station);
+    res.json({ success: true, data: result });
+}
+async function updateKDSItemStatus(req, res) {
+    const result = await KDSService.updateItemKDSStatus(req.params.itemId, req.body.status);
+    res.json({ success: true, data: result });
+}
+async function getKDSLoadAnalytics(req, res) {
+    const result = await KDSService.getStationLoad(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
 async function createOrder(req, res) {
     const outlet_id = req.user.outlet_id;
     const staff_id = req.user.staff_id;
@@ -157,10 +207,18 @@ async function updateItemStatus(req, res) {
     const { status } = req.body;
     const outlet_id = req.user.outlet_id;
     const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
-        const res = await client.query('UPDATE order_items SET status = $1 WHERE id = $2 RETURNING *', [status, itemId]);
-        if (res.rowCount === 0)
+        await client.query('UPDATE order_items SET status = $1 WHERE id = $2', [status, itemId]);
+        const enrichedRes = await client.query(`
+      SELECT oi.*, mi.name as menu_item_name, o.order_number, t.name as table_name, o.table_id
+      FROM order_items oi
+      JOIN menu_items mi ON mi.id = oi.menu_item_id
+      JOIN orders o ON o.id = oi.order_id
+      LEFT JOIN tables t ON t.id = o.table_id
+      WHERE oi.id = $1
+    `, [itemId]);
+        if (enrichedRes.rowCount === 0)
             throw new errors_1.AppError(404, 'Order item not found', 'NOT_FOUND');
-        return res.rows[0];
+        return enrichedRes.rows[0];
     });
     // Notify all outlet screens (KDS, POS) about the item status change
     (0, websocket_1.emitToOutlet)(outlet_id, 'order:item_update', {
@@ -195,6 +253,20 @@ async function getPublicOrder(req, res) {
         if (res.rowCount === 0)
             throw new errors_1.AppError(404, 'Order not found', 'NOT_FOUND');
         return res.rows[0];
+    });
+    res.json({ success: true, data: result });
+}
+async function getOrderPerformance(req, res) {
+    const outlet_id = req.user.outlet_id;
+    const result = await (0, db_1.withOutletContext)(outlet_id, async (client) => {
+        const r = await client.query(`
+      SELECT 
+        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/60)::float as avg_completion_time_mins,
+        COUNT(*)::int as total_orders
+      FROM orders
+      WHERE outlet_id = $1 AND status = 'completed' AND created_at > NOW() - INTERVAL '30 days'
+    `, [outlet_id]);
+        return r.rows[0];
     });
     res.json({ success: true, data: result });
 }

@@ -11,6 +11,12 @@ const router = Router();
 // Public routes for Customer QR App
 router.post('/public', OrdersController.createPublicOrder);
 router.get('/public/:id', OrdersController.getPublicOrder);
+router.get('/performance', OrdersController.getOrderPerformance);
+
+// KDS V2
+router.get('/kds/feed', OrdersController.getKDSFeed);
+router.patch('/kds/items/:itemId/status', OrdersController.updateKDSItemStatus);
+router.get('/kds/load', OrdersController.getKDSLoadAnalytics);
 
 router.use(verifyToken);
 router.use(requireActiveSubscription);

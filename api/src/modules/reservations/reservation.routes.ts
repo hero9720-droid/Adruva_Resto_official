@@ -16,4 +16,8 @@ router.get('/', ReservationController.getReservations);
 router.post('/', validateBody(createReservationSchema), ReservationController.createReservation);
 router.patch('/:id/status', validateBody(updateReservationStatusSchema), ReservationController.updateStatus);
 
+// Smart Reservations
+router.get('/smart/availability', ReservationController.getSmartAvailability);
+router.post('/smart/book', ReservationController.createSmartBooking);
+
 export default router;

@@ -8,7 +8,6 @@ import menuRoutes from './modules/menu/menu.routes';
 import orderRoutes from './modules/orders/orders.routes';
 import billingRoutes from './modules/billing/billing.routes';
 import staffRoutes from './modules/staff/staff.routes';
-import analyticsRoutes from './modules/analytics/analytics.routes';
 import inventoryRoutes from './modules/inventory/inventory.routes';
 import expenseRoutes from './modules/expenses/expense.routes';
 import customerRoutes from './modules/customers/customer.routes';
@@ -39,6 +38,12 @@ import geoRoutes from './modules/marketing/geo.routes';
 import pestRoutes from './modules/compliance/pest.routes';
 import publicQrRoutes from './modules/public/qr.routes';
 import searchRoutes from './modules/search/search.routes';
+import crmRoutes from './modules/crm/crm.routes';
+import approvalRoutes from './modules/approvals/approval.routes';
+import loyaltyRoutes from './modules/loyalty/loyalty.routes';
+import waitlistRoutes from './modules/waitlist/waitlist.routes';
+import equipmentRoutes from './modules/equipment/equipment.routes';
+import analyticsRoutes from './modules/analytics/analytics.routes';
 
 const router = Router();
 
@@ -81,7 +86,6 @@ router.use('/menu', menuRoutes);
 router.use('/orders', orderRoutes);
 router.use('/billing', billingRoutes);
 router.use('/staff', staffRoutes);
-router.use('/analytics', analyticsRoutes);
 router.use('/inventory', inventoryRoutes);
 router.use('/expenses', expenseRoutes);
 router.use('/customers', customerRoutes);
@@ -113,6 +117,12 @@ router.use('/brand', brandRoutes);
 router.use('/marketing/geo', geoRoutes);
 router.use('/compliance/pest', pestRoutes);
 router.use('/search', searchRoutes);
+router.use('/crm',    crmRoutes);
+router.use('/approvals', approvalRoutes);
+router.use('/loyalty', loyaltyRoutes);
+router.use('/waitlist', waitlistRoutes);
+router.use('/equipment', equipmentRoutes);
+router.use('/analytics', analyticsRoutes);
 
 // Public Routes (No Auth)
 router.use('/qr', publicQrRoutes);

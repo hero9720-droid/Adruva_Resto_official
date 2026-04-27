@@ -1,26 +1,39 @@
 import { Request, Response } from 'express';
 import { db } from '../../lib/db';
+import { signAccessToken } from '../../lib/jwt';
+import { signQR } from '../../lib/crypto';
 
 export async function resolveQR(req: Request, res: Response) {
-  const { id } = req.params;
+  const { id: rawToken } = req.params;
 
   try {
+    // rawToken can be 'uuid' (legacy) or 'uuid.signature' (hardened)
+    const [spaceId] = rawToken.split('.');
+
     // 1. Check if it's a Table
     const tableRes = await db.query(
-      `SELECT t.*, o.subdomain, o.id as outlet_id 
+      `SELECT t.*, o.subdomain, o.id as outlet_id, o.qr_secret 
        FROM tables t 
        JOIN outlets o ON t.outlet_id = o.id 
        WHERE t.id = $1 AND t.is_active = true`,
-      [id]
+      [spaceId]
     );
 
     if (tableRes.rows.length > 0) {
       const table = tableRes.rows[0];
 
+      // VERIFY SIGNATURE (if token contains one)
+      if (rawToken.includes('.')) {
+        const expected = signQR(table.outlet_id, table.id, table.qr_secret);
+        if (expected !== rawToken) {
+          return res.status(403).json({ success: false, error: 'Invalid or expired QR code signature.' });
+        }
+      }
+
       // Check for active session
       let sessionRes = await db.query(
         `SELECT id FROM table_sessions WHERE table_id = $1 AND closed_at IS NULL ORDER BY created_at DESC LIMIT 1`,
-        [id]
+        [spaceId]
       );
 
       let sessionId;
@@ -30,10 +43,15 @@ export async function resolveQR(req: Request, res: Response) {
         // Create new guest session
         const newSession = await db.query(
           `INSERT INTO table_sessions (outlet_id, table_id, customer_count) VALUES ($1, $2, 1) RETURNING id`,
-          [table.outlet_id, id]
+          [table.outlet_id, spaceId]
         );
         sessionId = newSession.rows[0].id;
       }
+
+      const guestToken = signAccessToken({
+        role: 'guest',
+        outlet_id: table.outlet_id,
+      });
 
       return res.json({
         success: true,
@@ -41,24 +59,33 @@ export async function resolveQR(req: Request, res: Response) {
           type: 'table',
           outlet_id: table.outlet_id,
           outlet_slug: table.subdomain || table.outlet_id,
-          space_id: id,
+          space_id: spaceId,
           space_name: table.name,
-          session_id: sessionId
+          session_id: sessionId,
+          guest_token: guestToken
         }
       });
     }
 
     // 2. Check if it's a Room
     const roomRes = await db.query(
-      `SELECT r.*, o.subdomain, o.id as outlet_id 
+      `SELECT r.*, o.subdomain, o.id as outlet_id, o.qr_secret 
        FROM rooms r 
        JOIN outlets o ON r.outlet_id = o.id 
        WHERE r.id = $1 AND r.is_active = true`,
-      [id]
+      [spaceId]
     );
 
     if (roomRes.rows.length > 0) {
       const room = roomRes.rows[0];
+
+      // VERIFY SIGNATURE (if token contains one)
+      if (rawToken.includes('.')) {
+        const expected = signQR(room.outlet_id, room.id, room.qr_secret);
+        if (expected !== rawToken) {
+          return res.status(403).json({ success: false, error: 'Invalid or expired QR code signature.' });
+        }
+      }
       
       // Rooms don't use 'table_sessions' in the same way, orders are linked to room_id directly.
       // But we must check if it's occupied to allow ordering.
@@ -69,15 +96,21 @@ export async function resolveQR(req: Request, res: Response) {
         });
       }
 
+      const guestToken = signAccessToken({
+        role: 'guest',
+        outlet_id: room.outlet_id,
+      });
+
       return res.json({
         success: true,
         data: {
           type: 'room',
           outlet_id: room.outlet_id,
           outlet_slug: room.subdomain || room.outlet_id,
-          space_id: id,
+          space_id: spaceId,
           space_name: room.name,
-          session_id: null // Orders will link via room_id
+          session_id: null, // Orders will link via room_id
+          guest_token: guestToken
         }
       });
     }

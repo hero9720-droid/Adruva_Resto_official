@@ -43,3 +43,41 @@ export function useSubmitAudit() {
     },
   });
 }
+export function useTaxSummary(startDate: string, endDate: string) {
+  return useQuery({
+    queryKey: ['tax-summary', startDate, endDate],
+    queryFn: async () => {
+      const outletId = getOutletId();
+      if (!outletId) return null;
+      const { data } = await api.get(`/compliance/${outletId}/tax-summary`, { params: { start_date: startDate, end_date: endDate } });
+      return data.data;
+    },
+    enabled: !!startDate && !!endDate,
+  });
+}
+
+export function useHSNReport() {
+  return useQuery({
+    queryKey: ['hsn-report'],
+    queryFn: async () => {
+      const outletId = getOutletId();
+      if (!outletId) return [];
+      const { data } = await api.get(`/compliance/${outletId}/hsn-report`);
+      return data.data;
+    },
+  });
+}
+
+export function useUpdateHSN() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (mappings: any[]) => {
+      const outletId = getOutletId();
+      const { data } = await api.post(`/compliance/${outletId}/hsn-update`, { mappings });
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['hsn-report'] });
+    },
+  });
+}

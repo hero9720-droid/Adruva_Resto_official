@@ -5,6 +5,7 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import GlobalHeader from '@/components/dashboard/GlobalHeader';
 import { Menu, X, Search, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { SyncManager } from '@/components/SyncManager';
 
 export default function DashboardLayout({
   children,
@@ -15,6 +16,7 @@ export default function DashboardLayout({
 
   return (
     <div className="flex min-h-screen bg-background font-sans text-foreground">
+      <SyncManager />
       {/* Mobile Overlay */}
       {isMobileOpen && (
         <div 

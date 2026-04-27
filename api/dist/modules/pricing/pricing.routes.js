@@ -41,6 +41,9 @@ const router = (0, express_1.Router)();
 router.use(auth_1.verifyToken);
 router.use((0, rbac_1.requireRole)(['chain_owner', 'billing_admin']));
 router.post('/rules', PricingController.createPricingRule);
-router.get('/rules', PricingController.getPricingRules);
+router.get('/history', PricingController.getPricingHistory);
+// Dynamic Pricing
+router.get('/dynamic/recommendations', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), PricingController.getDynamicRecommendations);
+router.post('/dynamic/sync', (0, rbac_1.requireRole)(['outlet_manager']), PricingController.syncDynamicPrices);
 router.post('/recalculate', PricingController.recalculateDynamicPrices);
 exports.default = router;

@@ -36,14 +36,7 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const AnalyticsController = __importStar(require("./analytics.controller"));
 const auth_1 = require("../../middleware/auth");
-const subscription_1 = require("../../middleware/subscription");
-const rbac_1 = require("../../middleware/rbac");
 const router = (0, express_1.Router)();
 router.use(auth_1.verifyToken);
-router.use(subscription_1.requireActiveSubscription);
-router.use((0, rbac_1.requireRole)(['outlet_manager'])); // Only managers see analytics
-router.get('/sales-overview', AnalyticsController.getSalesOverview);
-router.get('/top-items', AnalyticsController.getTopItems);
-router.get('/staff-performance', AnalyticsController.getStaffPerformance);
-router.get('/heatmap', AnalyticsController.getHourlyHeatmap);
+router.get('/command-center', AnalyticsController.getCommandCenterData);
 exports.default = router;

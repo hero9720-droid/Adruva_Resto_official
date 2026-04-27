@@ -167,3 +167,38 @@ export function useShiftSummary() {
     refetchInterval: 60000, // every minute
   });
 }
+export function useLeaveRequests(params?: any) {
+  return useQuery({
+    queryKey: ['staff', 'leaves', params],
+    queryFn: async () => {
+      const { data } = await api.get('/staff/leaves', { params });
+      return data.data;
+    },
+  });
+}
+
+export function useRequestLeave() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (payload: any) => {
+      const { data } = await api.post('/staff/leaves/request', payload);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', 'leaves'] });
+    },
+  });
+}
+
+export function useUpdateLeaveStatus() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async ({ id, status, manager_notes }: any) => {
+      const { data } = await api.post(`/staff/leaves/${id}/status`, { status, manager_notes });
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', 'leaves'] });
+    },
+  });
+}

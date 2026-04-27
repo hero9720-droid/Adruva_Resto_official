@@ -17,13 +17,16 @@ import {
   Trash2,
   Smartphone,
   Mail,
-  FileText
+  FileText,
+  BrainCircuit
 } from 'lucide-react';
 import api from '@/lib/api';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
+import { InventoryAI } from './InventoryAI';
+import { Requisitions } from './Requisitions';
 import { 
   Table, 
   TableBody, 
@@ -341,9 +344,20 @@ export default function InventoryPage() {
           <TabsTrigger value="recipes" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Recipes (BOM)</TabsTrigger>
           <TabsTrigger value="suppliers" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Suppliers</TabsTrigger>
           <TabsTrigger value="history" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Movement Log</TabsTrigger>
+          <TabsTrigger value="ai" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-indigo-500 data-[state=active]:text-white data-[state=active]:shadow-lg data-[state=active]:shadow-indigo-500/20 text-slate-500 hover:text-indigo-500 transition-all border-none whitespace-nowrap">
+            <BrainCircuit className="h-4 w-4 mr-2" />
+            AI Insights
+          </TabsTrigger>
+          <TabsTrigger value="requisitions" className="rounded-lg md:rounded-xl px-4 md:px-8 h-10 md:h-12 font-black text-[10px] md:text-xs uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-lg data-[state=active]:shadow-primary/20 text-slate-500 hover:text-primary transition-all border-none whitespace-nowrap">Stock Indents</TabsTrigger>
         </TabsList>
 
         <div className="flex-1">
+          <TabsContent value="requisitions" className="mt-0">
+             <Requisitions />
+          </TabsContent>
+          <TabsContent value="ai" className="mt-0">
+             <InventoryAI />
+          </TabsContent>
           <TabsContent value="stock" className="space-y-6 mt-0">
             <div className="flex flex-col md:flex-row gap-4">
               <div className="relative flex-1">

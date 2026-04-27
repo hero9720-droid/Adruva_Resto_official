@@ -25,22 +25,27 @@ const navGroups = [
     label: 'Empire Control',
     items: [
       { name: 'Global Overview', href: '/dashboard',          icon: LayoutDashboard },
+      { name: 'Command Center',  href: '/dashboard/intelligence/command-center', icon: Target },
       { name: 'Outlets',         href: '/dashboard/outlets',   icon: Store },
+      { name: 'Financials',      href: '/dashboard/finance/taxation', icon: CreditCard },
     ],
   },
   {
     label: 'Brand Assets',
     items: [
       { name: 'Master Menu',    href: '/dashboard/menu',      icon: BookOpen },
-      { name: 'Marketing',      href: '/dashboard/marketing', icon: Megaphone },
-      { name: 'Global Staff',   href: '/dashboard/staff',     icon: Users2 },
+      { name: 'Global Inventory', href: '/dashboard/inventory', icon: Store },
+      { name: 'Human Capital',  href: '/dashboard/hr/payroll', icon: Users2 },
+      { name: 'Loyalty Hub',    href: '/dashboard/loyalty',   icon: Target },
     ],
   },
   {
     label: 'Performance',
     items: [
+      { name: 'Dynamic Pricing', href: '/dashboard/pricing',   icon: Megaphone },
+      { name: 'Marketing Hub',   href: '/dashboard/marketing', icon: Megaphone },
+      { name: 'Sustainability',  href: '/dashboard/sustainability', icon: RefreshCw },
       { name: 'Aggregated ROI', href: '/dashboard/analytics', icon: BarChart3 },
-      { name: 'Billing & Plan', href: '/dashboard/billing',   icon: CreditCard },
       { name: 'Brand Settings', href: '/dashboard/settings',  icon: Settings },
     ],
   },

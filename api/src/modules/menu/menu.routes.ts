@@ -2,6 +2,7 @@ import { Router } from 'express';
 import * as MenuController from './menu.controller';
 import * as ModifiersController from './modifiers.controller';
 import * as UploadController from './upload.controller';
+import * as MenuAIController from './menu.ai.controller';
 import { validateBody } from '../../middleware/validate';
 import { categorySchema, menuItemSchema, variantSchema, modifierGroupSchema } from './menu.schema';
 import { verifyToken } from '../../middleware/auth';
@@ -79,5 +80,10 @@ router.post('/sync',
   requireRole(['chain_owner']),
   MenuController.syncMenuToOutlets
 );
+
+// AI Menu Engineering
+router.get('/ai/pricing', requireRole(['outlet_manager']), MenuAIController.getPricingInsights);
+router.post('/ai/pricing/apply', requireRole(['outlet_manager']), MenuAIController.applyPricing);
+router.get('/engineering/matrix', requireRole(['outlet_manager', 'chain_owner']), MenuController.getMenuMatrix);
 
 export default router;

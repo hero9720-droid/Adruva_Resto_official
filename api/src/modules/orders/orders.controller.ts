@@ -5,6 +5,22 @@ import { deductInventory } from '../../lib/inventory';
 import { emitToKitchen, emitToBilling, emitToOutlet } from '../../websocket';
 import { AppError } from '../../lib/errors';
 import { checkPlanLimit } from '../../lib/planLimits';
+import * as KDSService from './kds.service';
+
+export async function getKDSFeed(req: Request, res: Response) {
+  const result = await KDSService.getKDSFeed(req.user.outlet_id, req.query.station as string);
+  res.json({ success: true, data: result });
+}
+
+export async function updateKDSItemStatus(req: Request, res: Response) {
+  const result = await KDSService.updateItemKDSStatus(req.params.itemId, req.body.status);
+  res.json({ success: true, data: result });
+}
+
+export async function getKDSLoadAnalytics(req: Request, res: Response) {
+  const result = await KDSService.getStationLoad(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
 
 export async function createOrder(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
@@ -191,12 +207,20 @@ export async function updateItemStatus(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
 
   const result = await withOutletContext(outlet_id, async (client) => {
-    const res = await client.query(
-      'UPDATE order_items SET status = $1 WHERE id = $2 RETURNING *',
+    await client.query(
+      'UPDATE order_items SET status = $1 WHERE id = $2',
       [status, itemId]
     );
-    if (res.rowCount === 0) throw new AppError(404, 'Order item not found', 'NOT_FOUND');
-    return res.rows[0];
+    const enrichedRes = await client.query(`
+      SELECT oi.*, mi.name as menu_item_name, o.order_number, t.name as table_name, o.table_id
+      FROM order_items oi
+      JOIN menu_items mi ON mi.id = oi.menu_item_id
+      JOIN orders o ON o.id = oi.order_id
+      LEFT JOIN tables t ON t.id = o.table_id
+      WHERE oi.id = $1
+    `, [itemId]);
+    if (enrichedRes.rowCount === 0) throw new AppError(404, 'Order item not found', 'NOT_FOUND');
+    return enrichedRes.rows[0];
   });
 
   // Notify all outlet screens (KDS, POS) about the item status change
@@ -240,5 +264,20 @@ export async function getPublicOrder(req: Request, res: Response) {
     return res.rows[0];
   });
 
+  res.json({ success: true, data: result });
+}
+
+export async function getOrderPerformance(req: Request, res: Response) {
+  const outlet_id = req.user.outlet_id;
+  const result = await withOutletContext(outlet_id, async (client) => {
+    const r = await client.query(`
+      SELECT 
+        AVG(EXTRACT(EPOCH FROM (updated_at - created_at))/60)::float as avg_completion_time_mins,
+        COUNT(*)::int as total_orders
+      FROM orders
+      WHERE outlet_id = $1 AND status = 'completed' AND created_at > NOW() - INTERVAL '30 days'
+    `, [outlet_id]);
+    return r.rows[0];
+  });
   res.json({ success: true, data: result });
 }

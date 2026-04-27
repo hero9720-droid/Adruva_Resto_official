@@ -1,5 +1,6 @@
 import { Router } from 'express';
 import * as SettingsController from './settings.controller';
+import * as QRController from './qr.controller';
 import { verifyToken } from '../../middleware/auth';
 import { requireActiveSubscription } from '../../middleware/subscription';
 import { requireRole } from '../../middleware/rbac';
@@ -19,6 +20,10 @@ router.patch('/profile',  SettingsController.updateOutletSettings);
 router.get('/tables',         SettingsController.getTables);
 router.post('/tables',        SettingsController.createTable);
 router.patch('/tables/:id',   SettingsController.updateTable);
+
+// QR Management (Phase 12)
+router.get('/spaces/:spaceId/qr', QRController.getSpaceQR);
+router.post('/spaces/qr/rotate',  QRController.rotateQRSecret);
 
 // Legacy zone routes (graceful fallback)
 router.get('/zones',                    SettingsController.getZones);

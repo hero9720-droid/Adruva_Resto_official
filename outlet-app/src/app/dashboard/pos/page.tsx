@@ -3,6 +3,10 @@
 export const dynamic = 'force-dynamic';
 
 import { useState, useEffect } from 'react';
+import { cn } from '@/lib/utils';
+import { printer } from '@/lib/printer';
+import { useOutletProfile, useTables } from '@/hooks/useSettings';
+import { formatCurrency } from '@/lib/formatters';
 import { 
   Search, 
   ShoppingCart, 
@@ -25,22 +29,22 @@ import {
   WifiOff,
   X,
   Bed,
-  Zap
+  Zap,
+  ChefHat
 } from 'lucide-react';
+import { useSocket } from '@/hooks/useSocket';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { useMenuItems, useCategories } from '@/hooks/useMenu';
-import { useTables } from '@/hooks/useSettings';
+import { useQueryClient } from '@tanstack/react-query';
 import { useActiveOrderForTable } from '@/hooks/useOrders';
 import { useGenerateBill } from '@/hooks/useBills';
 import { useToast } from '@/hooks/use-toast';
 import api from '@/lib/api';
-import { cn } from '@/lib/utils';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import PaymentModal from '@/components/pos/PaymentModal';
-import { printer } from '@/lib/printer';
 import { useOfflineSync } from '@/hooks/useOfflineSync';
 import {
   Sheet,
@@ -67,6 +71,10 @@ interface CartItem {
 }
 
 export default function POSPage() {
+  const { data: outlet } = useOutletProfile();
+  const currencyCode = outlet?.currency_code || 'INR';
+  const locale = outlet?.locale || 'en-IN';
+
   const router = useRouter();
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('all');
@@ -98,6 +106,50 @@ export default function POSPage() {
     localStorage.setItem('adruva_held_orders', JSON.stringify(orders));
   };
 
+  const { socket, isConnected } = useSocket('billing');
+
+  useEffect(() => {
+    if (socket) {
+      socket.on('item:ready', (item: any) => {
+        // Play notification sound
+        try {
+          const audio = new Audio('https://assets.mixkit.co/active_storage/sfx/2869/2869-preview.mp3');
+          audio.play().catch(e => console.warn('Sound play blocked by browser', e));
+        } catch (e) {}
+
+        toast({
+          title: "🍳 ITEM READY",
+          description: `${item.menu_item_name} for Table ${item.table_name || '?'}` ,
+          className: "bg-emerald-600 text-white font-bold"
+        });
+        
+        // Refresh active order if it's the current table
+        if (selectedTableId === item.table_id) {
+          refetchOrder();
+        }
+      });
+      
+      socket.on('order:item_update', (data: any) => {
+        // Generic update for real-time status sync in cart view
+        if (selectedTableId === data.table_id || activeOrder?.id === data.order_id) {
+          refetchOrder();
+        }
+      });
+
+      socket.on('order:new', () => {
+        // Potentially refresh table statuses if a new order is placed elsewhere
+        queryClient.invalidateQueries({ queryKey: ['tables'] });
+      });
+    }
+    return () => {
+      if (socket) {
+        socket.off('item:ready');
+        socket.off('order:item_update');
+        socket.off('order:new');
+      }
+    };
+  }, [socket, selectedTableId, activeOrder?.id]);
+
   useEffect(() => {
     const timer = setTimeout(() => setDebouncedSearch(searchQuery), 300);
     return () => clearTimeout(timer);
@@ -109,6 +161,7 @@ export default function POSPage() {
   const { data: activeOrder, isLoading: isLoadingOrder, refetch: refetchOrder } = useActiveOrderForTable(selectedTableId);
   const generateBill = useGenerateBill();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const handleItemClick = (item: any) => {
     const hasVariants = item.variants && item.variants.length > 0;
@@ -225,11 +278,13 @@ export default function POSPage() {
         toast({ title: "Offline Order Saved", description: "Order queued and will sync when online." });
       } else {
         if (activeOrder && orderType === 'dine_in') {
-          await api.post(`/orders/${activeOrder.id}/items`, { items: orderPayload.items });
+          const { data } = await api.post(`/orders/${activeOrder.id}/items`, { items: orderPayload.items });
           toast({ title: "Order Updated", description: "Items added to ticket." });
+          printer.enqueue('kot', { ...data.data, table_name: tables.find(t => t.id === selectedTableId)?.name });
         } else {
-          await api.post('/orders', orderPayload);
+          const { data } = await api.post('/orders', orderPayload);
           toast({ title: "Order Confirmed", description: "Sent to Kitchen." });
+          printer.enqueue('kot', { ...data.data, table_name: tables.find(t => t.id === selectedTableId)?.name });
         }
       }
 
@@ -350,11 +405,19 @@ export default function POSPage() {
                        <div className="flex justify-between items-start mb-0.5">
                           <span className="font-bold text-foreground text-sm leading-tight line-clamp-2 pr-2">{item.menu_item_name}</span>
                        </div>
-                       <div className="text-[10px] font-semibold text-muted-foreground mb-auto">
-                          <span>Qty: {item.quantity}</span>
+                       <div className="flex items-center gap-2 mt-1">
+                          <span className={cn(
+                            "text-[8px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded border",
+                            item.status === 'pending' ? 'bg-secondary text-slate-500 border-border' :
+                            item.status === 'preparing' ? 'bg-amber-500/10 text-amber-600 border-amber-500/20' :
+                            'bg-emerald-500 text-white border-emerald-500'
+                          )}>
+                            {item.status}
+                          </span>
+                          <span className="text-[10px] font-semibold text-muted-foreground">Qty: {item.quantity}</span>
                        </div>
                        <div className="flex justify-between items-end mt-1">
-                          <span className="font-black text-primary text-base">₹{(item.total_paise / 100).toLocaleString()}</span>
+                          <span className="font-black text-primary text-base">{formatCurrency(item.total_paise, currencyCode, locale)}</span>
                        </div>
                     </div>
                   </div>
@@ -408,7 +471,7 @@ export default function POSPage() {
                       )}
                     </div>
                     <div className="flex justify-between items-end mt-2">
-                       <span className="font-black text-primary text-lg leading-none">₹{(item.price * item.quantity) / 100}</span>
+                       <span className="font-black text-primary text-lg leading-none">{formatCurrency(item.price * item.quantity, currencyCode, locale)}</span>
                        <div className="flex items-center bg-muted rounded-lg border border-border p-0.5 shrink-0">
                           <button onClick={() => updateQuantity(item.cart_id, -1)} className="h-7 w-7 rounded-md flex items-center justify-center hover:bg-background transition-colors text-foreground shadow-sm bg-background border border-border/50"><Minus className="h-3.5 w-3.5" /></button>
                           <span className="w-7 text-center font-bold text-sm text-foreground">{item.quantity}</span>
@@ -428,7 +491,7 @@ export default function POSPage() {
              <div className="flex justify-between items-center text-sm">
                 <span className="font-semibold text-muted-foreground">Subtotal</span>
                 <span className="font-bold text-foreground">
-                  ₹{((activeOrder ? activeOrder.items.reduce((s:any,i:any)=>s+i.total_paise,0) : cartTotal) / 100).toLocaleString()}
+                  {formatCurrency(activeOrder ? activeOrder.items.reduce((s:any,i:any)=>s+i.total_paise,0) : cartTotal, currencyCode, locale)}
                 </span>
              </div>
              <div className="pt-2 border-t border-dashed border-border flex justify-between items-end">
@@ -684,7 +747,7 @@ export default function POSPage() {
                         <p className="text-[10px] font-bold text-slate-400 line-clamp-1">{item.description || 'No description available'}</p>
                       </div>
                       <div className="flex items-center justify-between mt-auto">
-                         <span className="text-lg font-black text-foreground tracking-tighter">₹{(item.price_paise / 100).toLocaleString()}</span>
+                         <span className="text-lg font-black text-foreground tracking-tighter">{formatCurrency(item.price_paise, currencyCode, locale)}</span>
                          <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-all">
                             <Plus className="h-5 w-5" />
                          </div>

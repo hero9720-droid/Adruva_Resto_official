@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const StaffController = __importStar(require("./staff.controller"));
+const LeaveController = __importStar(require("./leave.controller"));
 const auth_1 = require("../../middleware/auth");
 const subscription_1 = require("../../middleware/subscription");
 const rbac_1 = require("../../middleware/rbac");
@@ -44,12 +45,16 @@ router.use(subscription_1.requireActiveSubscription);
 // Staff list
 router.get('/list', StaffController.getStaff);
 // Create Staff
-router.post('/create', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.createStaff);
+router.post('/territory/reports', (0, rbac_1.requireRole)(['area_manager']), StaffController.submitTerritoryReport);
+// Employee Performance Index (EPI)
+router.get('/performance/leaderboard', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), StaffController.getEPILeaderboard);
+router.get('/:id/insights', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), StaffController.getStaffInsights);
+router.post('/performance/sync', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.triggerEPISync);
 // Attendance
 router.get('/attendance', StaffController.getAttendance);
 router.get('/current-status', StaffController.getAttendanceStatus);
-router.post('/clock-in', StaffController.clockIn);
-router.post('/clock-out', StaffController.clockOut);
+router.post('/clock-in', StaffController.attendanceClockIn);
+router.post('/clock-out', StaffController.attendanceClockOut);
 // Weekly Schedule
 router.get('/schedule', StaffController.getSchedule);
 // Payroll
@@ -60,7 +65,20 @@ router.post('/shifts/start', (0, rbac_1.requireRole)(['cashier', 'outlet_manager
 router.post('/shifts/end', (0, rbac_1.requireRole)(['cashier', 'outlet_manager']), StaffController.endShift);
 // Performance & Analytics
 router.get('/performance', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.getStaffPerformanceMetrics);
+router.get('/performance/leaderboard', StaffController.getGamificationLeaderboard);
+router.get('/performance/my-stats', StaffController.getMyPerformanceStats);
+// Territory & Area Management
+router.get('/territory/overview', StaffController.getTerritoryOverview);
+router.post('/territory/field-report', StaffController.submitFieldReport);
+// Duty Cycles & Attendance
+router.post('/duty/clock-in', StaffController.dutyClockIn);
+router.post('/duty/clock-out', StaffController.dutyClockOut);
+router.get('/duty/live-roster', StaffController.getLiveRoster);
 // Shift Verification
 router.get('/shifts/unverified', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.getShiftsToVerify);
 router.post('/shifts/verify', (0, rbac_1.requireRole)(['outlet_manager']), StaffController.verifyShift);
+// Leave Management
+router.get('/leaves', LeaveController.getLeaveRequests);
+router.post('/leaves/request', LeaveController.requestLeave);
+router.post('/leaves/:id/status', (0, rbac_1.requireRole)(['outlet_manager']), LeaveController.updateLeaveStatus);
 exports.default = router;

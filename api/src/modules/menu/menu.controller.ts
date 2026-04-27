@@ -3,6 +3,20 @@ import { withOutletContext, db } from '../../lib/db';
 import { checkPlanLimit } from '../../lib/planLimits';
 import { AppError } from '../../lib/errors';
 import { logger } from '../../lib/logger';
+import * as EngineeringService from './engineering.service';
+
+// --- MENU ENGINEERING & ANALYTICS ---
+
+export async function getMenuMatrix(req: Request, res: Response) {
+  const { period } = req.query;
+  const targetPeriod = (period as string) || new Date().toISOString().substring(0, 7);
+  
+  // First, run analysis to ensure data is fresh
+  await EngineeringService.runMatrixAnalysis(req.user.outlet_id, targetPeriod);
+  
+  const result = await EngineeringService.getMatrixData(req.user.outlet_id, targetPeriod);
+  res.json({ success: true, data: result });
+}
 
 // --- CATEGORIES ---
 

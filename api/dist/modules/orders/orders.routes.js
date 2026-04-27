@@ -44,6 +44,11 @@ const router = (0, express_1.Router)();
 // Public routes for Customer QR App
 router.post('/public', OrdersController.createPublicOrder);
 router.get('/public/:id', OrdersController.getPublicOrder);
+router.get('/performance', OrdersController.getOrderPerformance);
+// KDS V2
+router.get('/kds/feed', OrdersController.getKDSFeed);
+router.patch('/kds/items/:itemId/status', OrdersController.updateKDSItemStatus);
+router.get('/kds/load', OrdersController.getKDSLoadAnalytics);
 router.use(auth_1.verifyToken);
 router.use(subscription_1.requireActiveSubscription);
 router.post('/', (0, rbac_1.requireRole)(['cashier', 'waiter', 'outlet_manager']), (0, validate_1.validateBody)(orders_schema_1.createOrderSchema), OrdersController.createOrder);

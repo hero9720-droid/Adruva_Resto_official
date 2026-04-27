@@ -16,6 +16,7 @@ router.get('/phone/:phone', CustomerController.getCustomerByPhone);
 router.get('/:id/history', verifyToken, CustomerController.getCustomerHistory);
 router.post('/referral/apply', CustomerController.processReferral);
 router.get('/social-proof/:outletId', CustomerController.getSocialProof);
+router.get('/me/loyalty', CustomerController.getCustomerLoyaltyData);
 router.post('/loyalty/earn', CustomerController.earnLoyaltyPoints);
 router.post('/loyalty/redeem', CustomerController.redeemLoyaltyPoints);
 

@@ -19,8 +19,10 @@ import {
   Trash2,
   Layers,
   ChevronRight,
-  Info
+  Info,
+  RefreshCw
 } from 'lucide-react';
+import { QRCodeSVG } from 'qrcode.react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -60,14 +62,44 @@ export default function SpacesHubPage() {
   
   const [selectedSpace, setSelectedSpace] = useState<any>(null);
   const [showQRDesigner, setShowQRDesigner] = useState(false);
+  const [showNewSpaceDialog, setShowNewSpaceDialog] = useState(false);
+  const [newSpaceData, setNewSpaceData] = useState({
+    type: 'table',
+    name: '',
+    capacity: 4,
+    floor: 'G',
+    section: 'Main Hall'
+  });
   const [qrSettings, setQrSettings] = useState({
-    color: '#E11D48',
-    logo: true,
     style: 'dots',
     margin: 2
   });
+  const [spaceQR, setSpaceQR] = useState<string | null>(null);
+  const [rotating, setRotating] = useState(false);
 
   const { toast } = useToast();
+
+  const fetchSpaceQR = async (spaceId: string) => {
+    try {
+      const res = await api.get(`/settings/spaces/${spaceId}/qr`);
+      setSpaceQR(res.data.data.qrUrl);
+    } catch (err) {
+      console.error('Failed to fetch space QR');
+    }
+  };
+
+  const rotateSecrets = async () => {
+    if (!confirm('This will invalidate all current physical QR codes. Are you sure?')) return;
+    setRotating(true);
+    try {
+      await api.post('/settings/spaces/qr/rotate');
+      toast({ title: "Security Keys Rotated", description: "All previous QR codes are now invalid." });
+    } catch (err) {
+      toast({ title: "Rotation Failed", variant: "destructive" });
+    } finally {
+      setRotating(false);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -83,6 +115,30 @@ export default function SpacesHubPage() {
       console.error('Failed to fetch spaces');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleCreateSpace = async () => {
+    if (!newSpaceData.name) return toast({ title: "Name required", variant: "destructive" });
+    try {
+      if (newSpaceData.type === 'table') {
+        await api.post('/settings/tables', {
+          name: newSpaceData.name,
+          capacity: Number(newSpaceData.capacity),
+          section: newSpaceData.section
+        });
+      } else {
+        await api.post('/rooms', {
+          name: newSpaceData.name,
+          floor: newSpaceData.floor
+        });
+      }
+      toast({ title: "Space Created", description: `${newSpaceData.name} has been added to the floor.` });
+      setShowNewSpaceDialog(false);
+      setNewSpaceData({ type: 'table', name: '', capacity: 4, floor: 'G', section: 'Main Hall' });
+      fetchData();
+    } catch (err) {
+      toast({ title: "Creation Failed", variant: "destructive" });
     }
   };
 
@@ -119,11 +175,86 @@ export default function SpacesHubPage() {
            >
               <Palette className="h-5 w-5" /> QR Designer
            </Button>
-           <Button className="bg-primary text-white rounded-2xl h-16 px-10 font-black uppercase tracking-widest text-[11px] shadow-glow flex items-center gap-3">
+           <Button 
+             onClick={() => setShowNewSpaceDialog(true)}
+             className="bg-primary text-white rounded-2xl h-16 px-10 font-black uppercase tracking-widest text-[11px] shadow-glow flex items-center gap-3"
+           >
               <Plus className="h-5 w-5" /> New Space
            </Button>
         </div>
       </div>
+
+      <Dialog open={showNewSpaceDialog} onOpenChange={setShowNewSpaceDialog}>
+         <DialogContent className="max-w-2xl rounded-[3rem] p-12 border-none bg-card shadow-2xl">
+            <DialogHeader>
+               <DialogTitle className="text-4xl font-black uppercase tracking-tighter">Add New Space</DialogTitle>
+               <DialogDescription className="font-bold text-slate-500">Create a new operational asset for your outlet.</DialogDescription>
+            </DialogHeader>
+            <div className="space-y-8 py-8">
+               <div className="space-y-3">
+                  <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Asset Category</label>
+                  <div className="flex gap-3">
+                    {['table', 'room'].map((type) => (
+                      <Button 
+                        key={type}
+                        variant={newSpaceData.type === type ? 'default' : 'outline'}
+                        onClick={() => setNewSpaceData({...newSpaceData, type})}
+                        className="flex-1 h-14 rounded-xl font-black uppercase tracking-widest text-[10px] gap-2"
+                      >
+                         {type === 'table' ? <Utensils className="h-4 w-4" /> : <Bed className="h-4 w-4" />}
+                         {type === 'table' ? 'Dining Table' : 'Stay Room'}
+                      </Button>
+                    ))}
+                  </div>
+               </div>
+
+               <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-3">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Space Name / Number</label>
+                     <Input 
+                        placeholder={newSpaceData.type === 'table' ? 'T-01' : '101'} 
+                        value={newSpaceData.name}
+                        onChange={(e) => setNewSpaceData({...newSpaceData, name: e.target.value})}
+                        className="h-14 rounded-xl bg-secondary border-none font-black uppercase tracking-tighter text-lg px-6"
+                     />
+                  </div>
+                  <div className="space-y-3">
+                     <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">
+                        {newSpaceData.type === 'table' ? 'Guest Capacity' : 'Floor Level'}
+                     </label>
+                     <Input 
+                        type={newSpaceData.type === 'table' ? 'number' : 'text'}
+                        value={newSpaceData.type === 'table' ? newSpaceData.capacity : newSpaceData.floor}
+                        onChange={(e) => setNewSpaceData({...newSpaceData, [newSpaceData.type === 'table' ? 'capacity' : 'floor']: e.target.value})}
+                        className="h-14 rounded-xl bg-secondary border-none font-black uppercase tracking-tighter text-lg px-6"
+                     />
+                  </div>
+               </div>
+
+               {newSpaceData.type === 'table' && (
+                 <div className="space-y-3">
+                    <label className="text-[10px] font-black uppercase tracking-widest text-slate-500 ml-1">Floor Section</label>
+                    <div className="flex flex-wrap gap-2">
+                       {['Main Hall', 'AC Section', 'Garden', 'Rooftop', 'Bar'].map((sec) => (
+                         <Badge 
+                           key={sec}
+                           onClick={() => setNewSpaceData({...newSpaceData, section: sec})}
+                           variant={newSpaceData.section === sec ? 'default' : 'outline'}
+                           className="h-10 px-4 rounded-lg font-black uppercase text-[9px] cursor-pointer"
+                         >
+                            {sec}
+                         </Badge>
+                       ))}
+                    </div>
+                 </div>
+               )}
+            </div>
+            <DialogFooter className="flex gap-4">
+               <Button variant="ghost" onClick={() => setShowNewSpaceDialog(false)} className="flex-1 h-16 rounded-2xl font-black uppercase tracking-widest text-[11px]">Cancel</Button>
+               <Button onClick={handleCreateSpace} className="flex-1 bg-primary text-white h-16 rounded-2xl font-black uppercase tracking-widest text-[11px] shadow-glow">Create Asset</Button>
+            </DialogFooter>
+         </DialogContent>
+      </Dialog>
 
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-8">
          <div className="flex justify-between items-center px-4">
@@ -168,7 +299,10 @@ export default function SpacesHubPage() {
                        {sectionTables.map((table) => (
                          <Card 
                           key={table.id}
-                          onClick={() => setSelectedSpace({ ...table, type: 'table' })}
+                          onClick={() => {
+                             setSelectedSpace({ ...table, type: 'table' });
+                             fetchSpaceQR(table.id);
+                           }}
                           className={cn(
                             "border-2 border-transparent bg-card shadow-soft rounded-[2.5rem] cursor-pointer hover:border-primary transition-all group overflow-hidden relative",
                             table.status === 'occupied' && "bg-primary/5"
@@ -209,7 +343,10 @@ export default function SpacesHubPage() {
                {rooms.map((room) => (
                  <Card 
                   key={room.id}
-                  onClick={() => setSelectedSpace({ ...room, type: 'room' })}
+                  onClick={() => {
+                    setSelectedSpace({ ...room, type: 'room' });
+                    fetchSpaceQR(room.id);
+                  }}
                   className="border-2 border-transparent bg-card shadow-soft rounded-[3rem] p-1 cursor-pointer hover:border-primary transition-all group overflow-hidden"
                  >
                     <CardContent className="p-8">
@@ -344,18 +481,29 @@ export default function SpacesHubPage() {
                   </div>
                </div>
 
-               {/* Right Side: QR Code Panel */}
+                {/* Right Side: QR Code Panel */}
                <div className="w-full md:w-[400px] bg-[#1b1b24] p-12 flex flex-col items-center justify-center space-y-8 relative overflow-hidden">
                   <div className="absolute inset-0 bg-primary/5 opacity-50" />
-                  <div className="relative z-10 w-full aspect-square bg-white rounded-[3rem] p-8 shadow-2xl flex items-center justify-center">
-                     {/* Placeholder for real QR Component */}
-                     <div className="w-full h-full border-4 border-dashed border-slate-200 rounded-2xl flex flex-col items-center justify-center text-slate-300">
-                        <QrCode className="h-24 w-24 mb-4" />
-                        <p className="font-black text-[10px] uppercase tracking-widest">Digital Menu Link</p>
-                     </div>
+                  <div className="relative z-10 w-full aspect-square bg-white rounded-[3rem] p-10 shadow-2xl flex items-center justify-center">
+                     {spaceQR ? (
+                       <QRCodeSVG 
+                         value={spaceQR} 
+                         size={256}
+                         level="H"
+                         fgColor={qrSettings.style === 'dots' ? '#000000' : '#000000'}
+                         includeMargin={true}
+                       />
+                     ) : (
+                       <div className="flex flex-col items-center justify-center text-slate-300 animate-pulse">
+                          <RefreshCw className="h-12 w-12 mb-4 animate-spin" />
+                          <p className="font-black text-[10px] uppercase tracking-widest">Generating Secure QR...</p>
+                       </div>
+                     )}
                   </div>
                   <div className="relative z-10 w-full space-y-4 text-center">
-                     <p className="text-white font-black uppercase tracking-widest text-[10px]">adruva.app/qr/{selectedSpace?.id}</p>
+                     <p className="text-white/60 font-black uppercase tracking-widest text-[9px] break-all max-w-[250px] mx-auto">
+                       {spaceQR || 'Requesting Signature...'}
+                     </p>
                      <div className="flex gap-3">
                         <Button className="flex-1 bg-primary text-white h-14 rounded-2xl font-black uppercase tracking-widest text-[9px] shadow-glow gap-2">
                            <Download className="h-4 w-4" /> Download PDF

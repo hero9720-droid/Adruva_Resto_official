@@ -37,6 +37,7 @@ const express_1 = require("express");
 const MenuController = __importStar(require("./menu.controller"));
 const ModifiersController = __importStar(require("./modifiers.controller"));
 const UploadController = __importStar(require("./upload.controller"));
+const MenuAIController = __importStar(require("./menu.ai.controller"));
 const validate_1 = require("../../middleware/validate");
 const menu_schema_1 = require("./menu.schema");
 const auth_1 = require("../../middleware/auth");
@@ -68,4 +69,8 @@ router.post('/items/modifier-groups', (0, rbac_1.requireRole)(['outlet_manager']
 router.post('/upload', (0, rbac_1.requireRole)(['outlet_manager', 'cashier']), UploadController.uploadMiddleware, UploadController.uploadMenuPhoto);
 // Global Chain Sync
 router.post('/sync', (0, rbac_1.requireRole)(['chain_owner']), MenuController.syncMenuToOutlets);
+// AI Menu Engineering
+router.get('/ai/pricing', (0, rbac_1.requireRole)(['outlet_manager']), MenuAIController.getPricingInsights);
+router.post('/ai/pricing/apply', (0, rbac_1.requireRole)(['outlet_manager']), MenuAIController.applyPricing);
+router.get('/engineering/matrix', (0, rbac_1.requireRole)(['outlet_manager', 'chain_owner']), MenuController.getMenuMatrix);
 exports.default = router;

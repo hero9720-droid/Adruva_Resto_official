@@ -24,5 +24,13 @@ router.post('/master-menu/items', MasterMenuController.createMasterMenuItem);
 router.get('/pnl-analysis', ChainController.getChainPnLAnalysis);
 router.patch('/settings', ChainController.updateChainSettings);
 router.get('/details', ChainController.getChainDetails);
+router.get('/inventory/global', ChainController.getGlobalInventory);
+router.get('/performance', ChainController.getChainPerformance);
+
+// Franchise & Royalty Management
+router.get('/franchise/overview', ChainController.getFranchiseOverview);
+router.post('/franchise/invoices/generate', ChainController.generateRoyaltyInvoices);
+router.get('/franchise/settlements', ChainController.getChainSettlements);
+router.post('/franchise/settlements/calculate', ChainController.runMonthlySettlement);
 
 export default router;

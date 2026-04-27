@@ -4,6 +4,7 @@ exports.initWebSocket = initWebSocket;
 exports.emitToOutlet = emitToOutlet;
 exports.emitToKitchen = emitToKitchen;
 exports.emitToBilling = emitToBilling;
+exports.emitToOrder = emitToOrder;
 exports.emitToStaff = emitToStaff;
 const socket_io_1 = require("socket.io");
 const redis_adapter_1 = require("@socket.io/redis-adapter");
@@ -39,14 +40,30 @@ async function initWebSocket(httpServer) {
     });
     io.on('connection', (socket) => {
         const { outlet_id, staff_id, role } = socket.data.user;
-        logger_1.logger.info(`Staff connected: ${staff_id} to outlet: ${outlet_id}`);
-        // All outlet staff join the outlet room
+        logger_1.logger.info(`Staff connected: ${staff_id} to outlet: ${outlet_id} (Role: ${role})`);
+        // All outlet staff join the base outlet room
         socket.join(`outlet:${outlet_id}`);
-        // Role-specific rooms for targeted events
-        if (role === 'kitchen')
+        // Automatic joining based on role
+        if (role === 'kitchen' || role === 'outlet_manager' || role === 'admin') {
             socket.join(`outlet:${outlet_id}:kitchen`);
-        if (role === 'cashier')
+        }
+        if (role === 'cashier' || role === 'outlet_manager' || role === 'admin') {
             socket.join(`outlet:${outlet_id}:billing`);
+        }
+        // Support manual room joining from frontend (if needed for specific views)
+        socket.on('join', (room) => {
+            // Staff manual join
+            if (['kitchen', 'billing', 'pos'].includes(room) && role !== 'guest') {
+                const fullRoom = `outlet:${outlet_id}:${room === 'pos' ? 'billing' : room}`;
+                socket.join(fullRoom);
+                logger_1.logger.info(`Staff ${staff_id} manually joined ${fullRoom}`);
+            }
+            // Guest manual join to specific order
+            if (room.startsWith('order:')) {
+                socket.join(room);
+                logger_1.logger.info(`Guest/Staff joined ${room}`);
+            }
+        });
         // Individual staff room for personal notifications
         socket.join(`staff:${staff_id}`);
     });
@@ -64,6 +81,10 @@ function emitToKitchen(outlet_id, event, data) {
 function emitToBilling(outlet_id, event, data) {
     if (io)
         io.to(`outlet:${outlet_id}:billing`).emit(event, data);
+}
+function emitToOrder(order_id, event, data) {
+    if (io)
+        io.to(`order:${order_id}`).emit(event, data);
 }
 function emitToStaff(staff_id, event, data) {
     if (io)

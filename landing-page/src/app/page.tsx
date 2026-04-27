@@ -132,12 +132,12 @@ export default function LandingPage() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
             {[
-              { title: 'Omni-Channel POS', desc: 'Dine-in, Takeaway, and Delivery orders handled via a single, low-latency interface.', icon: Store, color: 'text-indigo-400' },
-              { title: 'Kitchen Intelligence', desc: 'AI-driven sequence management and real-time prep tracking for zero order errors.', icon: ChefHat, color: 'text-orange-400' },
-              { title: 'Master Inventory', desc: 'Centralized recipe management and automated stock deduction with predictive alerts.', icon: Package, color: 'text-emerald-400' },
-              { title: 'Global Chain Ops', desc: 'Manage 100+ locations. Sync menus, monitor staff, and view aggregated ROI instantly.', icon: Globe, color: 'text-blue-400' },
-              { title: 'Customer Experience', desc: 'High-fidelity QR ordering with instant loyalty points and personalized rewards.', icon: Users, color: 'text-pink-400' },
-              { title: 'Command Analytics', desc: 'Enterprise-grade BI tools to identify trends, optimize waste, and maximize margin.', icon: BarChart3, color: 'text-purple-400' },
+              { title: 'AI Menu Engineering', desc: 'Auto-classify items into Stars, Dogs, and Plowhorses using the BCG Matrix Engine.', icon: ChefHat, color: 'text-orange-400' },
+              { title: 'Sustainability ESG', desc: 'Track CO2 and water impact for every waste event. Automated ESG reporting for global brands.', icon: Cloud, color: 'text-emerald-400' },
+              { title: 'Predictive Waitlist', desc: 'AI-driven queue management with precise wait-time estimates and automated SMS alerts.', icon: Clock, color: 'text-blue-400' },
+              { title: 'Master Command Center', desc: 'A unified "War Room" HUD for chain owners to monitor financials, health, and sentiment.', icon: BarChart3, color: 'text-purple-400' },
+              { title: 'Sentiment Analytics', desc: 'Aggregated reviews from all platforms with AI-generated responses and brand reputation scores.', icon: MessageSquare, color: 'text-pink-400' },
+              { title: 'Enterprise Loyalty', desc: 'Dynamic Bronze-to-Platinum tiering with automated point multipliers and retention AI.', icon: Star, color: 'text-amber-400' },
             ].map((f, i) => (
               <motion.div 
                 key={f.title} 
@@ -180,7 +180,7 @@ export default function LandingPage() {
                   <p className="font-black text-white text-lg tracking-tight">4.9/5 Rating on G2</p>
                </div>
                <div className="space-y-6">
-                  {['Global Master Menu Sync', 'Multi-tenant RLS Security', 'Custom BI Reporting'].map(f => (
+                  {['AI-Powered BCG Menu Engineering', 'Unified ESG & Waste Tracking', 'Real-time Chain Command HUD'].map(f => (
                     <div key={f} className="flex items-center gap-4 text-white font-bold text-sm">
                        <CheckCircle2 className="h-5 w-5 text-indigo-300" /> {f}
                     </div>

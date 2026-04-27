@@ -1,6 +1,19 @@
 import { Request, Response } from 'express';
 import { db } from '../../lib/db';
 import { AppError } from '../../lib/errors';
+import * as DynamicService from './dynamic.service';
+
+// --- AI-DRIVEN DYNAMIC PRICING ---
+
+export async function getDynamicRecommendations(req: Request, res: Response) {
+  const result = await DynamicService.getPriceRecommendations(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function syncDynamicPrices(req: Request, res: Response) {
+  await DynamicService.calculateDynamicPricing(req.user.outlet_id);
+  res.json({ success: true, message: 'Dynamic prices synchronized' });
+}
 
 export async function createPricingRule(req: Request, res: Response) {
   const chain_id = req.user.chain_id;
@@ -78,4 +91,13 @@ export async function recalculateDynamicPrices(req: Request, res: Response) {
   }
 
   res.json({ success: true, message: `Recalculated prices for ${updatedCount} items.` });
+}
+
+export async function getPricingHistory(req: Request, res: Response) {
+  const chain_id = req.user.chain_id;
+  const result = await db.query(
+    'SELECT * FROM pricing_rules WHERE chain_id = $1 ORDER BY created_at DESC',
+    [chain_id]
+  );
+  res.json({ success: true, data: result.rows });
 }

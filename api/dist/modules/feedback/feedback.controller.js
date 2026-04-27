@@ -1,5 +1,44 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getReputationFeed = getReputationFeed;
+exports.approveSocialReply = approveSocialReply;
+exports.ingestMockSocial = ingestMockSocial;
+exports.getReputationInsights = getReputationInsights;
+exports.analyzeFeedback = analyzeFeedback;
+exports.replyToFeedback = replyToFeedback;
 exports.submitFeedback = submitFeedback;
 exports.getOutletFeedback = getOutletFeedback;
 exports.getFeedbackStats = getFeedbackStats;
@@ -7,6 +46,36 @@ const db_1 = require("../../lib/db");
 const errors_1 = require("../../lib/errors");
 const db_2 = require("../../lib/db");
 const notifications_1 = require("../../lib/notifications");
+const ReputationService = __importStar(require("./reputation.service"));
+const SentimentService = __importStar(require("./sentiment.service"));
+// --- SOCIAL REPUTATION & SENTIMENT BRIDGE ---
+async function getReputationFeed(req, res) {
+    const result = await SentimentService.getReputationFeed(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+async function approveSocialReply(req, res) {
+    const { reply } = req.body;
+    const result = await SentimentService.approveAndSendReply(req.params.id, reply);
+    res.json({ success: true, data: result });
+}
+async function ingestMockSocial(req, res) {
+    await SentimentService.processExternalMention(req.user.outlet_id, req.body);
+    res.json({ success: true, message: 'Mock mention ingested' });
+}
+// --- REPUTATION & SENTIMENT ---
+async function getReputationInsights(req, res) {
+    const result = await ReputationService.getReputationInsights(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+async function analyzeFeedback(req, res) {
+    const result = await ReputationService.analyzeFeedback(req.params.id);
+    res.json({ success: true, data: result });
+}
+async function replyToFeedback(req, res) {
+    const { content } = req.body;
+    await ReputationService.postReply(req.params.id, content);
+    res.json({ success: true, message: 'Reply posted successfully.' });
+}
 async function submitFeedback(req, res) {
     const { outlet_id, bill_id, customer_id, rating_food, rating_service, rating_ambience, comment } = req.body;
     if (!outlet_id || !rating_food)

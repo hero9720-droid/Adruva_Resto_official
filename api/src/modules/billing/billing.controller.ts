@@ -342,7 +342,7 @@ export async function getInvoice(req: Request, res: Response) {
     const bill = billRes.rows[0];
 
     const itemsRes = await client.query(
-      `SELECT oi.*, m.name as item_name 
+      `SELECT oi.*, m.name as item_name, m.hsn_code
        FROM order_items oi 
        JOIN menu_items m ON m.id = oi.menu_item_id
        WHERE oi.order_id = $1`,

@@ -3,7 +3,8 @@
 import { useState } from 'react';
 import { 
   ShieldCheck, FileText, AlertTriangle, CheckCircle2, 
-  Download, Plus, TrendingUp, ClipboardList, Loader2, XCircle 
+  Download, Plus, TrendingUp, ClipboardList, Loader2, XCircle,
+  Wallet, Calculator, FileCheck
 } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +20,16 @@ import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
-import { useComplianceHistory, useComplianceStats, useSubmitAudit } from '@/hooks/useCompliance';
+import { 
+  useComplianceHistory, 
+  useComplianceStats, 
+  useSubmitAudit,
+  useTaxSummary,
+  useHSNReport,
+  useUpdateHSN
+} from '@/hooks/useCompliance';
 import { useToast } from '@/hooks/use-toast';
+import { TaxationSection } from './TaxationSection';
 
 const AUDIT_TYPES = [
   'Daily Hygiene Check',
@@ -34,6 +43,7 @@ const AUDIT_TYPES = [
 ];
 
 export default function CompliancePage() {
+  const [activeTab, setActiveTab] = useState('safety');
   const { data: logs, isLoading } = useComplianceHistory();
   const { data: stats } = useComplianceStats();
   const submitAudit = useSubmitAudit();
@@ -98,6 +108,23 @@ export default function CompliancePage() {
           <p className="text-slate-500 font-medium text-lg mt-1">FSSAI regulations, hygiene audits, and safety logs.</p>
         </div>
         <div className="flex gap-4">
+           <Button 
+             variant="outline" 
+             className={cn("border-border font-black rounded-2xl h-14 px-8 tracking-widest uppercase transition-all", activeTab === 'safety' ? "bg-primary text-white border-none shadow-glow" : "text-slate-500 hover:bg-secondary")}
+             onClick={() => setActiveTab('safety')}
+           >
+             Hygiene & Safety
+           </Button>
+           <Button 
+             variant="outline" 
+             className={cn("border-border font-black rounded-2xl h-14 px-8 tracking-widest uppercase transition-all", activeTab === 'tax' ? "bg-primary text-white border-none shadow-glow" : "text-slate-500 hover:bg-secondary")}
+             onClick={() => setActiveTab('tax')}
+           >
+             Taxation & GST
+           </Button>
+        </div>
+
+        <div className="flex gap-4">
           <Button 
             variant="outline" 
             className="border-border text-slate-500 hover:bg-secondary font-black rounded-2xl h-14 px-8 tracking-widest uppercase shadow-soft"
@@ -116,155 +143,161 @@ export default function CompliancePage() {
         </div>
       </div>
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
-          <CardContent className="p-8 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-3xl">
-                <ShieldCheck className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">FSSAI License</p>
-                <p className="text-2xl font-black text-foreground tracking-tighter uppercase">Active & Valid</p>
-              </div>
-            </div>
-            <Badge className="bg-emerald-500 text-white font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none">Verified</Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
-          <CardContent className="p-8 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className={cn("p-4 rounded-3xl", pendingCount > 0 ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500")}>
-                <AlertTriangle className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Critical Failures (30d)</p>
-                <p className="text-2xl font-black text-foreground tracking-tighter">{stats?.critical_failures || 0}</p>
-              </div>
-            </div>
-            <Badge className={cn("font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none", pendingCount > 0 ? "bg-red-500/10 text-red-500" : "bg-secondary text-slate-500")}>
-              {pendingCount > 0 ? 'Needs Action' : 'On Schedule'}
-            </Badge>
-          </CardContent>
-        </Card>
-
-        <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
-          <CardContent className="p-8 flex items-center justify-between">
-            <div className="flex items-center gap-6">
-              <div className="p-4 bg-primary/10 text-primary rounded-3xl">
-                <TrendingUp className="h-8 w-8" />
-              </div>
-              <div>
-                <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Avg. Score (30d)</p>
-                <p className="text-2xl font-black text-foreground tracking-tighter">
-                  {avgScore !== null ? `${avgScore}/100` : 'No Data'}
-                </p>
-              </div>
-            </div>
-            <Badge className="bg-primary/10 text-primary font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none">
-              {totalAudits} Audits
-            </Badge>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Audit Log Table + Required Docs */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <Card className="lg:col-span-2 border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="p-10 border-b border-border">
-            <CardTitle className="text-2xl font-black text-foreground tracking-tighter uppercase">Operational Logs</CardTitle>
-            <CardDescription className="text-slate-500 font-medium">Hygiene checks, pest control, and equipment maintenance.</CardDescription>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow className="bg-secondary/50 border-border">
-                  <TableHead className="px-10 py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Audit Type</TableHead>
-                  <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Auditor</TableHead>
-                  <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Score</TableHead>
-                  <TableHead className="px-10 py-5 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-20 text-center">
-                      <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!isLoading && logs?.map((log: any) => (
-                  <TableRow key={log.id} className="border-border hover:bg-secondary/30 transition-colors">
-                    <TableCell className="px-10 py-6">
-                      <div className="flex items-center gap-3">
-                        {log.score >= 70 
-                          ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> 
-                          : <XCircle className="h-4 w-4 text-red-500 shrink-0" />
-                        }
-                        <span className="font-black text-foreground uppercase text-xs">{log.standard_title || 'General Audit'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell className="py-6 font-bold text-slate-500 text-xs">{log.auditor_name || 'System'}</TableCell>
-                    <TableCell className="py-6">
-                      <Badge className={cn(
-                        "border-none font-black text-[9px] uppercase tracking-tighter",
-                        log.score >= 70 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
-                      )}>
-                        {log.score}/100
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="px-10 py-6 text-right font-black text-slate-400 text-xs uppercase">
-                      {new Date(log.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </TableCell>
-                  </TableRow>
-                ))}
-                {!isLoading && (!logs || logs.length === 0) && (
-                  <TableRow>
-                    <TableCell colSpan={4} className="py-20 text-center">
-                      <ClipboardList className="h-10 w-10 text-slate-300 mx-auto mb-4" />
-                      <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No audit logs found.</p>
-                      <p className="text-slate-400 text-xs mt-1">Click "New Audit Entry" to log your first audit.</p>
-                    </TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-
-        {/* Required Documents Panel */}
-        <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
-          <CardHeader className="p-8 border-b border-border">
-            <CardTitle className="text-xl font-black text-foreground tracking-tighter uppercase">Required Docs</CardTitle>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
-            {[
-              { name: 'FSSAI License', status: 'valid', expiry: 'Dec 2026' },
-              { name: 'GST Registration', status: 'valid', expiry: 'N/A' },
-              { name: 'Health License', status: 'valid', expiry: 'Mar 2027' },
-              { name: 'Fire Safety NOC', status: 'review', expiry: 'Jun 2026' },
-            ].map((doc) => (
-              <div key={doc.name} className="p-4 bg-secondary/50 rounded-2xl border border-border flex items-center justify-between group hover:bg-secondary transition-colors">
-                <div className="flex items-center gap-3">
-                  <FileText className={cn("h-4 w-4", doc.status === 'valid' ? 'text-emerald-500' : 'text-orange-500')} />
+      {activeTab === 'safety' ? (
+        <>
+          {/* Stats Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
+              <CardContent className="p-8 flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="p-4 bg-emerald-500/10 text-emerald-500 rounded-3xl">
+                    <ShieldCheck className="h-8 w-8" />
+                  </div>
                   <div>
-                    <span className="text-sm font-bold text-foreground">{doc.name}</span>
-                    <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Expires: {doc.expiry}</p>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">FSSAI License</p>
+                    <p className="text-2xl font-black text-foreground tracking-tighter uppercase">Active & Valid</p>
                   </div>
                 </div>
-                <Badge className={cn(
-                  "border-none font-black text-[8px] uppercase tracking-tight",
-                  doc.status === 'valid' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'
-                )}>
-                  {doc.status === 'valid' ? 'Valid' : 'Review'}
+                <Badge className="bg-emerald-500 text-white font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none">Verified</Badge>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
+              <CardContent className="p-8 flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className={cn("p-4 rounded-3xl", pendingCount > 0 ? "bg-red-500/10 text-red-500" : "bg-orange-500/10 text-orange-500")}>
+                    <AlertTriangle className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Critical Failures (30d)</p>
+                    <p className="text-2xl font-black text-foreground tracking-tighter">{stats?.critical_failures || 0}</p>
+                  </div>
+                </div>
+                <Badge className={cn("font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none", pendingCount > 0 ? "bg-red-500/10 text-red-500" : "bg-secondary text-slate-500")}>
+                  {pendingCount > 0 ? 'Needs Action' : 'On Schedule'}
                 </Badge>
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
+              </CardContent>
+            </Card>
+
+            <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
+              <CardContent className="p-8 flex items-center justify-between">
+                <div className="flex items-center gap-6">
+                  <div className="p-4 bg-primary/10 text-primary rounded-3xl">
+                    <TrendingUp className="h-8 w-8" />
+                  </div>
+                  <div>
+                    <p className="text-[11px] font-black text-slate-500 uppercase tracking-widest">Avg. Score (30d)</p>
+                    <p className="text-2xl font-black text-foreground tracking-tighter">
+                      {avgScore !== null ? `${avgScore}/100` : 'No Data'}
+                    </p>
+                  </div>
+                </div>
+                <Badge className="bg-primary/10 text-primary font-black text-[10px] uppercase px-4 py-1.5 rounded-xl border-none">
+                  {totalAudits} Audits
+                </Badge>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Audit Log Table + Required Docs */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <Card className="lg:col-span-2 border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
+              <CardHeader className="p-10 border-b border-border">
+                <CardTitle className="text-2xl font-black text-foreground tracking-tighter uppercase">Operational Logs</CardTitle>
+                <CardDescription className="text-slate-500 font-medium">Hygiene checks, pest control, and equipment maintenance.</CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow className="bg-secondary/50 border-border">
+                      <TableHead className="px-10 py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Audit Type</TableHead>
+                      <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Auditor</TableHead>
+                      <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-slate-500">Score</TableHead>
+                      <TableHead className="px-10 py-5 text-right text-[10px] font-black uppercase tracking-widest text-slate-500">Date</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {isLoading && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-20 text-center">
+                          <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                        </TableCell>
+                      </TableRow>
+                    )}
+                    {!isLoading && logs?.map((log: any) => (
+                      <TableRow key={log.id} className="border-border hover:bg-secondary/30 transition-colors">
+                        <TableCell className="px-10 py-6">
+                          <div className="flex items-center gap-3">
+                            {log.score >= 70 
+                              ? <CheckCircle2 className="h-4 w-4 text-emerald-500 shrink-0" /> 
+                              : <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                            }
+                            <span className="font-black text-foreground uppercase text-xs">{log.standard_title || 'General Audit'}</span>
+                          </div>
+                        </TableCell>
+                        <TableCell className="py-6 font-bold text-slate-500 text-xs">{log.auditor_name || 'System'}</TableCell>
+                        <TableCell className="py-6">
+                          <Badge className={cn(
+                            "border-none font-black text-[9px] uppercase tracking-tighter",
+                            log.score >= 70 ? 'bg-emerald-500/10 text-emerald-500' : 'bg-red-500/10 text-red-500'
+                          )}>
+                            {log.score}/100
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-10 py-6 text-right font-black text-slate-400 text-xs uppercase">
+                          {new Date(log.created_at).toLocaleDateString('en-IN', { day: '2-digit', month: 'short', year: 'numeric' })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    {!isLoading && (!logs || logs.length === 0) && (
+                      <TableRow>
+                        <TableCell colSpan={4} className="py-20 text-center">
+                          <ClipboardList className="h-10 w-10 text-slate-300 mx-auto mb-4" />
+                          <p className="text-slate-400 font-black uppercase text-xs tracking-widest">No audit logs found.</p>
+                          <p className="text-slate-400 text-xs mt-1">Click "New Audit Entry" to log your first audit.</p>
+                        </TableCell>
+                      </TableRow>
+                    )}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+
+            {/* Required Documents Panel */}
+            <Card className="border-border shadow-soft bg-card rounded-[2.5rem] overflow-hidden">
+              <CardHeader className="p-8 border-b border-border">
+                <CardTitle className="text-xl font-black text-foreground tracking-tighter uppercase">Required Docs</CardTitle>
+              </CardHeader>
+              <CardContent className="p-6 space-y-4">
+                {[
+                  { name: 'FSSAI License', status: 'valid', expiry: 'Dec 2026' },
+                  { name: 'GST Registration', status: 'valid', expiry: 'N/A' },
+                  { name: 'Health License', status: 'valid', expiry: 'Mar 2027' },
+                  { name: 'Fire Safety NOC', status: 'review', expiry: 'Jun 2026' },
+                ].map((doc) => (
+                  <div key={doc.name} className="p-4 bg-secondary/50 rounded-2xl border border-border flex items-center justify-between group hover:bg-secondary transition-colors">
+                    <div className="flex items-center gap-3">
+                      <FileText className={cn("h-4 w-4", doc.status === 'valid' ? 'text-emerald-500' : 'text-orange-500')} />
+                      <div>
+                        <span className="text-sm font-bold text-foreground">{doc.name}</span>
+                        <p className="text-[9px] font-black text-slate-400 uppercase tracking-widest">Expires: {doc.expiry}</p>
+                      </div>
+                    </div>
+                    <Badge className={cn(
+                      "border-none font-black text-[8px] uppercase tracking-tight",
+                      doc.status === 'valid' ? 'bg-emerald-500/10 text-emerald-500' : 'bg-orange-500/10 text-orange-500'
+                    )}>
+                      {doc.status === 'valid' ? 'Valid' : 'Review'}
+                    </Badge>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+          </div>
+        </>
+      ) : (
+        <TaxationSection />
+      )}
 
       {/* New Audit Entry Modal */}
       <Dialog open={modalOpen} onOpenChange={setModalOpen}>

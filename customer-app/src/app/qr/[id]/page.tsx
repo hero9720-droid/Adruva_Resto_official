@@ -12,7 +12,8 @@ export default function QRResolverPage({ params }: { params: { id: string } }) {
   useEffect(() => {
     const resolveQR = async () => {
       try {
-        const res = await fetch(`http://localhost:3000/api/v1/qr/resolve/${params.id}`);
+        const baseUrl = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:4000/api/v1';
+        const res = await fetch(`${baseUrl}/qr/resolve/${params.id}`);
         const data = await res.json();
 
         if (data.success) {
@@ -24,8 +25,13 @@ export default function QRResolverPage({ params }: { params: { id: string } }) {
             space_id,
             space_name,
             type,
+            outlet_id: data.data.outlet_id,
             scanned_at: new Date().toISOString()
           }));
+          
+          if (data.data.guest_token) {
+            localStorage.setItem('rms_access_token', data.data.guest_token);
+          }
 
           // Redirect to the outlet's digital menu
           router.replace(`/${outlet_slug}`);

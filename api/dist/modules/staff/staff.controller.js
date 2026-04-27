@@ -1,9 +1,53 @@
 "use strict";
+var __createBinding = (this && this.__createBinding) || (Object.create ? (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    var desc = Object.getOwnPropertyDescriptor(m, k);
+    if (!desc || ("get" in desc ? !m.__esModule : desc.writable || desc.configurable)) {
+      desc = { enumerable: true, get: function() { return m[k]; } };
+    }
+    Object.defineProperty(o, k2, desc);
+}) : (function(o, m, k, k2) {
+    if (k2 === undefined) k2 = k;
+    o[k2] = m[k];
+}));
+var __setModuleDefault = (this && this.__setModuleDefault) || (Object.create ? (function(o, v) {
+    Object.defineProperty(o, "default", { enumerable: true, value: v });
+}) : function(o, v) {
+    o["default"] = v;
+});
+var __importStar = (this && this.__importStar) || (function () {
+    var ownKeys = function(o) {
+        ownKeys = Object.getOwnPropertyNames || function (o) {
+            var ar = [];
+            for (var k in o) if (Object.prototype.hasOwnProperty.call(o, k)) ar[ar.length] = k;
+            return ar;
+        };
+        return ownKeys(o);
+    };
+    return function (mod) {
+        if (mod && mod.__esModule) return mod;
+        var result = {};
+        if (mod != null) for (var k = ownKeys(mod), i = 0; i < k.length; i++) if (k[i] !== "default") __createBinding(result, mod, k[i]);
+        __setModuleDefault(result, mod);
+        return result;
+    };
+})();
 Object.defineProperty(exports, "__esModule", { value: true });
+exports.getEPILeaderboard = getEPILeaderboard;
+exports.getStaffInsights = getStaffInsights;
+exports.triggerEPISync = triggerEPISync;
+exports.dutyClockIn = dutyClockIn;
+exports.dutyClockOut = dutyClockOut;
+exports.getLiveRoster = getLiveRoster;
+exports.getTerritoryOverview = getTerritoryOverview;
+exports.submitFieldReport = submitFieldReport;
+exports.submitTerritoryReport = submitTerritoryReport;
+exports.getGamificationLeaderboard = getGamificationLeaderboard;
+exports.getMyPerformanceStats = getMyPerformanceStats;
 exports.getStaff = getStaff;
 exports.createStaff = createStaff;
-exports.clockIn = clockIn;
-exports.clockOut = clockOut;
+exports.attendanceClockIn = attendanceClockIn;
+exports.attendanceClockOut = attendanceClockOut;
 exports.getAttendance = getAttendance;
 exports.getSchedule = getSchedule;
 exports.startShift = startShift;
@@ -17,6 +61,60 @@ exports.getShiftsToVerify = getShiftsToVerify;
 const db_1 = require("../../lib/db");
 const errors_1 = require("../../lib/errors");
 const audit_1 = require("../../lib/audit");
+const PerformanceService = __importStar(require("./performance.service"));
+const TerritoryService = __importStar(require("./territory.service"));
+const EPIService = __importStar(require("./epi.service"));
+const DutyService = __importStar(require("./duty.service"));
+// --- EMPLOYEE PERFORMANCE INDEX (EPI) ---
+async function getEPILeaderboard(req, res) {
+    const result = await EPIService.getLeaderboard(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+async function getStaffInsights(req, res) {
+    const result = await EPIService.getStaffInsights(req.params.id);
+    res.json({ success: true, data: result });
+}
+async function triggerEPISync(req, res) {
+    const date = req.query.date || new Date().toISOString().split('T')[0];
+    await EPIService.calculateDailyEPI(req.user.outlet_id, date);
+    res.json({ success: true, message: 'EPI synced' });
+}
+// --- DUTY CYCLES & ATTENDANCE ---
+async function dutyClockIn(req, res) {
+    const result = await DutyService.clockIn(req.user.staff_id, req.user.outlet_id, req.body.method);
+    res.json({ success: true, data: result });
+}
+async function dutyClockOut(req, res) {
+    const result = await DutyService.clockOut(req.user.staff_id, req.user.outlet_id, req.body.method);
+    res.json({ success: true, data: result });
+}
+async function getLiveRoster(req, res) {
+    const result = await DutyService.getLiveRoster(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+// --- TERRITORY & AREA MANAGEMENT ---
+async function getTerritoryOverview(req, res) {
+    const result = await TerritoryService.getTerritoryOverview(req.user.staff_id);
+    res.json({ success: true, data: result });
+}
+async function submitFieldReport(req, res) {
+    const result = await TerritoryService.createFieldReport(req.user.staff_id, req.body.outlet_id, req.body);
+    res.json({ success: true, data: result });
+}
+async function submitTerritoryReport(req, res) {
+    // Alias for territory report
+    return submitFieldReport(req, res);
+}
+// --- GAMIFICATION & LEADERBOARD ---
+async function getGamificationLeaderboard(req, res) {
+    const result = await PerformanceService.getLeaderboard(req.user.outlet_id);
+    res.json({ success: true, data: result });
+}
+async function getMyPerformanceStats(req, res) {
+    const staff_id = req.user.staff_id;
+    const result = await PerformanceService.getStaffPerformanceStats(staff_id);
+    res.json({ success: true, data: result });
+}
 // --- STAFF LIST ---
 async function getStaff(req, res) {
     const outlet_id = req.user.outlet_id;
@@ -43,7 +141,7 @@ async function createStaff(req, res) {
     res.status(201).json({ success: true, data: result });
 }
 // --- ATTENDANCE (clock_in/clock_out per day) ---
-async function clockIn(req, res) {
+async function attendanceClockIn(req, res) {
     const outlet_id = req.user.outlet_id;
     const staff_id = req.user.staff_id;
     const today = new Date().toISOString().split('T')[0];
@@ -58,7 +156,7 @@ async function clockIn(req, res) {
     });
     res.status(201).json({ success: true, data: result });
 }
-async function clockOut(req, res) {
+async function attendanceClockOut(req, res) {
     const outlet_id = req.user.outlet_id;
     const staff_id = req.user.staff_id;
     const today = new Date().toISOString().split('T')[0];

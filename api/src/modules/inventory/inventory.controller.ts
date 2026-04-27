@@ -1,6 +1,124 @@
 import { Request, Response } from 'express';
 import { withOutletContext, db } from '../../lib/db';
 import { AppError } from '../../lib/errors';
+import * as InventoryAI from './inventory.ai';
+import * as InventoryAIServiceV3 from './inventory.ai.service';
+import * as ProcurementService from './procurement.service';
+import * as SustainabilityService from './sustainability.service';
+
+// --- SUSTAINABILITY & WASTE IMPACT ---
+
+export async function logWasteImpact(req: Request, res: Response) {
+  const result = await SustainabilityService.logWasteWithImpact(req.user.outlet_id, req.body);
+  res.json({ success: true, data: result });
+}
+
+export async function getSustainabilityReport(req: Request, res: Response) {
+  const result = await SustainabilityService.getChainSustainabilityReport(req.user.chain_id);
+  res.json({ success: true, data: result });
+}
+
+// --- AI CORE V3: WASTAGE & PREDICTION ---
+
+export async function getWastageRisks(req: Request, res: Response) {
+  const risks = await InventoryAIServiceV3.getWastageRiskAlerts(req.user.outlet_id);
+  res.json({ success: true, data: risks });
+}
+
+export async function getWastageAnalytics(req: Request, res: Response) {
+  const stats = await InventoryAIServiceV3.generateWastageAnalytics(req.user.outlet_id);
+  res.json({ success: true, data: stats });
+}
+
+export async function runPredictiveUsage(req: Request, res: Response) {
+  const result = await InventoryAIServiceV3.runPredictiveEngine(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+import * as SupplyService from './supply.service';
+import * as RFQService from '../procurement/rfq.service';
+import * as LedgerService from './ledger.service';
+
+// --- INVENTORY LEDGER & AUDIT ---
+
+export async function getAuditTrail(req: Request, res: Response) {
+  const result = await LedgerService.getAuditTrail(req.params.id);
+  res.json({ success: true, data: result });
+}
+
+export async function reconcileInventory(req: Request, res: Response) {
+  const result = await LedgerService.reconcileStock(req.user.outlet_id, req.user.staff_id, req.body.counts);
+  res.json({ success: true, data: result });
+}
+
+// --- VENDOR RFQ (REQUEST FOR QUOTE) ---
+
+export async function createRFQ(req: Request, res: Response) {
+  const result = await RFQService.createRFQ(req.user.outlet_id, req.body);
+  res.status(201).json({ success: true, data: result });
+}
+
+export async function getRFQWithBids(req: Request, res: Response) {
+  const result = await RFQService.getRFQDetails(req.params.id);
+  res.json({ success: true, data: result });
+}
+
+export async function submitVendorBid(req: Request, res: Response) {
+  // In a real app, this would use a Supplier JWT
+  const result = await RFQService.submitBid(req.body.supplier_id, req.params.id, req.body);
+  res.json({ success: true, data: result });
+}
+
+// --- CENTRAL SUPPLY CHAIN ---
+
+export async function getSupplyOverview(req: Request, res: Response) {
+  const result = await SupplyService.getCentralSupplyOverview(req.user.chain_id);
+  res.json({ success: true, data: result });
+}
+
+export async function createProductionBatch(req: Request, res: Response) {
+  const result = await SupplyService.startProduction(req.body.base_kitchen_id, req.body);
+  res.json({ success: true, data: result });
+}
+
+export async function dispatchBatchIndents(req: Request, res: Response) {
+  await SupplyService.dispatchIndents(req.body.batch_id, req.body.indent_ids);
+  res.json({ success: true, message: 'Indents dispatched successfully' });
+}
+
+// --- PROCUREMENT ---
+
+export async function getProcurementSuggestions(req: Request, res: Response) {
+  const suggestions = await ProcurementService.getProcurementSuggestions(req.user.outlet_id);
+  res.json({ success: true, data: suggestions });
+}
+
+export async function generateAutoPOs(req: Request, res: Response) {
+  const result = await ProcurementService.generateAutoPOs(req.user.outlet_id, req.user.id);
+  res.json({ success: true, data: result });
+}
+
+// --- AI FORECASTING ---
+
+export async function triggerForecast(req: Request, res: Response) {
+  const outlet_id = req.user.outlet_id;
+  const { date } = req.body; 
+
+  if (date) {
+    await InventoryAI.updateDailyConsumption(outlet_id, date);
+  } else {
+    const today = new Date().toISOString().split('T')[0];
+    await InventoryAI.updateDailyConsumption(outlet_id, today);
+  }
+
+  await InventoryAI.runForecaster(outlet_id);
+  res.json({ success: true, message: 'Forecast engine ran successfully' });
+}
+
+export async function getPredictions(req: Request, res: Response) {
+  const outlet_id = req.user.outlet_id;
+  const predictions = await InventoryAI.getStockPredictions(outlet_id);
+  res.json({ success: true, data: predictions });
+}
 
 // --- INGREDIENTS ---
 

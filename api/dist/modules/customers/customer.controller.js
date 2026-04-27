@@ -7,6 +7,7 @@ exports.earnLoyaltyPoints = earnLoyaltyPoints;
 exports.redeemLoyaltyPoints = redeemLoyaltyPoints;
 exports.getCustomerHistory = getCustomerHistory;
 exports.processReferral = processReferral;
+exports.getCustomerLoyaltyData = getCustomerLoyaltyData;
 exports.getSocialProof = getSocialProof;
 const db_1 = require("../../lib/db");
 const errors_1 = require("../../lib/errors");
@@ -62,8 +63,21 @@ async function earnLoyaltyPoints(req, res) {
             throw new errors_1.AppError(404, 'Bill not found', 'NOT_FOUND');
         // Fetch chain-wide loyalty earning rate (default 1pt / ₹100)
         const chainRes = await db_2.db.query('SELECT loyalty_config FROM chains WHERE id = $1', [chain_id]);
-        const earnRate = chainRes.rows[0]?.loyalty_config?.earn_rate_paise || 10000;
-        const points = Math.floor(billRes.rows[0].total_paise / earnRate);
+        const config = chainRes.rows[0]?.loyalty_config || {};
+        const earnRate = config.earn_rate_paise || 10000;
+        // Fetch customer current tier
+        const customer = await db_2.db.query('SELECT tier FROM customers WHERE id = $1', [customer_id]);
+        const tier = customer.rows[0]?.tier || 'bronze';
+        // Tier Multipliers
+        const multipliers = {
+            'bronze': 1,
+            'silver': 1.2,
+            'gold': 1.5,
+            'platinum': 2
+        };
+        const multiplier = multipliers[tier] || 1;
+        const basePoints = Math.floor(billRes.rows[0].total_paise / earnRate);
+        const points = Math.floor(basePoints * multiplier);
         if (points > 0) {
             // Update customer points (chain-level)
             await db_2.db.query(`UPDATE customers
@@ -74,10 +88,42 @@ async function earnLoyaltyPoints(req, res) {
              updated_at = NOW()
          WHERE id = $3`, [points, billRes.rows[0].total_paise, customer_id]);
             // Record in loyalty_transactions
-            await client.query(`INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, bill_id, type, points)
-         VALUES ($1, $2, $3, $4, 'earn', $5)`, [customer_id, chain_id, outlet_id, bill_id, points]);
+            await client.query(`INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, bill_id, type, points, tier_at_time, description)
+         VALUES ($1, $2, $3, $4, 'earn', $5, $6, $7)`, [customer_id, chain_id, outlet_id, bill_id, points, tier, `${multiplier}x multiplier applied for ${tier} tier`]);
+            // Auto-tier upgrade logic (Simple threshold based)
+            const updatedCustomer = await db_2.db.query('SELECT lifetime_spend_paise FROM customers WHERE id = $1', [customer_id]);
+            const totalSpent = updatedCustomer.rows[0].lifetime_spend_paise;
+            let newTier = tier;
+            if (totalSpent > 10000000)
+                newTier = 'platinum'; // 1L spent
+            else if (totalSpent > 5000000)
+                newTier = 'gold'; // 50k spent
+            else if (totalSpent > 2500000)
+                newTier = 'silver'; // 25k spent
+            if (newTier !== tier) {
+                await db_2.db.query('UPDATE customers SET tier = $1 WHERE id = $2', [newTier, customer_id]);
+            }
+            // --- Referral Completion Logic ---
+            const referrerCheck = await db_2.db.query('SELECT referred_by FROM customers WHERE id = $1 AND referred_by IS NOT NULL', [customer_id]);
+            if ((referrerCheck.rowCount ?? 0) > 0) {
+                const referrer_id = referrerCheck.rows[0].referred_by;
+                // Check if reward already issued
+                const alreadyIssued = await db_2.db.query("SELECT id FROM loyalty_transactions WHERE customer_id = $1 AND type = 'referral_bonus' AND description LIKE $2", [referrer_id, `%${customer_id}%`]);
+                if ((alreadyIssued.rowCount ?? 0) === 0) {
+                    const rewardConfig = await db_2.db.query('SELECT * FROM referral_rewards WHERE chain_id = $1 AND is_active = TRUE', [chain_id]);
+                    const config = rewardConfig.rows[0] || { referrer_points: 500, referee_points: 200, min_order_paise: 50000 };
+                    if (billRes.rows[0].total_paise >= config.min_order_paise) {
+                        // Reward Referrer
+                        await db_2.db.query('UPDATE customers SET loyalty_points = loyalty_points + $1 WHERE id = $2', [config.referrer_points, referrer_id]);
+                        await db_2.db.query("INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, type, points, description) VALUES ($1, $2, $3, 'referral_bonus', $4, $5)", [referrer_id, chain_id, outlet_id, config.referrer_points, `Referral bonus for inviting customer ${customer_id}`]);
+                        // Reward Referee (the one who just ordered)
+                        await db_2.db.query('UPDATE customers SET loyalty_points = loyalty_points + $1 WHERE id = $2', [config.referee_points, customer_id]);
+                        await db_2.db.query("INSERT INTO loyalty_transactions (customer_id, chain_id, outlet_id, type, points, description) VALUES ($1, $2, $3, 'referral_bonus', $4, $5)", [customer_id, chain_id, outlet_id, config.referee_points, `Welcome bonus for being referred`]);
+                    }
+                }
+            }
         }
-        return { points_earned: points };
+        return { points_earned: points, tier: tier };
     });
     res.json({ success: true, data: result });
 }
@@ -157,6 +203,19 @@ async function processReferral(req, res) {
         await db_2.db.query('UPDATE customers SET referred_by = $1 WHERE id = $2 AND referred_by IS NULL', [referrer_id, customer_id]);
     }
     res.json({ success: true, message: 'Referral processed' });
+}
+async function getCustomerLoyaltyData(req, res) {
+    const customer_id = req.user.customer_id || req.user.id; // Support both customer-auth and staff-on-behalf
+    const chain_id = req.user.chain_id;
+    const customer = await db_2.db.query('SELECT id, name, loyalty_points, tier, referral_code, lifetime_spend_paise FROM customers WHERE id = $1 AND chain_id = $2', [customer_id, chain_id]);
+    const transactions = await db_2.db.query('SELECT * FROM loyalty_transactions WHERE customer_id = $1 ORDER BY created_at DESC LIMIT 10', [customer_id]);
+    res.json({
+        success: true,
+        data: {
+            customer: customer.rows[0],
+            transactions: transactions.rows
+        }
+    });
 }
 async function getSocialProof(req, res) {
     const outlet_id = req.user.outlet_id;

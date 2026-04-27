@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const ComplianceController = __importStar(require("./compliance.controller"));
+const TaxController = __importStar(require("./tax.controller"));
 const auth_1 = require("../../middleware/auth");
 const router = (0, express_1.Router)();
 router.use(auth_1.verifyToken);
@@ -42,4 +43,8 @@ router.get('/standards/:chain_id', ComplianceController.getStandards);
 router.post('/:outlet_id/audits', ComplianceController.submitAudit);
 router.get('/:outlet_id/history', ComplianceController.getAuditHistory);
 router.get('/:outlet_id/stats', ComplianceController.getComplianceStats);
+// Tax Compliance
+router.get('/:outlet_id/tax-summary', TaxController.getTaxSummary);
+router.get('/:outlet_id/hsn-report', TaxController.getHSNReport);
+router.post('/:outlet_id/hsn-update', TaxController.updateHSNCodes);
 exports.default = router;

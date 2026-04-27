@@ -28,6 +28,7 @@ import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { useCart } from '@/hooks/useCart';
 import { useSocket } from '@/hooks/useSocket';
+import { useToast } from '@/hooks/use-toast';
 
 export default function DigitalMenu() {
   const { outletSlug } = useParams();
@@ -35,6 +36,7 @@ export default function DigitalMenu() {
   const tableId = searchParams.get('table');
   
   const { items, addItem, updateQuantity, getTotal, getItemCount, clearCart } = useCart();
+  const { toast } = useToast();
   
   const [menu, setMenu] = useState<any>(null);
   const [loading, setLoading] = useState(true);
@@ -47,6 +49,9 @@ export default function DigitalMenu() {
   const [showLogin, setShowLogin] = useState(false);
   const [showBooking, setShowBooking] = useState(false);
   const [loggingIn, setLoggingIn] = useState(false);
+  const [showWaitlist, setShowWaitlist] = useState(false);
+  const [waitlistLoading, setWaitlistLoading] = useState(false);
+  const [partySize, setPartySize] = useState(2);
 
   const [activeOrder, setActiveOrder] = useState<any>(null);
   const { socket } = useSocket(menu?.outlet?.id);
@@ -57,26 +62,37 @@ export default function DigitalMenu() {
   const [itemNotes, setItemNotes] = useState('');
 
   useEffect(() => {
-    if (socket) {
+    if (socket && activeOrder) {
+      socket.emit('join', `order:${activeOrder.id}`);
+      
+      socket.on('order:item_update', (updatedItem: any) => {
+         // Refresh order to show status updates on items
+         rehydrateActiveOrder(activeOrder.id, menu.outlet.id);
+      });
+
       socket.on('order:status_change', (updatedOrder: any) => {
-        if (activeOrder && updatedOrder.id === activeOrder.id) {
+        if (updatedOrder.id === activeOrder.id) {
           setActiveOrder(updatedOrder);
         }
       });
+      
       socket.on('item:ready', (item: any) => {
-        if (activeOrder && item.order_id === activeOrder.id) {
-          // You could add a more sophisticated notification here
-          console.log(`Your ${item.menu_item_name} is ready! 🍕`);
+        if (item.order_id === activeOrder.id) {
+          toast({
+            title: "ITEM READY",
+            description: `Your ${item.menu_item_name} is being served! 🍕`,
+          });
         }
       });
     }
     return () => {
       if (socket) {
+        socket.off('order:item_update');
         socket.off('order:status_change');
         socket.off('item:ready');
       }
     };
-  }, [socket, activeOrder]);
+  }, [socket, activeOrder?.id]);
 
   useEffect(() => {
     async function fetchMenu() {
@@ -228,15 +244,40 @@ export default function DigitalMenu() {
     </div>
   );
 
-  if (!menu) return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center p-8 text-center font-sans">
-      <div className="h-24 w-24 bg-card rounded-full shadow-none border border-border/10 flex items-center justify-center mb-6">
-        <MapPin className="h-10 w-10 text-primary" />
-      </div>
-      <h1 className="text-3xl font-black text-foreground mb-2 tracking-tight">Restaurant Not Found</h1>
-      <p className="text-muted-foreground font-bold mb-8 max-w-sm">We couldn't find a digital menu for this link. Please check the URL or scan the QR code again.</p>
     </div>
   );
+
+  const handleJoinWaitlist = async () => {
+    setWaitlistLoading(true);
+    try {
+      await api.post('/waitlist/public', {
+        outlet_id: menu.outlet.id,
+        customer_name: customer?.name || 'Guest',
+        phone: phone || customer?.phone,
+        party_size: partySize
+      });
+      toast({
+        title: "QUEUED!",
+        description: "You're on the list. We'll SMS you when your table is ready! 📲",
+      });
+      setShowWaitlist(false);
+    } catch (err) {
+      toast({
+        title: "Waitlist Full",
+        description: "Sorry, we're not accepting more entries right now.",
+        variant: "destructive"
+      });
+    } finally {
+      setWaitlistLoading(false);
+    }
+  };
+
+  const getTierInfo = (points: number) => {
+    if (points >= 5000) return { name: 'Platinum', color: 'bg-indigo-600', text: 'text-white' };
+    if (points >= 2000) return { name: 'Gold', color: 'bg-amber-400', text: 'text-black' };
+    if (points >= 500) return { name: 'Silver', color: 'bg-slate-300', text: 'text-black' };
+    return { name: 'Bronze', color: 'bg-orange-600', text: 'text-white' };
+  };
 
   return (
     <div className="min-h-screen bg-[#fcf8ff] pb-32 font-sans text-foreground">
@@ -267,13 +308,13 @@ export default function DigitalMenu() {
                 Rewards
              </button>
            ) : (
-             <div className="bg-yellow-400 px-4 py-3 rounded-2xl border-none text-[#1b1b24] flex items-center gap-3 shadow-2xl">
+             <div className={cn("px-4 py-3 rounded-2xl border-none flex items-center gap-3 shadow-2xl", getTierInfo(customer.loyalty_points).color)}>
                 <div className="flex flex-col">
-                   <span className="text-[8px] font-black uppercase leading-none opacity-40">Loyalty</span>
-                   <span className="text-sm font-black leading-none">{customer.loyalty_points} PTS</span>
+                   <span className={cn("text-[8px] font-black uppercase leading-none opacity-60", getTierInfo(customer.loyalty_points).text)}>{getTierInfo(customer.loyalty_points).name} Member</span>
+                   <span className={cn("text-sm font-black leading-none", getTierInfo(customer.loyalty_points).text)}>{customer.loyalty_points} PTS</span>
                 </div>
-                <div className="h-8 w-8 bg-black/5 rounded-lg flex items-center justify-center">
-                   <Star className="h-4 w-4 fill-current" />
+                <div className="h-8 w-8 bg-black/10 rounded-lg flex items-center justify-center">
+                   <Star className={cn("h-4 w-4 fill-current", getTierInfo(customer.loyalty_points).text)} />
                 </div>
              </div>
            )}
@@ -300,6 +341,23 @@ export default function DigitalMenu() {
              <span className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl"><Star className="h-4 w-4 fill-yellow-400 text-yellow-400" /> 4.8</span>
              <span className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl"><Clock className="h-4 w-4" /> 20-30 MIN</span>
              <span className="flex items-center gap-2 bg-white/5 px-3 py-2 rounded-xl"><MapPin className="h-4 w-4" /> {menu?.outlet?.city}</span>
+          </div>
+          
+          {/* Waitlist CTA */}
+          <div className="mt-8">
+             <button 
+               onClick={() => setShowWaitlist(true)}
+               className="group relative flex items-center gap-4 bg-white/10 backdrop-blur-3xl p-5 rounded-[2rem] border border-white/20 hover:bg-white/20 transition-all w-full md:w-auto"
+             >
+                <div className="h-12 w-12 bg-primary rounded-2xl flex items-center justify-center shadow-glow group-hover:scale-110 transition-transform">
+                   <Clock className="h-6 w-6 text-white" />
+                </div>
+                <div className="text-left">
+                   <p className="text-[9px] font-black text-primary uppercase tracking-widest leading-none mb-1">Queue Status</p>
+                   <p className="text-sm font-black text-white">Full House? Join our Digital Waitlist</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-white/40 ml-auto group-hover:translate-x-1 transition-transform" />
+             </button>
           </div>
         </div>
       </div>
@@ -572,6 +630,48 @@ export default function DigitalMenu() {
                    <span className="text-2xl tracking-tighter">₹{((selectedVariant ? selectedVariant.price_paise : selectedItemForMod.base_price_paise) + Object.values(itemModifiers).flat().reduce((s,m) => s + (m.extra_price_paise || 0), 0)) / 100}</span>
                 </Button>
               </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+      {/* Waitlist Modal */}
+      <AnimatePresence>
+        {showWaitlist && (
+          <div className="fixed inset-0 z-[120] flex items-center justify-center p-6 bg-[#1b1b24]/80 backdrop-blur-2xl">
+            <motion.div 
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              className="bg-white rounded-[3rem] p-10 max-w-sm w-full shadow-2xl text-center"
+            >
+               <div className="h-20 w-20 bg-primary/10 rounded-3xl flex items-center justify-center mx-auto mb-8">
+                  <Clock className="h-10 w-10 text-primary" />
+               </div>
+               <h3 className="text-3xl font-black text-[#1b1b24] tracking-tighter mb-4">Join Waitlist</h3>
+               <p className="text-sm font-bold text-[#777587] mb-10 leading-relaxed px-4">Tables are currently occupied. We'll hold your spot and SMS you as soon as one opens up.</p>
+               
+               <div className="space-y-6 mb-10">
+                  <div className="text-left px-2">
+                     <p className="text-[10px] font-black text-[#a09eb1] uppercase tracking-[0.2em] mb-3">Party Size</p>
+                     <div className="flex items-center justify-between bg-[#fcf8ff] p-4 rounded-2xl border border-[#e4e1ee]/50">
+                        <Button variant="ghost" className="h-12 w-12 rounded-xl hover:bg-white" onClick={() => setPartySize(Math.max(1, partySize - 1))}>
+                           <Minus className="h-5 w-5" />
+                        </Button>
+                        <span className="text-2xl font-black">{partySize}</span>
+                        <Button variant="ghost" className="h-12 w-12 rounded-xl hover:bg-white" onClick={() => setPartySize(partySize + 1)}>
+                           <Plus className="h-5 w-5" />
+                        </Button>
+                     </div>
+                  </div>
+               </div>
+
+               <div className="flex flex-col gap-3">
+                  <Button className="h-20 rounded-[2rem] bg-[#1b1b24] hover:bg-black text-white font-black uppercase tracking-widest text-xs w-full shadow-2xl" onClick={handleJoinWaitlist} disabled={waitlistLoading}>
+                     {waitlistLoading ? <Loader2 className="h-5 w-5 animate-spin" /> : 'CONFIRM POSITION'}
+                  </Button>
+                  <Button variant="ghost" className="h-16 rounded-[2rem] text-[#a09eb1] font-black uppercase tracking-widest text-[10px]" onClick={() => setShowWaitlist(false)}>
+                     MAYBE LATER
+                  </Button>
+               </div>
             </motion.div>
           </div>
         )}

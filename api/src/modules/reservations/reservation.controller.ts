@@ -1,6 +1,19 @@
 import { Request, Response } from 'express';
 import { withOutletContext } from '../../lib/db';
 import { AppError } from '../../lib/errors';
+import * as ReservationAIService from './reservation.ai.service';
+
+// --- SMART RESERVATIONS & TABLE TURNS ---
+
+export async function getSmartAvailability(req: Request, res: Response) {
+  const result = await ReservationAIService.predictTableAvailability(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function createSmartBooking(req: Request, res: Response) {
+  const result = await ReservationAIService.processSmartBooking(req.user.outlet_id, req.body);
+  res.status(201).json({ success: true, data: result });
+}
 
 export async function createReservation(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;

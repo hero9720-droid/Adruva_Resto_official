@@ -247,7 +247,7 @@ export default function PaymentModal({
                        onClick={handleRedeem}
                        disabled={customer.loyalty_points < 100}
                      >
-                       REDEEM POINTS (10 PTS = ₹1)
+                       REDEEM POINTS (1 PT = ₹1)
                      </Button>
                   </div>
                 )}

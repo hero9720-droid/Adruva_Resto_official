@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { db } from './offline-db';
 
 const TOKEN_KEY = 'rms_access_token';
 
@@ -18,12 +19,30 @@ api.interceptors.request.use((config) => {
   return config;
 });
 
-// ── Response interceptor: auto-refresh on 401 ────────────────────────────────
+// ── Response interceptor: auto-refresh on 401 & offline support ────────────────
 api.interceptors.response.use(
   (response) => response,
   async (error) => {
     const originalRequest = error.config;
+
+    // 1. Handle Network Error (Offline)
+    if (!error.response && originalRequest.method !== 'get') {
+      console.warn('Network Error detected. Queuing mutation for sync:', originalRequest.url);
+      
+      await db.sync_queue.add({
+        url: originalRequest.url || '',
+        method: (originalRequest.method?.toUpperCase() as any) || 'POST',
+        payload: originalRequest.data ? JSON.parse(originalRequest.data) : null,
+        timestamp: Date.now()
+      });
+
+      // Return a pseudo-success to the UI so it doesn't crash
+      // The SyncManager will handle the actual server update later
+      return Promise.resolve({ data: { success: true, offline: true } });
+    }
+
     if (error.response?.status === 401 && !originalRequest._retry && !originalRequest.url?.includes('/auth/login')) {
+      // ... existing 401 logic
       originalRequest._retry = true;
       try {
         const { data } = await axios.post(

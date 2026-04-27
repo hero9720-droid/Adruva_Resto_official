@@ -35,6 +35,7 @@ var __importStar = (this && this.__importStar) || (function () {
 Object.defineProperty(exports, "__esModule", { value: true });
 const express_1 = require("express");
 const SettingsController = __importStar(require("./settings.controller"));
+const QRController = __importStar(require("./qr.controller"));
 const auth_1 = require("../../middleware/auth");
 const subscription_1 = require("../../middleware/subscription");
 const rbac_1 = require("../../middleware/rbac");
@@ -50,6 +51,9 @@ router.patch('/profile', SettingsController.updateOutletSettings);
 router.get('/tables', SettingsController.getTables);
 router.post('/tables', SettingsController.createTable);
 router.patch('/tables/:id', SettingsController.updateTable);
+// QR Management (Phase 12)
+router.get('/spaces/:spaceId/qr', QRController.getSpaceQR);
+router.post('/spaces/qr/rotate', QRController.rotateQRSecret);
 // Legacy zone routes (graceful fallback)
 router.get('/zones', SettingsController.getZones);
 router.post('/zones', SettingsController.createZone);

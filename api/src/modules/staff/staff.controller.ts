@@ -2,6 +2,76 @@ import { Request, Response } from 'express';
 import { withOutletContext } from '../../lib/db';
 import { AppError } from '../../lib/errors';
 import { logAudit } from '../../lib/audit';
+import * as PerformanceService from './performance.service';
+import * as TerritoryService from './territory.service';
+import * as StaffService from './staff.service';
+import * as EPIService from './epi.service';
+import * as DutyService from './duty.service';
+
+// --- EMPLOYEE PERFORMANCE INDEX (EPI) ---
+
+export async function getEPILeaderboard(req: Request, res: Response) {
+  const result = await EPIService.getLeaderboard(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function getStaffInsights(req: Request, res: Response) {
+  const result = await EPIService.getStaffInsights(req.params.id);
+  res.json({ success: true, data: result });
+}
+
+export async function triggerEPISync(req: Request, res: Response) {
+  const date = (req.query.date as string) || new Date().toISOString().split('T')[0];
+  await EPIService.calculateDailyEPI(req.user.outlet_id, date);
+  res.json({ success: true, message: 'EPI synced' });
+}
+
+// --- DUTY CYCLES & ATTENDANCE ---
+
+export async function dutyClockIn(req: Request, res: Response) {
+  const result = await DutyService.clockIn(req.user.staff_id, req.user.outlet_id, req.body.method);
+  res.json({ success: true, data: result });
+}
+
+export async function dutyClockOut(req: Request, res: Response) {
+  const result = await DutyService.clockOut(req.user.staff_id, req.user.outlet_id, req.body.method);
+  res.json({ success: true, data: result });
+}
+
+export async function getLiveRoster(req: Request, res: Response) {
+  const result = await DutyService.getLiveRoster(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+// --- TERRITORY & AREA MANAGEMENT ---
+
+export async function getTerritoryOverview(req: Request, res: Response) {
+  const result = await TerritoryService.getTerritoryOverview(req.user.staff_id);
+  res.json({ success: true, data: result });
+}
+
+export async function submitFieldReport(req: Request, res: Response) {
+  const result = await TerritoryService.createFieldReport(req.user.staff_id, req.body.outlet_id, req.body);
+  res.json({ success: true, data: result });
+}
+
+export async function submitTerritoryReport(req: Request, res: Response) {
+  // Alias for territory report
+  return submitFieldReport(req, res);
+}
+
+// --- GAMIFICATION & LEADERBOARD ---
+
+export async function getGamificationLeaderboard(req: Request, res: Response) {
+  const result = await PerformanceService.getLeaderboard(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+export async function getMyPerformanceStats(req: Request, res: Response) {
+  const staff_id = req.user.staff_id;
+  const result = await PerformanceService.getStaffPerformanceStats(staff_id);
+  res.json({ success: true, data: result });
+}
 
 // --- STAFF LIST ---
 
@@ -44,7 +114,7 @@ export async function createStaff(req: Request, res: Response) {
 
 // --- ATTENDANCE (clock_in/clock_out per day) ---
 
-export async function clockIn(req: Request, res: Response) {
+export async function attendanceClockIn(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
   const staff_id  = req.user.staff_id;
   const today     = new Date().toISOString().split('T')[0];
@@ -68,7 +138,7 @@ export async function clockIn(req: Request, res: Response) {
   res.status(201).json({ success: true, data: result });
 }
 
-export async function clockOut(req: Request, res: Response) {
+export async function attendanceClockOut(req: Request, res: Response) {
   const outlet_id = req.user.outlet_id;
   const staff_id  = req.user.staff_id;
   const today     = new Date().toISOString().split('T')[0];

@@ -1,52 +1,72 @@
 import { Request, Response } from 'express';
 import { db } from '../../lib/db';
 import { AppError } from '../../lib/errors';
+import * as TaxService from './tax.service';
+import * as PnLService from './pnl.service';
+
+// --- P&L & ANALYTICS ---
+
+export async function getLivePnL(req: Request, res: Response) {
+  const result = await PnLService.getLivePnL(req.user.outlet_id, Number(req.query.month_offset || 0));
+  res.json({ success: true, data: result });
+}
+
+export async function getFinancialProjections(req: Request, res: Response) {
+  const result = await PnLService.getFinancialProjections(req.user.outlet_id);
+  res.json({ success: true, data: result });
+}
+
+// --- TAX SLAB MANAGEMENT ---
 
 export async function createTaxSlab(req: Request, res: Response) {
-  const chain_id = req.user.chain_id;
-  const { name, cgst_percent, sgst_percent, igst_percent, vat_percent } = req.body;
+  const { name, percentage, tax_code, is_inclusive } = req.body;
+  const outlet_id = req.user.outlet_id;
 
   const result = await db.query(
-    `INSERT INTO tax_slabs (chain_id, name, cgst_percent, sgst_percent, igst_percent, vat_percent)
-     VALUES ($1, $2, $3, $4, $5, $6) RETURNING *`,
-    [chain_id, name, cgst_percent || 0, sgst_percent || 0, igst_percent || 0, vat_percent || 0]
+    `INSERT INTO tax_slabs (outlet_id, name, percentage, tax_code, is_inclusive)
+     VALUES ($1, $2, $3, $4, $5) 
+     ON CONFLICT (outlet_id, tax_code) DO UPDATE 
+     SET percentage = EXCLUDED.percentage, name = EXCLUDED.name, is_inclusive = EXCLUDED.is_inclusive
+     RETURNING *`,
+    [outlet_id, name, percentage, tax_code, is_inclusive]
   );
 
   res.status(201).json({ success: true, data: result.rows[0] });
 }
 
 export async function getTaxSlabs(req: Request, res: Response) {
-  const chain_id = req.user.chain_id;
+  const outlet_id = req.user.outlet_id;
   const result = await db.query(
-    'SELECT * FROM tax_slabs WHERE chain_id = $1 ORDER BY name ASC',
-    [chain_id]
+    'SELECT * FROM tax_slabs WHERE outlet_id = $1 AND is_active = TRUE ORDER BY percentage ASC',
+    [outlet_id]
   );
   res.json({ success: true, data: result.rows });
 }
 
-export async function getTaxLiabilityReport(req: Request, res: Response) {
-  const chain_id = req.user.chain_id;
-  const { start_date, end_date } = req.query;
+// --- COMPLIANCE REPORTING ---
 
-  const result = await db.query(
-    `SELECT 
-       o.name as outlet_name,
-       COUNT(b.id) as total_bills,
-       SUM(b.subtotal_paise) as net_sales,
-       SUM(b.tax_total_paise) as total_tax,
-       SUM(CAST(b.tax_split->>'cgst' AS BIGINT)) as total_cgst,
-       SUM(CAST(b.tax_split->>'sgst' AS BIGINT)) as total_sgst,
-       SUM(CAST(b.tax_split->>'igst' AS BIGINT)) as total_igst,
-       SUM(b.total_paise) as gross_sales
-     FROM bills b
-     JOIN outlets o ON o.id = b.outlet_id
-     WHERE o.chain_id = $1 
-       AND b.created_at >= $2 
-       AND b.created_at <= $3
-     GROUP BY o.name
-     ORDER BY o.name ASC`,
-    [chain_id, start_date || '1970-01-01', end_date || '2099-12-31']
+export async function getTaxSummary(req: Request, res: Response) {
+  const { start_date, end_date } = req.query;
+  const outlet_id = req.user.outlet_id;
+
+  const result = await TaxService.getTaxSummaryReport(
+    outlet_id, 
+    new Date(start_date as string || '1970-01-01'), 
+    new Date(end_date as string || '2099-12-31')
   );
 
-  res.json({ success: true, data: result.rows });
+  res.json({ success: true, data: result });
+}
+
+export async function updateComplianceInfo(req: Request, res: Response) {
+  const { gstin, fssai_license, vat_number, tax_config } = req.body;
+  const outlet_id = req.user.outlet_id;
+
+  await db.query(`
+    UPDATE outlets 
+    SET gstin = $1, fssai_license = $2, vat_number = $3, tax_config = $4
+    WHERE id = $5
+  `, [gstin, fssai_license, vat_number, JSON.stringify(tax_config), outlet_id]);
+
+  res.json({ success: true, message: 'Compliance information updated.' });
 }

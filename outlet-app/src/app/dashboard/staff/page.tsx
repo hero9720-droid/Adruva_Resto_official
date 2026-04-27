@@ -12,7 +12,10 @@ import {
   Wallet,
   Loader2,
   ShieldCheck,
-  Layout
+  Layout,
+  CalendarDays,
+  CheckCircle2,
+  XCircle
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
@@ -37,8 +40,19 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { useStaffList, useAttendance, useShift, useCreateStaff, useCurrentStatus, useShiftSummary } from '@/hooks/useStaff';
+import { 
+  useStaffList, 
+  useAttendance, 
+  useShift, 
+  useCreateStaff, 
+  useCurrentStatus, 
+  useShiftSummary,
+  useLeaveRequests,
+  useRequestLeave,
+  useUpdateLeaveStatus
+} from '@/hooks/useStaff';
 import { useToast } from '@/hooks/use-toast';
+import { format } from 'date-fns';
 
 export default function StaffPage() {
   const [activeTab, setActiveTab] = useState('directory');
@@ -211,7 +225,7 @@ export default function StaffPage() {
       </div>
 
       <div className="flex gap-4 md:gap-8 border-b border-border overflow-x-auto no-scrollbar shrink-0">
-         {['directory', 'attendance', 'payroll'].map((tab) => (
+         {['directory', 'attendance', 'payroll', 'leaves'].map((tab) => (
            <button
              key={tab}
              onClick={() => setActiveTab(tab)}
@@ -465,6 +479,17 @@ export default function StaffPage() {
                 </div>
               </motion.div>
             )}
+
+            {activeTab === 'leaves' && (
+              <motion.div
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                key="leaves"
+              >
+                <LeaveManagementSection />
+              </motion.div>
+            )}
           </AnimatePresence>
         </div>
 
@@ -548,6 +573,193 @@ function TabAccessModal() {
              </div>
            ))}
         </div>
+      </DialogContent>
+    </Dialog>
+  );
+}
+function LeaveManagementSection() {
+  const { data: leaves, isLoading } = useLeaveRequests();
+  const updateStatus = useUpdateLeaveStatus();
+  const { toast } = useToast();
+
+  const handleStatusUpdate = async (id: string, status: string) => {
+    try {
+      await updateStatus.mutateAsync({ id, status, manager_notes: 'Processed by Manager' });
+      toast({ title: `Leave ${status}`, description: `Request has been marked as ${status}.` });
+    } catch {
+      toast({ variant: 'destructive', title: 'Update failed' });
+    }
+  };
+
+  return (
+    <div className="bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col border border-border">
+      <div className="p-8 pb-4 flex flex-row items-center justify-between border-b border-secondary">
+         <div>
+           <h2 className="text-2xl font-black text-foreground">Leave Requests</h2>
+           <p className="font-medium text-slate-500 mt-1">Review and approve employee time-off.</p>
+         </div>
+         <RequestLeaveDialog />
+      </div>
+      <div className="p-0 overflow-x-auto no-scrollbar">
+         <Table className="min-w-[700px]">
+            <TableHeader>
+               <TableRow className="bg-secondary/30 hover:bg-secondary/30 border-border">
+                  <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14 pl-8">Staff Member</TableHead>
+                  <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14">Type / Dates</TableHead>
+                  <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14">Reason</TableHead>
+                  <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14">Status</TableHead>
+                  <TableHead className="font-black text-[11px] uppercase tracking-widest text-slate-500 h-14 text-right pr-8">Decision</TableHead>
+               </TableRow>
+            </TableHeader>
+            <TableBody>
+               {isLoading ? (
+                 <TableRow><TableCell colSpan={5} className="text-center p-12 text-slate-400 font-black uppercase tracking-widest">Loading requests...</TableCell></TableRow>
+               ) : !leaves?.length ? (
+                 <TableRow><TableCell colSpan={5} className="text-center p-12 text-slate-400 font-black uppercase tracking-widest">No active requests.</TableCell></TableRow>
+               ) : (
+                 leaves.map((l: any) => (
+                   <TableRow key={l.id} className="border-secondary hover:bg-secondary/30 transition-colors">
+                      <TableCell className="font-bold text-foreground pl-8 py-5 text-lg">
+                        {l.staff_name}
+                        <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-0.5">{l.role}</p>
+                      </TableCell>
+                      <TableCell>
+                         <Badge className="bg-secondary text-primary border-none mb-1 text-[9px] uppercase tracking-widest px-2">{l.type}</Badge>
+                         <p className="text-sm font-bold text-slate-500">
+                           {format(new Date(l.start_date), 'dd MMM')} - {format(new Date(l.end_date), 'dd MMM, yyyy')}
+                         </p>
+                      </TableCell>
+                      <TableCell className="max-w-[200px] truncate text-slate-500 font-medium italic">"{l.reason}"</TableCell>
+                      <TableCell>
+                         <Badge 
+                           className={cn(
+                             "border-none font-black text-[10px] px-3 py-1.5 rounded-lg uppercase tracking-widest",
+                             l.status === 'approved' ? "bg-emerald-500/10 text-emerald-500" : 
+                             l.status === 'rejected' ? "bg-red-500/10 text-red-500" : "bg-amber-500/10 text-amber-500"
+                           )} 
+                         >
+                            {l.status}
+                         </Badge>
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                         {l.status === 'pending' ? (
+                           <div className="flex gap-2 justify-end">
+                              <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className="h-10 w-10 rounded-xl border-emerald-500/20 text-emerald-500 hover:bg-emerald-500 hover:text-white"
+                                onClick={() => handleStatusUpdate(l.id, 'approved')}
+                                disabled={updateStatus.isPending}
+                              >
+                                <CheckCircle2 className="h-5 w-5" />
+                              </Button>
+                              <Button 
+                                size="icon" 
+                                variant="outline" 
+                                className="h-10 w-10 rounded-xl border-red-500/20 text-red-500 hover:bg-red-500 hover:text-white"
+                                onClick={() => handleStatusUpdate(l.id, 'rejected')}
+                                disabled={updateStatus.isPending}
+                              >
+                                <XCircle className="h-5 w-5" />
+                              </Button>
+                           </div>
+                         ) : (
+                           <span className="text-[10px] font-black text-slate-300 uppercase tracking-widest">PROCESSED</span>
+                         )}
+                      </TableCell>
+                   </TableRow>
+                 ))
+               )}
+            </TableBody>
+         </Table>
+      </div>
+    </div>
+  );
+}
+
+function RequestLeaveDialog() {
+  const [open, setOpen] = useState(false);
+  const [payload, setPayload] = useState({ start_date: '', end_date: '', reason: '', type: 'sick' });
+  const requestLeave = useRequestLeave();
+  const { toast } = useToast();
+
+  const handleRequest = async () => {
+    try {
+      await requestLeave.mutateAsync(payload);
+      toast({ title: 'Request Sent', description: 'Your leave request is awaiting approval.' });
+      setOpen(false);
+      setPayload({ start_date: '', end_date: '', reason: '', type: 'sick' });
+    } catch {
+      toast({ variant: 'destructive', title: 'Request failed' });
+    }
+  };
+
+  return (
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogTrigger asChild>
+        <Button className="h-12 px-6 bg-secondary text-primary hover:bg-secondary/80 border-none rounded-xl font-black text-xs uppercase tracking-widest">
+           <CalendarDays className="h-4 w-4 mr-2" /> Request Leave
+        </Button>
+      </DialogTrigger>
+      <DialogContent className="bg-card rounded-[2.5rem] p-8 border-border shadow-2xl max-w-md">
+        <DialogHeader>
+          <DialogTitle className="text-3xl font-black text-foreground tracking-tighter">Request Time Off</DialogTitle>
+        </DialogHeader>
+        <div className="space-y-5 py-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">From</Label>
+              <Input 
+                type="date" 
+                value={payload.start_date}
+                onChange={e => setPayload(p => ({ ...p, start_date: e.target.value }))}
+                className="h-14 rounded-2xl bg-secondary border-border focus:border-primary font-bold text-foreground" 
+              />
+            </div>
+            <div className="space-y-2">
+              <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">To</Label>
+              <Input 
+                type="date" 
+                value={payload.end_date}
+                onChange={e => setPayload(p => ({ ...p, end_date: e.target.value }))}
+                className="h-14 rounded-2xl bg-secondary border-border focus:border-primary font-bold text-foreground" 
+              />
+            </div>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Leave Type</Label>
+            <Select value={payload.type} onValueChange={v => setPayload(p => ({ ...p, type: v }))}>
+               <SelectTrigger className="h-14 rounded-2xl bg-secondary border-border font-bold text-foreground">
+                 <SelectValue />
+               </SelectTrigger>
+               <SelectContent className="bg-card border-border rounded-2xl">
+                 <SelectItem value="sick">Sick Leave</SelectItem>
+                 <SelectItem value="casual">Casual Leave</SelectItem>
+                 <SelectItem value="vacation">Vacation / Paid Time Off</SelectItem>
+                 <SelectItem value="unpaid">Unpaid Leave</SelectItem>
+               </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label className="text-[10px] font-black uppercase tracking-widest text-slate-500">Reason</Label>
+            <Input 
+              placeholder="e.g. Family function, unwell..." 
+              value={payload.reason}
+              onChange={e => setPayload(p => ({ ...p, reason: e.target.value }))}
+              className="h-14 rounded-2xl bg-secondary border-border focus:border-primary font-medium text-foreground" 
+            />
+          </div>
+        </div>
+        <DialogFooter className="gap-3 sm:gap-0">
+          <Button variant="ghost" onClick={() => setOpen(false)} className="h-14 rounded-2xl font-black text-slate-500 uppercase">Cancel</Button>
+          <Button 
+            className="h-14 px-8 bg-primary text-primary-foreground rounded-2xl font-black shadow-glow uppercase"
+            onClick={handleRequest}
+            disabled={requestLeave.isPending || !payload.start_date || !payload.end_date}
+          >
+            {requestLeave.isPending ? <Loader2 className="h-5 w-5 animate-spin" /> : 'Submit Request'}
+          </Button>
+        </DialogFooter>
       </DialogContent>
     </Dialog>
   );
