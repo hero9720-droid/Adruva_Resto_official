@@ -19,7 +19,7 @@ export function useSocket(room: string) {
 
     const connectFn = socketIOClient.io ?? socketIOClient.connect ?? socketIOClient.default ?? socketIOClient;
     const newSocket: AnySocket = connectFn(
-      process.env.NEXT_PUBLIC_SOCKET_URL || 'http://localhost:4000',
+      process.env.NEXT_PUBLIC_SOCKET_URL || 'https://adruvaresto-backend-production.up.railway.app',
       {
         withCredentials: true,
         transports: ['websocket'],

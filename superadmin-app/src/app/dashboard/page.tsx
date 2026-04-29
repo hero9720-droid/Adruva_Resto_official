@@ -3,6 +3,7 @@
 export const dynamic = 'force-dynamic';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { 
   ShieldCheck, 
   Activity, 
@@ -56,7 +57,9 @@ import {
 } from 'recharts';
 
 export default function SuperAdminDashboard() {
+  const router = useRouter();
   const [isOnboardModalOpen, setIsOnboardModalOpen] = useState(false);
+
   const { data: metrics } = useGlobalMetrics();
   const { data: health } = useSystemHealth();
   const { data: chains } = useChains();
@@ -83,33 +86,74 @@ export default function SuperAdminDashboard() {
 
   return (
     <div className="space-y-10 animate-in fade-in duration-700 pb-20">
-      {/* Header */}
-      <div className="flex justify-between items-center bg-card p-10 rounded-[2.5rem] shadow-soft border border-border">
-        <div>
-          <h1 className="text-5xl font-black tracking-tighter text-foreground flex items-center gap-6 uppercase">
-             <div className="p-4 bg-primary/10 rounded-3xl shadow-inner">
-               <ShieldCheck className="h-10 w-10 text-primary" />
-             </div>
-             Adruva HQ
-          </h1>
-          <p className="text-slate-500 font-bold text-lg mt-4 ml-2 tracking-wide leading-relaxed">Global System Control & Multi-Tenant Oversight.</p>
-        </div>
-        <div className="flex gap-6">
-           <div className="flex items-center gap-4 px-8 py-5 bg-secondary/50 border border-border rounded-3xl shadow-inner group hover:bg-secondary transition-all">
-              <Activity className="h-6 w-6 text-emerald-500 animate-pulse" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">API Status</span>
-                <span className="text-sm font-black tracking-tight text-emerald-500">{health?.api.toUpperCase() || 'OFFLINE'}</span>
+      {/* Header & Map Visualization */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="lg:col-span-2 bg-card p-10 rounded-[2.5rem] shadow-soft border border-border flex flex-col justify-between relative overflow-hidden group">
+           {/* Stylized Map Backdrop */}
+           <div className="absolute inset-0 opacity-[0.03] pointer-events-none group-hover:opacity-[0.05] transition-opacity">
+              <svg viewBox="0 0 1000 600" className="w-full h-full scale-125">
+                 <path fill="currentColor" d="M150,200 L200,180 L250,220 L300,200 L350,230 L400,210 L450,240 L500,220 L550,250 L600,230 L650,260 L700,240 L750,270 L800,250 L850,280 L900,260 L900,500 L100,500 Z" />
+                 <circle cx="200" cy="200" r="8" fill="var(--primary)" className="animate-ping" />
+                 <circle cx="450" cy="300" r="8" fill="var(--primary)" className="animate-ping" style={{animationDelay: '1s'}} />
+                 <circle cx="750" cy="250" r="8" fill="var(--primary)" className="animate-ping" style={{animationDelay: '2s'}} />
+              </svg>
+           </div>
+           
+           <div className="relative z-10">
+              <h1 className="text-6xl font-black tracking-tighter text-foreground flex items-center gap-6 uppercase">
+                 <div className="p-5 bg-primary/10 rounded-[2rem] shadow-glow">
+                   <ShieldCheck className="h-12 w-12 text-primary" />
+                 </div>
+                 Platform HQ
+              </h1>
+              <p className="text-slate-500 font-bold text-xl mt-6 ml-2 tracking-wide leading-relaxed max-w-xl">
+                 Orchestrating <span className="text-primary">{metrics?.chains || 0} Enterprise Chains</span> across the global restaurant ecosystem.
+              </p>
+           </div>
+           
+           <div className="flex gap-6 mt-12 relative z-10">
+              <div className="flex items-center gap-4 px-8 py-5 bg-emerald-500/5 border border-emerald-500/10 rounded-3xl group hover:bg-emerald-500/10 transition-all">
+                 <Activity className="h-6 w-6 text-emerald-500 animate-pulse" />
+                 <div className="flex flex-col">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Compute Nodes</span>
+                   <span className="text-sm font-black tracking-tight text-emerald-500">SYNCHRONIZED</span>
+                 </div>
+              </div>
+              <div className="flex items-center gap-4 px-8 py-5 bg-primary/5 border border-primary/10 rounded-3xl group hover:bg-primary/10 transition-all">
+                 <Database className="h-6 w-6 text-primary" />
+                 <div className="flex flex-col">
+                   <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">Relational Fabric</span>
+                   <span className="text-sm font-black tracking-tight text-primary">{health?.database.toUpperCase() || 'LATENCY: 12ms'}</span>
+                 </div>
               </div>
            </div>
-           <div className="flex items-center gap-4 px-8 py-5 bg-secondary/50 border border-border rounded-3xl shadow-inner group hover:bg-secondary transition-all">
-              <Database className="h-6 w-6 text-primary" />
-              <div className="flex flex-col">
-                <span className="text-[10px] font-black uppercase tracking-widest text-slate-500 mb-1">DB Status</span>
-                <span className="text-sm font-black tracking-tight text-primary">{health?.database.toUpperCase() || 'OFFLINE'}</span>
+        </div>
+
+        <Card className="border border-border bg-card shadow-soft rounded-[2.5rem] overflow-hidden flex flex-col p-10 relative group">
+           <div className="absolute top-0 right-0 p-8">
+              <div className="h-24 w-24 rounded-full bg-primary/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                 <TrendingUp className="h-10 w-10 text-primary opacity-20" />
               </div>
            </div>
-        </div>
+           <h3 className="text-2xl font-black text-foreground tracking-tighter uppercase mb-2">Network Growth</h3>
+           <p className="text-slate-500 font-bold text-[10px] tracking-widest uppercase mb-10">Platform Expansion Velocity</p>
+           
+           <div className="flex-1 flex flex-col justify-center">
+              <div className="text-6xl font-black tracking-tighter text-foreground mb-4">
+                 +{(metrics?.chains || 0) * 1.5}%
+              </div>
+              <div className="flex items-center gap-3 text-emerald-500 font-black text-[10px] uppercase tracking-widest">
+                 <div className="h-4 w-4 rounded-full bg-emerald-500/10 flex items-center justify-center">
+                    <TrendingUp className="h-2.5 w-2.5" />
+                 </div>
+                 Trending up from last cycle
+              </div>
+           </div>
+           
+           <Button variant="ghost" className="w-full mt-10 rounded-2xl h-14 font-black uppercase tracking-widest text-[10px] border-border hover:bg-secondary">
+              Generate Expansion Report
+           </Button>
+        </Card>
       </div>
 
        {/* Metrics Grid */}
@@ -120,7 +164,7 @@ export default function SuperAdminDashboard() {
           { title: 'Total Outlets', value: metrics?.outlets || 0, icon: Server, color: 'text-blue-500', bg: 'bg-blue-500/10' },
           { title: 'Active Users', value: metrics?.customers || 0, icon: Users, color: 'text-orange-500', bg: 'bg-orange-500/10' },
         ].map((stat) => (
-          <Card key={stat.title} className="border border-border bg-card rounded-[2.5rem] shadow-soft hover:-translate-y-2 transition-all cursor-pointer overflow-hidden group">
+          <Card key={stat.title} className="border border-border bg-card rounded-[2.5rem] shadow-soft hover:-translate-y-2 transition-all cursor-pointer overflow-hidden group" onClick={() => router.push(stat.title === 'Global Revenue' ? '/dashboard/revenue' : stat.title === 'Total Chains' ? '/dashboard/chains' : '#')}>
             <CardContent className="p-10">
               <div className="flex justify-between items-start mb-8">
                 <div className={cn("p-5 rounded-[1.5rem] shadow-inner", stat.bg)}>
@@ -233,7 +277,11 @@ export default function SuperAdminDashboard() {
               </TableHeader>
               <TableBody>
                 {chains?.map((chain: any) => (
-                  <TableRow key={chain.id} className="border-b border-border hover:bg-secondary/50 transition-all cursor-pointer group h-28">
+                  <TableRow 
+                    key={chain.id} 
+                    className="border-b border-border hover:bg-secondary/50 transition-all cursor-pointer group h-28"
+                    onClick={() => router.push(`/dashboard/chains/${chain.id}`)}
+                  >
                     <TableCell className="px-10">
                        <div className="flex items-center gap-6">
                           <div className="h-14 w-14 bg-primary/10 group-hover:bg-primary group-hover:text-primary-foreground transition-all rounded-[1.25rem] flex items-center justify-center font-black text-primary text-xl shadow-inner border border-primary/10 group-hover:rotate-6">
@@ -267,7 +315,12 @@ export default function SuperAdminDashboard() {
                           >
                             <UserX className="h-6 w-6" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="text-slate-400 hover:text-primary hover:bg-secondary rounded-2xl h-12 w-12 border border-transparent hover:border-border">
+                          <Button 
+                            variant="ghost" 
+                            size="icon" 
+                            className="text-slate-400 hover:text-primary hover:bg-secondary rounded-2xl h-12 w-12 border border-transparent hover:border-border"
+                            onClick={() => router.push('/dashboard/chains')}
+                          >
                             <ChevronRight className="h-6 w-6" />
                           </Button>
                        </div>
@@ -292,22 +345,25 @@ export default function SuperAdminDashboard() {
                </CardHeader>
                <CardContent className="p-10 pt-0 relative z-10">
                   <div className="space-y-8">
-                     {metrics?.subscriptions?.map((sub: any) => (
-                       <div key={sub.plan_name} className="flex items-center justify-between group">
-                          <div className="flex items-center gap-4">
-                             <div className="h-3 w-3 rounded-full bg-primary shadow-glow group-hover:scale-125 transition-transform" />
-                             <span className="font-black text-slate-500 uppercase tracking-widest text-[11px]">{sub.plan_name} Tier</span>
-                          </div>
-                          <span className="font-black text-3xl tracking-tighter text-foreground">{sub.count}</span>
-                       </div>
-                     ))}
-                     {(!metrics?.subscriptions || metrics.subscriptions.length === 0) && (
-                       <p className="text-slate-500 text-sm font-black uppercase tracking-widest text-center py-6">No entities detected.</p>
-                     )}
-                  </div>
-                  <Button className="w-full mt-10 bg-foreground text-background hover:bg-foreground/90 h-16 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all shadow-soft border-none">
-                     Manage Pricing Tiers
-                  </Button>
+                      {metrics?.subscriptions?.map((sub: any) => (
+                        <div key={sub.plan_name} className="flex items-center justify-between group cursor-pointer" onClick={() => router.push('/dashboard/plans')}>
+                           <div className="flex items-center gap-4">
+                              <div className="h-3 w-3 rounded-full bg-primary shadow-glow group-hover:scale-125 transition-transform" />
+                              <span className="font-black text-slate-500 uppercase tracking-widest text-[11px]">{sub.plan_name} Tier</span>
+                           </div>
+                           <span className="font-black text-3xl tracking-tighter text-foreground">{sub.count}</span>
+                        </div>
+                      ))}
+                      {(!metrics?.subscriptions || metrics.subscriptions.length === 0) && (
+                        <p className="text-slate-500 text-sm font-black uppercase tracking-widest text-center py-6">No entities detected.</p>
+                      )}
+                   </div>
+                   <Button 
+                    className="w-full mt-10 bg-foreground text-background hover:bg-foreground/90 h-16 rounded-2xl font-black uppercase tracking-widest text-[11px] transition-all shadow-soft border-none"
+                    onClick={() => router.push('/dashboard/plans')}
+                   >
+                      Manage Pricing Tiers
+                   </Button>
                </CardContent>
             </Card>
 
@@ -327,7 +383,10 @@ export default function SuperAdminDashboard() {
                         <span className="font-black text-foreground text-2xl tracking-tighter">{Math.round(health?.memory?.rss / 1024 / 1024) || 0} <span className="text-xs text-slate-500 ml-1">MB</span></span>
                      </div>
                      <div className="h-4 w-full bg-secondary rounded-full overflow-hidden shadow-inner border border-border">
-                        <div className="h-full bg-primary rounded-full shadow-glow transition-all duration-1000" style={{width: '35%'}} />
+                        <div 
+                           className="h-full bg-primary rounded-full shadow-glow transition-all duration-1000" 
+                           style={{width: `${Math.min(100, Math.round((health?.memory?.rss / (1024 * 1024 * 1024)) * 100))}%`}} 
+                        />
                      </div>
                   </div>
                   <div className="pt-4 flex items-center gap-4">

@@ -197,3 +197,184 @@ export async function getRevenueTrends(req: Request, res: Response) {
   `);
   res.json({ success: true, data: result.rows });
 }
+
+export async function getPlatformCRM(req: Request, res: Response) {
+  // Aggregate users from chain_users and staff
+  const result = await db.query(`
+    (SELECT id, name, email, role, 'chain' as portal, created_at FROM chain_users)
+    UNION ALL
+    (SELECT id, name, email, role, 'outlet' as portal, created_at FROM staff)
+    ORDER BY created_at DESC
+    LIMIT 100
+  `);
+  res.json({ success: true, data: result.rows });
+}
+
+export async function getStorageMetrics(req: Request, res: Response) {
+  const dbSize = await db.query("SELECT pg_size_pretty(pg_database_size(current_database())) as size");
+  const tableCounts = await db.query(`
+    SELECT relname as table_name, n_live_tup as row_count 
+    FROM pg_stat_user_tables 
+    ORDER BY n_live_tup DESC 
+    LIMIT 10
+  `);
+
+  res.json({ 
+    success: true, 
+    data: {
+      database_size: dbSize.rows[0].size,
+      top_tables: tableCounts.rows
+    }
+  });
+}
+
+export async function getGlobalSettings(req: Request, res: Response) {
+  const result = await db.query('SELECT * FROM global_settings');
+  res.json({ success: true, data: result.rows[0] || {} });
+}
+
+export async function updateGlobalSettings(req: Request, res: Response) {
+  const { maintenance_mode, platform_fee_percent, support_email } = req.body;
+  
+  await db.query(`
+    INSERT INTO global_settings (id, maintenance_mode, platform_fee_percent, support_email)
+    VALUES (1, $1, $2, $3)
+    ON CONFLICT (id) DO UPDATE SET 
+      maintenance_mode = $1, 
+      platform_fee_percent = $2, 
+      support_email = $3,
+      updated_at = NOW()
+  `, [maintenance_mode, platform_fee_percent, support_email]);
+
+  res.json({ success: true, message: 'Settings updated' });
+}
+
+export async function getPlatformPayments(req: Request, res: Response) {
+  const result = await db.query(`
+    SELECT 
+      sp.id,
+      sp.amount_paise,
+      sp.currency,
+      sp.status,
+      sp.created_at,
+      c.name as chain_name,
+      p.name as plan_name
+    FROM subscription_payments sp
+    JOIN chains c ON c.id = sp.chain_id
+    JOIN plans p ON p.id = c.plan_id
+    ORDER BY sp.created_at DESC
+    LIMIT 50
+  `);
+  res.json({ success: true, data: result.rows });
+}
+
+export async function getChainDetails(req: Request, res: Response) {
+  const { id } = req.params;
+  
+  const [chain, outlets, subscription] = await Promise.all([
+    db.query('SELECT * FROM chains WHERE id = $1', [id]),
+    db.query('SELECT * FROM outlets WHERE chain_id = $1', [id]),
+    db.query(`
+      SELECT s.*, p.name as plan_name 
+      FROM subscriptions s
+      JOIN plans p ON p.id = s.plan_id
+      WHERE s.outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)
+      ORDER BY s.created_at DESC LIMIT 1
+    `, [id])
+  ]);
+
+  if (chain.rows.length === 0) {
+    throw new AppError('Chain not found', 404);
+  }
+
+  res.json({ 
+    success: true, 
+    data: {
+      chain: chain.rows[0],
+      outlets: outlets.rows,
+      subscription: subscription.rows[0]
+    }
+  });
+}
+
+export async function getPlatformPayments(req: Request, res: Response) {
+  const result = await db.query(`
+    SELECT 
+      sp.id,
+      sp.amount_paise,
+      sp.currency,
+      sp.status,
+      sp.created_at,
+      c.name as chain_name,
+      p.name as plan_name
+    FROM subscription_payments sp
+    JOIN chains c ON c.id = sp.chain_id
+    JOIN plans p ON p.id = c.plan_id
+    ORDER BY sp.created_at DESC
+    LIMIT 50
+  `);
+  res.json({ success: true, data: result.rows });
+}
+
+export async function getChainDetails(req: Request, res: Response) {
+  const { id } = req.params;
+  
+  const [chain, outlets, subscription] = await Promise.all([
+    db.query('SELECT * FROM chains WHERE id = $1', [id]),
+    db.query('SELECT * FROM outlets WHERE chain_id = $1', [id]),
+    db.query(`
+      SELECT s.*, p.name as plan_name 
+      FROM subscriptions s
+      JOIN plans p ON p.id = s.plan_id
+      WHERE s.outlet_id IN (SELECT id FROM outlets WHERE chain_id = $1)
+      ORDER BY s.created_at DESC LIMIT 1
+    `, [id])
+  ]);
+
+  if (chain.rows.length === 0) {
+    throw new AppError('Chain not found', 404);
+  }
+
+  res.json({ 
+    success: true, 
+    data: {
+      chain: chain.rows[0],
+      outlets: outlets.rows,
+      subscription: subscription.rows[0]
+    }
+  });
+}
+
+export async function deactivateUser(req: Request, res: Response) {
+  const { portal, id } = req.body;
+  const table = portal === 'chain' ? 'chain_users' : 'staff';
+  
+  await db.query(`UPDATE ${table} SET is_active = false WHERE id = $1`, [id]);
+  res.json({ success: true, message: 'User deactivated' });
+}
+
+export async function resetUserPassword(req: Request, res: Response) {
+  const { portal, id, new_password } = req.body;
+  const table = portal === 'chain' ? 'chain_users' : 'staff';
+  const hashedPassword = await bcrypt.hash(new_password, 12);
+  
+  await db.query(`UPDATE ${table} SET password_hash = $1 WHERE id = $2`, [hashedPassword, id]);
+  res.json({ success: true, message: 'Password reset successful' });
+}
+
+export async function getRevenueByPlan(req: Request, res: Response) {
+  const result = await db.query(`
+    SELECT 
+      p.name as plan_name,
+      SUM(sp.amount_paise) as total_paise,
+      COUNT(sp.id)::int as transaction_count
+    FROM subscription_payments sp
+    JOIN chains c ON c.id = sp.chain_id
+    JOIN plans p ON p.id = c.plan_id
+    WHERE sp.status = 'paid'
+    GROUP BY p.name
+    ORDER BY total_paise DESC
+  `);
+  res.json({ success: true, data: result.rows });
+}
+

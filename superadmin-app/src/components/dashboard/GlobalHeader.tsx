@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Bell, Plus, Zap, ShieldCheck, Palette } from 'lucide-react';
+import { Search, Bell, Plus, Zap, ShieldCheck, Palette, CreditCard } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
@@ -25,7 +25,7 @@ export default function GlobalHeader() {
       <div className="flex-1 max-w-2xl relative group">
         <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-focus-within:text-primary transition-colors" />
         <Input 
-          placeholder="Search Orders, Bills, or Guests... (Ctrl + K)" 
+          placeholder="Search Chains, Owners, or Platform Nodes..." 
           className="w-full h-12 pl-12 bg-secondary/50 border-none rounded-2xl font-bold text-sm focus-visible:ring-2 focus-visible:ring-primary/20 transition-all text-foreground"
         />
         <div className="absolute right-4 top-1/2 -translate-y-1/2 px-2 py-1 bg-card border border-border rounded-lg text-[9px] font-black text-slate-400 shadow-sm">
@@ -83,19 +83,23 @@ export default function GlobalHeader() {
               <span className="absolute top-3 right-3 h-2 w-2 bg-red-500 rounded-full border-2 border-background" />
            </Button>
 
-           <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                 <Button className="h-12 px-6 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-xs uppercase tracking-widest shadow-xl flex items-center gap-2">
-                    <Plus className="h-4 w-4" />
-                    Quick Action
-                 </Button>
-              </DropdownMenuTrigger>
+            <DropdownMenu>
+               <DropdownMenuTrigger asChild>
+                  <Button className="h-12 px-8 rounded-2xl bg-primary hover:bg-primary/90 text-primary-foreground font-black text-[10px] uppercase tracking-widest shadow-glow flex items-center gap-3 border-none">
+                     <Zap className="h-4 w-4 fill-current" />
+                     Command Suite
+                  </Button>
+               </DropdownMenuTrigger>
                <DropdownMenuContent align="end" className="w-56 p-2 rounded-2xl border-border shadow-2xl bg-card">
-                  <DropdownMenuItem onClick={() => router.push('/dashboard/pos')} className="rounded-xl p-3 font-bold text-sm flex items-center gap-3 cursor-pointer hover:bg-secondary">
-                     <Zap className="h-4 w-4 text-amber-500" /> New POS Order
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/chains')} className="rounded-xl p-3 font-bold text-sm flex items-center gap-3 cursor-pointer hover:bg-secondary">
+                     <Plus className="h-4 w-4 text-primary" /> Provision New Chain
                   </DropdownMenuItem>
-                  <DropdownMenuItem onClick={() => router.push('/dashboard/reservations')} className="rounded-xl p-3 font-bold text-sm flex items-center gap-3 cursor-pointer hover:bg-secondary">
-                     <ShieldCheck className="h-4 w-4 text-primary" /> Book Table
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/plans')} className="rounded-xl p-3 font-bold text-sm flex items-center gap-3 cursor-pointer hover:bg-secondary">
+                     <CreditCard className="h-4 w-4 text-emerald-500" /> Subscription Editor
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={() => router.push('/dashboard/settings')} className="rounded-xl p-3 font-bold text-sm flex items-center gap-3 cursor-pointer hover:bg-secondary">
+                     <Palette className="h-4 w-4 text-orange-500" /> Platform Theming
                   </DropdownMenuItem>
                </DropdownMenuContent>
            </DropdownMenu>

@@ -102,3 +102,101 @@ export function useRevenueTrends() {
     }
   });
 }
+
+export function usePlatformCRM() {
+  return useQuery({
+    queryKey: ['platform_crm'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/crm');
+      return data.data;
+    }
+  });
+}
+
+export function useStorageMetrics() {
+  return useQuery({
+    queryKey: ['storage_metrics'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/storage');
+      return data.data;
+    }
+  });
+}
+
+export function useGlobalSettings() {
+  return useQuery({
+    queryKey: ['global_settings'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/settings');
+      return data.data;
+    }
+  });
+}
+
+export function useUpdateGlobalSettings() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: any) => {
+      const { data } = await api.post('/superadmin/mgmt/settings', values);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['global_settings'] });
+    }
+  });
+}
+
+export function usePlatformPayments() {
+  return useQuery({
+    queryKey: ['platform_payments'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/payments');
+      return data.data;
+    }
+  });
+}
+
+export function useChainDetails(id: string) {
+  return useQuery({
+    queryKey: ['chain_details', id],
+    queryFn: async () => {
+      if (!id) return null;
+      const { data } = await api.get(`/superadmin/mgmt/chains/${id}`);
+      return data.data;
+    },
+    enabled: !!id
+  });
+}
+
+export function useDeactivateUser() {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: async (values: { portal: string, id: string }) => {
+      const { data } = await api.post('/superadmin/mgmt/users/deactivate', values);
+      return data.data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['platform_crm'] });
+    }
+  });
+}
+
+export function useResetPassword() {
+  return useMutation({
+    mutationFn: async (values: { portal: string, id: string, new_password: string }) => {
+      const { data } = await api.post('/superadmin/mgmt/users/reset-password', values);
+      return data.data;
+    }
+  });
+}
+
+export function useRevenueByPlan() {
+  return useQuery({
+    queryKey: ['revenue_by_plan'],
+    queryFn: async () => {
+      const { data } = await api.get('/superadmin/mgmt/revenue/by-plan');
+      return data.data;
+    }
+  });
+}
+

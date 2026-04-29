@@ -12,6 +12,8 @@ export const metadata: Metadata = {
   description: "Digital Menu & Ordering",
 };
 
+import Providers from "./providers";
+
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -22,7 +24,9 @@ export default function RootLayout({
       lang="en"
       className={`${manrope.variable} h-full antialiased`}
     >
-      <body className={`${manrope.className} min-h-full flex flex-col bg-background text-foreground no-scrollbar`}>{children}</body>
+      <body className={`${manrope.className} min-h-full flex flex-col bg-background text-foreground no-scrollbar`}>
+        <Providers>{children}</Providers>
+      </body>
     </html>
   );
 }

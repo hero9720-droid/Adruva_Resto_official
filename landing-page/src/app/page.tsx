@@ -16,7 +16,10 @@ import {
   MonitorCheck,
   Package,
   Star,
-  Layers
+  Layers,
+  Cloud,
+  Clock,
+  MessageSquare
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -47,7 +50,9 @@ export default function LandingPage() {
             <a href="#company" className="hover:text-indigo-400 transition-colors">Enterprise</a>
           </div>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" className="font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white">Login</Button>
+            <Button variant="ghost" className="font-black text-xs uppercase tracking-widest text-slate-400 hover:text-white" asChild>
+              <a href="https://adruvaresto-superadmin.vercel.app/login">Login</a>
+            </Button>
             <Button className="bg-indigo-600 hover:bg-indigo-700 shadow-[0_8px_32px_rgba(79,70,229,0.3)] font-black text-xs uppercase tracking-widest px-8 h-12 rounded-xl">Book Demo</Button>
           </div>
         </div>
@@ -87,7 +92,7 @@ export default function LandingPage() {
             <div className="absolute inset-0 bg-indigo-600/20 rounded-[3rem] blur-[100px] -z-10 animate-pulse" />
             <div className="bg-gradient-to-b from-white/10 to-transparent p-1.5 rounded-[3.5rem] shadow-3xl border border-white/10">
                <img 
-                 src="adruva_dashboard_hero_1776838472648.png" 
+                 src="/adruva_hero.png" 
                  alt="Adruva Dashboard Preview" 
                  className="rounded-[3rem] shadow-4xl w-full h-auto border border-white/5"
                />

@@ -4,12 +4,23 @@ import Sidebar from '@/components/dashboard/Sidebar';
 import GlobalHeader from '@/components/dashboard/GlobalHeader';
 import { useTheme } from '@/components/theme/ThemeProvider';
 
+import { useLayoutEffect } from 'react';
+import { useRouter, usePathname } from 'next/navigation';
+
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   const { theme } = useTheme();
+  const router = useRouter();
+  const pathname = usePathname();
+
+  useLayoutEffect(() => {
+    if (pathname === '/') {
+      router.replace('/login');
+    }
+  }, [pathname, router]);
 
   return (
     <div className={`flex h-screen overflow-hidden ${theme}`}>

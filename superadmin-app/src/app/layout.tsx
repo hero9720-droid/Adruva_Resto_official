@@ -23,8 +23,9 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${manrope.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
-      <body className={`${manrope.className} min-h-full flex flex-col bg-background text-foreground no-scrollbar`}>
+      <body className={`${manrope.className} min-h-full flex flex-col bg-background text-foreground no-scrollbar`} suppressHydrationWarning>
         <Providers>{children}</Providers>
       </body>
     </html>

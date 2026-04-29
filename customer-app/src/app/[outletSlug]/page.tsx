@@ -244,9 +244,6 @@ export default function DigitalMenu() {
     </div>
   );
 
-    </div>
-  );
-
   const handleJoinWaitlist = async () => {
     setWaitlistLoading(true);
     try {

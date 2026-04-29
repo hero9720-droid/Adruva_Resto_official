@@ -19,9 +19,8 @@ export default function ChainLoginPage() {
     setLoading(true);
     try {
       const { data } = await api.post('/chain/auth/login', { email, password });
-      // Store token in memory (window.__rms_chain_token for socket use)
       if (typeof window !== 'undefined') {
-        (window as any).__rms_access_token = data.accessToken;
+        localStorage.setItem('chain_access_token', data.accessToken);
       }
       api.defaults.headers.common['Authorization'] = `Bearer ${data.accessToken}`;
       router.push('/dashboard');

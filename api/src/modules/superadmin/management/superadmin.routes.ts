@@ -23,4 +23,16 @@ router.post('/chains/:id/suspend', SuperAdminController.suspendChain);
 router.get('/audit-logs', SuperAdminController.getGlobalAuditLogs);
 router.get('/revenue-trends', SuperAdminController.getRevenueTrends);
 
+router.get('/crm', SuperAdminController.getPlatformCRM);
+router.get('/storage', SuperAdminController.getStorageMetrics);
+router.get('/settings', SuperAdminController.getGlobalSettings);
+router.post('/settings', SuperAdminController.updateGlobalSettings);
+
+router.get('/payments', SuperAdminController.getPlatformPayments);
+router.get('/chains/:id', SuperAdminController.getChainDetails);
+
+router.post('/users/deactivate', SuperAdminController.deactivateUser);
+router.post('/users/reset-password', SuperAdminController.resetUserPassword);
+router.get('/revenue/by-plan', SuperAdminController.getRevenueByPlan);
+
 export default router;
